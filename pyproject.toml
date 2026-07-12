@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lurescope"
+version = "0.1.0"
+description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Imran Ahamed" }]
+keywords = ["fraud", "phishing", "detection", "adversarial", "api", "security"]
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2",
+  # Detection + attack logic is reused from LureBench so the service and the
+  # benchmark can never drift. [train] pulls scikit-learn/joblib for the bundled model.
+  "lurebench[train] @ git+https://github.com/immu4989/lurebench.git",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/immu4989/lurescope"
+Benchmark = "https://github.com/immu4989/lurebench"
+
+[project.scripts]
+lurescope = "lurescope.cli:main"
+
+[tool.setuptools]
+packages = ["lurescope"]
+
+[tool.setuptools.package-data]
+lurescope = ["static/*.html", "models/*.joblib"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+# Targeting 3.9, so keep typing.Optional/List (safest for pydantic runtime eval);
+# UP (pyupgrade to 3.10+ syntax) is intentionally omitted.
+select = ["E", "F", "I", "B"]

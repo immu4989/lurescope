@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LureScope — fraud-lure scoring & live evasion</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel2: #1c222b; --ink: #e8eaed;
+    --muted: #9aa4b2; --line: #2a313c; --blue: #4b93f0; --green: #2ea77a;
+    --red: #e5534b; --amber: #d9a441; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f5; --panel: #ffffff; --panel2: #f0f1ee; --ink: #14171c;
+      --muted: #5c6470; --line: #e3e5e0; --blue: #2a78d6; --green: #1baf7a;
+      --red: #d4433b; --amber: #b5852a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  header h1 .scope { color: var(--blue); }
+  header p { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px; margin-bottom: 18px;
+  }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical; background: var(--panel2);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+    font-family: var(--mono); font-size: 14px; line-height: 1.55;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+  .field { flex: 1 1 160px; }
+  select {
+    width: 100%; background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 10px; font-size: 14px;
+  }
+  button {
+    background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 10px 18px;
+    font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .result { margin-top: 18px; display: none; }
+  .meter { height: 10px; border-radius: 6px; background: var(--panel2); overflow: hidden; margin: 8px 0; }
+  .meter > span { display: block; height: 100%; transition: width .3s; }
+  .verdict { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px;
+    padding: 4px 12px; border-radius: 999px; }
+  .v-fraud { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }
+  .v-benign { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+  .prob { font-family: var(--mono); font-size: 28px; font-weight: 700; }
+  .signals span { display: inline-block; font-family: var(--mono); font-size: 12.5px;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 2px 8px; margin: 3px 4px 0 0; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 620px) { .cmp { grid-template-columns: 1fr; } }
+  .cmp .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .cmp .box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .cmp .text { font-family: var(--mono); font-size: 13px; word-break: break-word; min-height: 40px; }
+  .big-verdict { text-align: center; padding: 14px; border-radius: 10px; margin-top: 16px; font-weight: 700; font-size: 16px; }
+  .evaded { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); border: 1px solid var(--red); }
+  .held { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); border: 1px solid var(--green); }
+  .neutral { background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+  .err { color: var(--red); font-size: 13px; margin-top: 10px; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 28px; text-align: center; }
+  a { color: var(--blue); }
+  code { font-family: var(--mono); background: var(--panel2); padding: 1px 5px; border-radius: 4px; font-size: 90%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lure<span class="scope">Scope</span></h1>
+    <p>Score a message for fraud, then watch an attacker try to evade the detector — live.</p>
+  </header>
+
+  <div class="card">
+    <label for="text">Message</label>
+    <textarea id="text">Dear customer, we detected unusual activity on your account. Please verify your identity within 24 hours by clicking the secure link below, or your account will be suspended. Confirm now to avoid interruption.</textarea>
+    <div class="row">
+      <div class="field">
+        <label for="detector">Detector</label>
+        <select id="detector"></select>
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <button id="scoreBtn">Score</button>
+      </div>
+    </div>
+    <div class="hint">The trained <code>tfidf-logreg</code> baseline is strong on clean text. Swap to the keyword <code>heuristic-v0</code> to see a brittle detector.</div>
+    <div class="err" id="scoreErr"></div>
+
+    <div class="result" id="scoreResult">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <span class="prob" id="probVal">—</span>
+        <span class="verdict" id="verdict"></span>
+      </div>
+      <div class="meter"><span id="meterBar"></span></div>
+      <div id="signalsWrap" style="margin-top:10px;">
+        <label>Signals the detector keys on</label>
+        <div class="signals" id="signals"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Attack it — can a fraudster get this past the detector?</label>
+    <div class="row">
+      <div class="field">
+        <label for="attack">Attack</label>
+        <select id="attack"></select>
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <button id="attackBtn" class="ghost">Attack it</button>
+      </div>
+    </div>
+    <div class="hint">Character attacks (homoglyph, leet, zero-width, whitespace) run instantly. <code>llm-*</code> attacks need a provider key configured on the server.</div>
+    <div class="err" id="attackErr"></div>
+
+    <div class="result" id="attackResult">
+      <div class="cmp">
+        <div class="box">
+          <h4>Original — score <span id="cleanP"></span></h4>
+          <div class="text" id="cleanText"></div>
+        </div>
+        <div class="box">
+          <h4>After attack — score <span id="attP"></span></h4>
+          <div class="text" id="attText"></div>
+        </div>
+      </div>
+      <div class="big-verdict neutral" id="bigVerdict"></div>
+    </div>
+  </div>
+
+  <footer>
+    LureScope wraps <a href="https://github.com/immu4989/lurebench">LureBench</a> detectors. Defensive research — no keys required for the character attacks, no calls to external model APIs unless you configure one.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const pct = (v) => (v * 100).toFixed(0) + "%";
+const colorFor = (p, thr = 0.5) => p >= thr ? "var(--red)" : "var(--green)";
+
+async function loadCaps() {
+  const r = await fetch("capabilities");
+  const c = await r.json();
+  $("detector").innerHTML = c.detectors.map(d =>
+    `<option ${d === c.default_detector ? "selected" : ""}>${d}</option>`).join("");
+  $("attack").innerHTML = c.attacks.map(a => `<option>${a}</option>`).join("");
+}
+
+async function doScore() {
+  $("scoreErr").textContent = "";
+  $("scoreBtn").disabled = true;
+  try {
+    const body = { text: $("text").value, detector: $("detector").value };
+    const r = await fetch("score", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const d = await r.json();
+    $("probVal").textContent = pct(d.fraud_probability);
+    $("probVal").style.color = colorFor(d.fraud_probability, d.threshold);
+    const v = $("verdict");
+    v.textContent = d.label === "fraud" ? "⚠ FRAUD LURE" : "✓ looks benign";
+    v.className = "verdict " + (d.label === "fraud" ? "v-fraud" : "v-benign");
+    const bar = $("meterBar");
+    bar.style.width = pct(d.fraud_probability);
+    bar.style.background = colorFor(d.fraud_probability, d.threshold);
+    $("signals").innerHTML = d.signals.length
+      ? d.signals.map(s => `<span>${s}</span>`).join("")
+      : "<span style='opacity:.6'>none of the detector's top terms appear</span>";
+    $("scoreResult").style.display = "block";
+  } catch (e) {
+    $("scoreErr").textContent = e.message;
+  } finally {
+    $("scoreBtn").disabled = false;
+  }
+}
+
+async function doAttack() {
+  $("attackErr").textContent = "";
+  $("attackBtn").disabled = true;
+  try {
+    const body = { text: $("text").value, detector: $("detector").value, attack: $("attack").value };
+    const r = await fetch("attack", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const d = await r.json();
+    $("cleanText").textContent = d.original;
+    $("attText").textContent = d.attacked;
+    $("cleanP").textContent = pct(d.clean_probability);
+    $("cleanP").style.color = colorFor(d.clean_probability, d.threshold);
+    $("attP").textContent = pct(d.attacked_probability);
+    $("attP").style.color = colorFor(d.attacked_probability, d.threshold);
+    const bv = $("bigVerdict");
+    if (d.evaded) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${pct(d.clean_probability)} → ${pct(d.attacked_probability)})`;
+    } else if (!d.clean_flagged) {
+      bv.className = "big-verdict neutral";
+      bv.textContent = `The detector didn't flag the original either (${pct(d.clean_probability)}) — nothing to evade. Try a stronger message or the keyword detector.`;
+    } else {
+      bv.className = "big-verdict held";
+      bv.textContent = `✓ HELD — the detector still flags it after the attack (${pct(d.clean_probability)} → ${pct(d.attacked_probability)})`;
+    }
+    $("attackResult").style.display = "block";
+  } catch (e) {
+    $("attackErr").textContent = e.message;
+  } finally {
+    $("attackBtn").disabled = false;
+  }
+}
+
+$("scoreBtn").addEventListener("click", doScore);
+$("attackBtn").addEventListener("click", doAttack);
+loadCaps().then(doScore);
+</script>
+</body>
+</html>
