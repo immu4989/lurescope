@@ -6,11 +6,14 @@
 
 A deployable API and demo for AI-generated fraud-lure detection. The serving companion to [LureBench](https://github.com/immu4989/lurebench).
 
+[![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
 ![Version](https://img.shields.io/badge/version-0.1.0-4a3aa7)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
+
+**▶ Try it live, no install:** [huggingface.co/spaces/immu4989/lurescope](https://huggingface.co/spaces/immu4989/lurescope)
 
 </div>
 
@@ -74,6 +77,10 @@ Interactive OpenAPI docs are served at `/docs`.
 **Detectors:** `tfidf-logreg` (trained baseline, bundled and strong; the default) and `heuristic-v0` (dependency-free keyword rules, kept because its collapse under attack is the clearest illustration of the robustness gap).
 
 **Attacks:** four instant, dependency-free character attacks (`homoglyph`, `leet`, `zero-width`, `whitespace`) and two LLM-driven attacks (`llm-paraphrase`, `llm-keyword-evasion`). The LLM attacks use any OpenAI-compatible provider by name with your own key — set `LURESCOPE_LLM_ENGINE` (e.g. `deepseek`) and that provider's API key in the environment. They never call api.openai.com or api.anthropic.com.
+
+## Live demo (runs in your browser)
+
+The [Hugging Face Space](https://huggingface.co/spaces/immu4989/lurescope) is a zero-backend build of the same demo: it exports the trained model to JSON ([`space/model.json`](space/model.json)) and runs both detectors and all four character attacks **entirely client-side** — no server, nothing leaves the page. The in-browser scoring replicates scikit-learn's TfidfVectorizer transform and is verified to match the Python service to four decimals. Regenerate the exported model with `python scripts/export_static_model.py`. (LLM-based attacks need a key and a backend, so they live only in the API above.)
 
 ## How it relates to LureBench
 

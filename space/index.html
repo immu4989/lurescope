@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LureScope — fraud-lure scoring & live evasion</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel2: #1c222b; --ink: #e8eaed;
+    --muted: #9aa4b2; --line: #2a313c; --blue: #4b93f0; --green: #2ea77a;
+    --red: #e5534b; --amber: #d9a441; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f5; --panel: #ffffff; --panel2: #f0f1ee; --ink: #14171c;
+      --muted: #5c6470; --line: #e3e5e0; --blue: #2a78d6; --green: #1baf7a;
+      --red: #d4433b; --amber: #b5852a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  header h1 .scope { color: var(--blue); }
+  header p { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px; margin-bottom: 18px;
+  }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical; background: var(--panel2);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+    font-family: var(--mono); font-size: 14px; line-height: 1.55;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+  .field { flex: 1 1 160px; }
+  select {
+    width: 100%; background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 10px; font-size: 14px;
+  }
+  button {
+    background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 10px 18px;
+    font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .result { margin-top: 18px; display: none; }
+  .meter { height: 10px; border-radius: 6px; background: var(--panel2); overflow: hidden; margin: 8px 0; }
+  .meter > span { display: block; height: 100%; transition: width .3s; }
+  .verdict { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px;
+    padding: 4px 12px; border-radius: 999px; }
+  .v-fraud { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }
+  .v-benign { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+  .prob { font-family: var(--mono); font-size: 28px; font-weight: 700; }
+  .signals span { display: inline-block; font-family: var(--mono); font-size: 12.5px;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 2px 8px; margin: 3px 4px 0 0; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 620px) { .cmp { grid-template-columns: 1fr; } }
+  .cmp .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .cmp .box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .cmp .text { font-family: var(--mono); font-size: 13px; word-break: break-word; min-height: 40px; }
+  .big-verdict { text-align: center; padding: 14px; border-radius: 10px; margin-top: 16px; font-weight: 700; font-size: 16px; }
+  .evaded { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); border: 1px solid var(--red); }
+  .held { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); border: 1px solid var(--green); }
+  .neutral { background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+  .err { color: var(--red); font-size: 13px; margin-top: 10px; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 28px; text-align: center; }
+  a { color: var(--blue); }
+  code { font-family: var(--mono); background: var(--panel2); padding: 1px 5px; border-radius: 4px; font-size: 90%; }
+  .badge { display:inline-block; font-size:11.5px; color:var(--muted); border:1px solid var(--line);
+    border-radius:999px; padding:2px 10px; margin-bottom:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lure<span class="scope">Scope</span></h1>
+    <p>Score a message for fraud, then watch an attacker try to evade the detector — live.</p>
+    <span class="badge" id="modelBadge">loading model…</span>
+  </header>
+
+  <div class="card">
+    <label for="text">Message</label>
+    <textarea id="text">Dear customer, we detected unusual activity on your account. Please verify your identity within 24 hours by clicking the secure link below, or your account will be suspended. Confirm now to avoid interruption.</textarea>
+    <div class="row">
+      <div class="field">
+        <label for="detector">Detector</label>
+        <select id="detector">
+          <option value="tfidf-logreg">tfidf-logreg (trained)</option>
+          <option value="heuristic-v0">heuristic-v0 (keyword rules)</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <button id="scoreBtn" disabled>Score</button>
+      </div>
+    </div>
+    <div class="hint">The trained <code>tfidf-logreg</code> baseline is strong on clean text. Swap to the keyword <code>heuristic-v0</code> to see a brittle detector.</div>
+    <div class="err" id="scoreErr"></div>
+
+    <div class="result" id="scoreResult">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <span class="prob" id="probVal">—</span>
+        <span class="verdict" id="verdict"></span>
+      </div>
+      <div class="meter"><span id="meterBar"></span></div>
+      <div id="signalsWrap" style="margin-top:10px;">
+        <label>Signals the detector keys on</label>
+        <div class="signals" id="signals"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Attack it — can a fraudster get this past the detector?</label>
+    <div class="row">
+      <div class="field">
+        <label for="attack">Attack</label>
+        <select id="attack">
+          <option value="homoglyph">homoglyph</option>
+          <option value="leet">leet</option>
+          <option value="zero-width">zero-width</option>
+          <option value="whitespace">whitespace</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <button id="attackBtn" class="ghost" disabled>Attack it</button>
+      </div>
+    </div>
+    <div class="hint">These character attacks run instantly in your browser. LLM-based attacks (paraphrase, keyword-evasion) live in the <a href="https://github.com/immu4989/lurescope">full API</a>.</div>
+    <div class="err" id="attackErr"></div>
+
+    <div class="result" id="attackResult">
+      <div class="cmp">
+        <div class="box">
+          <h4>Original — score <span id="cleanP"></span></h4>
+          <div class="text" id="cleanText"></div>
+        </div>
+        <div class="box">
+          <h4>After attack — score <span id="attP"></span></h4>
+          <div class="text" id="attText"></div>
+        </div>
+      </div>
+      <div class="big-verdict neutral" id="bigVerdict"></div>
+    </div>
+  </div>
+
+  <footer>
+    Runs entirely in your browser using the trained model from <a href="https://github.com/immu4989/lurebench">LureBench</a> — no server, nothing leaves the page. Defensive research.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const pct = (v) => (v * 100).toFixed(0) + "%";
+const colorFor = (p, thr = 0.5) => p >= thr ? "var(--red)" : "var(--green)";
+const THRESHOLD = 0.5;
+let MODEL = null;
+
+// ---- tokenizer (matches sklearn TfidfVectorizer default: lowercase, \w\w+ over unicode) ----
+const TOKEN_RE = /[\p{L}\p{N}_]{2,}/gu;
+function tokens(text) {
+  return (text.toLowerCase().match(TOKEN_RE) || []);
+}
+function ngrams(toks, nmax) {
+  const out = toks.slice();
+  for (let n = 2; n <= nmax; n++) {
+    for (let i = 0; i + n <= toks.length; i++) out.push(toks.slice(i, i + n).join(" "));
+  }
+  return out;
+}
+
+// ---- tfidf-logreg inference (sublinear tf, l2 norm) ----
+function scoreTfidf(text) {
+  const grams = ngrams(tokens(text), MODEL.ngram_max);
+  const counts = new Map();
+  for (const g of grams) if (MODEL.vocab[g]) counts.set(g, (counts.get(g) || 0) + 1);
+  // build tf-idf vector over present in-vocab terms
+  let norm = 0;
+  const vec = [];
+  for (const [term, c] of counts) {
+    const [idf, coef] = MODEL.vocab[term];
+    const tf = MODEL.sublinear_tf ? 1 + Math.log(c) : c;
+    const v = tf * idf;
+    vec.push([v, coef]);
+    norm += v * v;
+  }
+  norm = Math.sqrt(norm) || 1;
+  let logit = MODEL.intercept;
+  for (const [v, coef] of vec) logit += (v / norm) * coef;
+  return sigmoid(logit);
+}
+function sigmoid(x) { return x < 0 ? Math.exp(x) / (1 + Math.exp(x)) : 1 / (1 + Math.exp(-x)); }
+
+function tfidfSignals(text, topK = 6) {
+  const present = new Set(tokens(text));
+  const uni = [];
+  for (const t of present) {
+    const e = MODEL.vocab[t];
+    if (e && e[1] > 0 && !t.includes(" ")) uni.push([t, e[1]]);
+  }
+  uni.sort((a, b) => b[1] - a[1]);
+  return uni.slice(0, topK).map((x) => x[0]);
+}
+
+// ---- heuristic-v0 (ported verbatim from lurebench) ----
+const H_SIGNALS = [
+  [/\b(urgent|immediately|right away|within \d+ (?:hours|minutes)|expire|suspend|final notice|act now|as soon as possible|asap|deadline|last chance)\b/i, 1.1, "urgency"],
+  [/\b(it (?:support|department|team)|help ?desk|security team|your bank|account team|compliance|hr department|ceo|cfo|director|administrator)\b/i, 0.8, "authority"],
+  [/\b(verify your (?:account|identity|password)|confirm your (?:details|password)|reset your password|login|log in|sign in|update your (?:payment|billing|account))\b/i, 1.3, "credential"],
+  [/\b(wire transfer|gift ?card|bitcoin|crypto|usdt|bank details|routing number|invoice|payment|refund|prize|winnings|inheritance|beneficiary|investment)\b/i, 1.1, "payment"],
+  [/(<<link>>|<<contact>>|https?:\/\/|wa\.me\/|t\.me\/|whatsapp|telegram)/i, 0.9, "handoff"],
+  [/\b(do not tell|keep this (?:between us|confidential)|discreet|private matter)\b/i, 1.0, "secrecy"],
+];
+const H_BIAS = -1.6;
+function scoreHeuristic(text) {
+  let logit = H_BIAS;
+  for (const [re, w] of H_SIGNALS) if (re.test(text)) logit += w;
+  return sigmoid(logit);
+}
+function heuristicSignals(text) {
+  const out = [];
+  for (const [re, , name] of H_SIGNALS) if (re.test(text)) out.push(name);
+  return out;
+}
+
+function score(text, detector) {
+  return detector === "heuristic-v0"
+    ? { p: scoreHeuristic(text), signals: heuristicSignals(text) }
+    : { p: scoreTfidf(text), signals: tfidfSignals(text) };
+}
+
+// ---- character attacks (ported verbatim from lurebench.attacks.perturb) ----
+const HOMOGLYPHS = {a:"а",c:"с",e:"е",o:"о",p:"р",x:"х",y:"у",i:"і",s:"ѕ",j:"ј",A:"А",B:"В",C:"С",E:"Е",H:"Н",K:"К",M:"М",O:"О",P:"Р",T:"Т",X:"Х"};
+const LEET = {a:"4",e:"3",i:"1",o:"0",s:"5",t:"7",l:"1",b:"8"};
+const ZW = "​";
+function applyRate(text, mapping, rate) {
+  const step = rate > 0 ? Math.max(1, Math.round(1 / rate)) : 0;
+  if (!step) return text;
+  let seen = 0, out = "";
+  for (const ch of text) {
+    if (mapping[ch] !== undefined) { seen++; out += (seen % step === 0) ? mapping[ch] : ch; }
+    else out += ch;
+  }
+  return out;
+}
+function attackText(text, attack) {
+  if (attack === "homoglyph") return applyRate(text, HOMOGLYPHS, 0.5);
+  if (attack === "leet") return applyRate(text, LEET, 0.5);
+  if (attack === "zero-width") {
+    const step = Math.max(1, Math.round(1 / 0.34)); let seen = 0, out = "";
+    for (const ch of text) { out += ch; if (/[a-z0-9]/i.test(ch)) { seen++; if (seen % step === 0) out += ZW; } }
+    return out;
+  }
+  if (attack === "whitespace") {
+    return text.split(" ").map((tok) => {
+      if (/^[a-zA-Z]+$/.test(tok) && tok.length >= 5) { const m = Math.floor(tok.length / 2); return tok.slice(0, m) + " " + tok.slice(m); }
+      return tok;
+    }).join(" ");
+  }
+  return text;
+}
+
+// ---- UI ----
+function doScore() {
+  $("scoreErr").textContent = "";
+  try {
+    const r = score($("text").value, $("detector").value);
+    $("probVal").textContent = pct(r.p);
+    $("probVal").style.color = colorFor(r.p);
+    const v = $("verdict");
+    const fraud = r.p >= THRESHOLD;
+    v.textContent = fraud ? "⚠ FRAUD LURE" : "✓ looks benign";
+    v.className = "verdict " + (fraud ? "v-fraud" : "v-benign");
+    const bar = $("meterBar");
+    bar.style.width = pct(r.p); bar.style.background = colorFor(r.p);
+    $("signals").innerHTML = r.signals.length
+      ? r.signals.map((s) => `<span>${s}</span>`).join("")
+      : "<span style='opacity:.6'>no strong signals</span>";
+    $("scoreResult").style.display = "block";
+  } catch (e) { $("scoreErr").textContent = e.message; }
+}
+
+function doAttack() {
+  $("attackErr").textContent = "";
+  try {
+    const det = $("detector").value, atk = $("attack").value, orig = $("text").value;
+    const attacked = attackText(orig, atk);
+    const cp = score(orig, det).p, ap = score(attacked, det).p;
+    $("cleanText").textContent = orig;
+    $("attText").textContent = attacked;
+    $("cleanP").textContent = pct(cp); $("cleanP").style.color = colorFor(cp);
+    $("attP").textContent = pct(ap); $("attP").style.color = colorFor(ap);
+    const cleanFlag = cp >= THRESHOLD, attFlag = ap >= THRESHOLD, bv = $("bigVerdict");
+    if (cleanFlag && !attFlag) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${pct(cp)} → ${pct(ap)})`;
+    } else if (!cleanFlag) {
+      bv.className = "big-verdict neutral";
+      bv.textContent = `The detector didn't flag the original either (${pct(cp)}) — nothing to evade. Try a stronger message or the keyword detector.`;
+    } else {
+      bv.className = "big-verdict held";
+      bv.textContent = `✓ HELD — the detector still flags it after the attack (${pct(cp)} → ${pct(ap)})`;
+    }
+    $("attackResult").style.display = "block";
+  } catch (e) { $("attackErr").textContent = e.message; }
+}
+
+$("scoreBtn").addEventListener("click", doScore);
+$("attackBtn").addEventListener("click", doAttack);
+
+fetch("model.json").then((r) => r.json()).then((m) => {
+  MODEL = m;
+  $("modelBadge").textContent = `model loaded · ${Object.keys(m.vocab).length.toLocaleString()} features · runs in-browser`;
+  $("scoreBtn").disabled = false; $("attackBtn").disabled = false;
+  doScore();
+}).catch((e) => { $("modelBadge").textContent = "failed to load model: " + e.message; });
+</script>
+</body>
+</html>
