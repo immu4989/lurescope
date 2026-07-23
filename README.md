@@ -45,7 +45,7 @@ A single message is an anecdote; a rate over a corpus is a claim. Running both a
   <img src="docs/assets/scorecard.png" width="760" alt="Heatmap of fraud-lure evasion rate by detector and attack. Raw attacks evade the keyword detector at 99-100% and the trained model at up to 38%; after normalization the homoglyph and zero-width columns drop to 0%, leet leaves a 16% residue, and whitespace is unchanged.">
 </p>
 
-Read the pattern, not the cells. Normalization drives the `homoglyph` and `zero-width` columns to **0%** for both detectors because it reverses them losslessly; `leet` leaves a small residue (the `1`=`i`/`l` ambiguity); `whitespace` is untouched because re-joining split words would corrupt real text. The typographic gap closes, the semantic one does not. Full table in [SCORECARD.md](SCORECARD.md); regenerate on any corpus with:
+Read the pattern, not the cells. Normalization drives the `homoglyph` and `zero-width` columns to **0%** for both detectors because it reverses them losslessly; `leet` leaves a small residue (the `1`=`i`/`l` ambiguity); `whitespace` is untouched because re-joining split words would corrupt real text. The typographic gap closes, the semantic one does not. Full table in [SCORECARD.md](SCORECARD.md), background in the [writeup](blog/2026-07-23-robustness-gap-fraud-detection.md); regenerate on any corpus with:
 
 ```bash
 python scripts/robustness_scorecard.py --data <corpus.jsonl> --out-md SCORECARD.md --out-png docs/assets/scorecard.png
