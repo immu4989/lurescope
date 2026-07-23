@@ -1,0 +1,50 @@
+{
+  "threshold": 0.5,
+  "n_fraud": 819,
+  "detectors": {
+    "tfidf-logreg": {
+      "clean_recall": 0.9633699633699634,
+      "n_caught": 789,
+      "attacks": {
+        "homoglyph": {
+          "evasion_raw": 0.376425855513308,
+          "evasion_normalized": 0.0
+        },
+        "leet": {
+          "evasion_raw": 0.15842839036755388,
+          "evasion_normalized": 0.0063371356147021544
+        },
+        "zero-width": {
+          "evasion_raw": 0.029150823827629912,
+          "evasion_normalized": 0.0
+        },
+        "whitespace": {
+          "evasion_raw": 0.0025348542458808617,
+          "evasion_normalized": 0.0025348542458808617
+        }
+      }
+    },
+    "heuristic-v0": {
+      "clean_recall": 0.21245421245421245,
+      "n_caught": 174,
+      "attacks": {
+        "homoglyph": {
+          "evasion_raw": 0.9885057471264368,
+          "evasion_normalized": 0.0
+        },
+        "leet": {
+          "evasion_raw": 0.9942528735632183,
+          "evasion_normalized": 0.16091954022988506
+        },
+        "zero-width": {
+          "evasion_raw": 1.0,
+          "evasion_normalized": 0.0
+        },
+        "whitespace": {
+          "evasion_raw": 0.5172413793103449,
+          "evasion_normalized": 0.5172413793103449
+        }
+      }
+    }
+  }
+}

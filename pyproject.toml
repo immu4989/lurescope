@@ -22,6 +22,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx", "ruff"]
+# Only needed to render the scorecard heatmap PNG; the markdown/JSON need nothing extra.
+viz = ["matplotlib>=3.6"]
 
 [project.urls]
 Homepage = "https://github.com/immu4989/lurescope"
@@ -35,6 +37,10 @@ packages = ["lurescope"]
 
 [tool.setuptools.package-data]
 lurescope = ["static/*.html", "models/*.joblib"]
+
+[tool.pytest.ini_options]
+# Make the repo root importable so tests can reach the scripts/ helpers.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

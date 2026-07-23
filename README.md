@@ -37,6 +37,20 @@ A detector's clean-data accuracy is not its deployment accuracy, and the gap has
 
 That last contrast is the point. Character obfuscation is a solved problem for any detector that normalizes its input; the residual robustness gap is semantic. LureScope lets a security team see exactly which of their detectors have which kind of hole, on their own message, in ten seconds.
 
+## Robustness scorecard
+
+A single message is an anecdote; a rate over a corpus is a claim. Running both always-on detectors against every character attack on the 819 fraud lures in LureBench's `core/test` set gives the evasion rate — of the lures a detector caught clean, the fraction that slip below threshold after the attack — before and after the `normalize` defense:
+
+<p align="center">
+  <img src="docs/assets/scorecard.png" width="760" alt="Heatmap of fraud-lure evasion rate by detector and attack. Raw attacks evade the keyword detector at 99-100% and the trained model at up to 38%; after normalization the homoglyph and zero-width columns drop to 0%, leet leaves a 16% residue, and whitespace is unchanged.">
+</p>
+
+Read the pattern, not the cells. Normalization drives the `homoglyph` and `zero-width` columns to **0%** for both detectors because it reverses them losslessly; `leet` leaves a small residue (the `1`=`i`/`l` ambiguity); `whitespace` is untouched because re-joining split words would corrupt real text. The typographic gap closes, the semantic one does not. Full table in [SCORECARD.md](SCORECARD.md); regenerate on any corpus with:
+
+```bash
+python scripts/robustness_scorecard.py --data <corpus.jsonl> --out-md SCORECARD.md --out-png docs/assets/scorecard.png
+```
+
 ## The detectors that matter
 
 The headline comparison above is toy-vs-toy on purpose (it runs with zero keys, including fully in-browser). The more useful question is whether the detectors a team *actually deploys* survive the same attacks — so LureScope exposes LureBench's real detectors too:
