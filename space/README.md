@@ -21,4 +21,4 @@ Same message, opposite outcomes, and a defense that closes the typographic gap w
 
 This Static Space runs both detectors, all four attacks, and the normalization defense **entirely in your browser** — no server, no data leaves the page. It uses the exact trained model from the [LureBench](https://github.com/immu4989/lurebench) benchmark, exported to JSON.
 
-Full REST API (with the real content-safety detectors and LLM-based attacks) and source: **[github.com/immu4989/lurescope](https://github.com/immu4989/lurescope)**.
+Full REST API (with the real content-safety detectors and LLM-based attacks) and source: **[github.com/immu4989/lurescope](https://github.com/immu4989/lurescope)**. Background and the corpus-level robustness numbers: **[the scorecard writeup](https://github.com/immu4989/lurescope/blob/main/blog/2026-07-23-robustness-gap-fraud-detection.md)**.
