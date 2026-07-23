@@ -62,7 +62,8 @@
     background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
     padding: 2px 8px; margin: 3px 4px 0 0; }
   .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
-  @media (max-width: 620px) { .cmp { grid-template-columns: 1fr; } }
+  .cmp.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 620px) { .cmp, .cmp.three { grid-template-columns: 1fr; } }
   .cmp .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
   .cmp .box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .cmp .text { font-family: var(--mono); font-size: 13px; word-break: break-word; min-height: 40px; }
@@ -82,7 +83,7 @@
 <div class="wrap">
   <header>
     <h1>Lure<span class="scope">Scope</span></h1>
-    <p>Score a message for fraud, then watch an attacker try to evade the detector — live.</p>
+    <p>Score a message for fraud, watch an attacker evade the detector, then watch a defense catch it back — live, in your browser.</p>
     <span class="badge" id="modelBadge">loading model…</span>
   </header>
 
@@ -129,15 +130,22 @@
           <option value="whitespace">whitespace</option>
         </select>
       </div>
+      <div class="field">
+        <label for="defense">Defense (re-score after)</label>
+        <select id="defense">
+          <option value="none">none (raw)</option>
+          <option value="normalize">normalize</option>
+        </select>
+      </div>
       <div class="field" style="flex:0 0 auto;">
         <button id="attackBtn" class="ghost" disabled>Attack it</button>
       </div>
     </div>
-    <div class="hint">These character attacks run instantly in your browser. LLM-based attacks (paraphrase, keyword-evasion) live in the <a href="https://github.com/immu4989/lurescope">full API</a>.</div>
+    <div class="hint">These character attacks run instantly in your browser. Set <b>Defense → normalize</b> to see whether input normalization catches the attack back: it reverses homoglyph and zero-width losslessly, but a semantic paraphrase would walk straight through it. LLM-based attacks live in the <a href="https://github.com/immu4989/lurescope">full API</a>.</div>
     <div class="err" id="attackErr"></div>
 
     <div class="result" id="attackResult">
-      <div class="cmp">
+      <div class="cmp" id="cmpGrid">
         <div class="box">
           <h4>Original — score <span id="cleanP"></span></h4>
           <div class="text" id="cleanText"></div>
@@ -145,6 +153,10 @@
         <div class="box">
           <h4>After attack — score <span id="attP"></span></h4>
           <div class="text" id="attText"></div>
+        </div>
+        <div class="box" id="defBox" style="display:none;">
+          <h4>After defense — score <span id="defP"></span></h4>
+          <div class="text" id="defText"></div>
         </div>
       </div>
       <div class="big-verdict neutral" id="bigVerdict"></div>
@@ -267,6 +279,31 @@ function attackText(text, attack) {
   return text;
 }
 
+// ---- normalization defense (ported verbatim from lurescope.defense) ----
+// Confusable Cyrillic/Greek code points -> their Latin lookalike. Superset of the
+// homoglyph attack's substitutions, so that attack is fully reversed.
+const CONFUSABLES = {
+  "а":"a","с":"c","е":"e","о":"o","р":"p","х":"x","у":"y","і":"i","ѕ":"s","ј":"j","ԁ":"d","һ":"h","ո":"n","ν":"v",
+  "А":"A","В":"B","С":"C","Е":"E","Н":"H","К":"K","М":"M","О":"O","Р":"P","Т":"T","Х":"X","І":"I","Ѕ":"S","Ј":"J",
+  "ο":"o","Ο":"O","Α":"A","Β":"B","Ε":"E","Ζ":"Z","Η":"H","Ι":"I","Κ":"K","Μ":"M","Ν":"N","Ρ":"P","Τ":"T","Υ":"Y","Χ":"X","ρ":"p","τ":"t","ι":"i",
+};
+const DELEET = {"4":"a","3":"e","0":"o","5":"s","7":"t","8":"b","1":"i"};
+const isAlpha = (ch) => ch !== undefined && /\p{L}/u.test(ch);
+
+function normalize(text) {
+  text = text.replace(/\p{Cf}/gu, "");        // strip invisible format chars
+  text = text.normalize("NFKC");              // fold compatibility forms
+  let out = "";
+  for (const ch of text) out += (CONFUSABLES[ch] || ch);   // map confusables to Latin
+  const chars = Array.from(out);              // undo in-word leet
+  for (let i = 0; i < chars.length; i++) {
+    const repl = DELEET[chars[i]];
+    if (repl !== undefined && (isAlpha(chars[i - 1]) || isAlpha(chars[i + 1]))) chars[i] = repl;
+  }
+  return chars.join("");
+}
+const DEFENSES = { none: (t) => t, normalize };
+
 // ---- UI ----
 function doScore() {
   $("scoreErr").textContent = "";
@@ -291,22 +328,43 @@ function doAttack() {
   $("attackErr").textContent = "";
   try {
     const det = $("detector").value, atk = $("attack").value, orig = $("text").value;
+    const defName = $("defense").value;
     const attacked = attackText(orig, atk);
     const cp = score(orig, det).p, ap = score(attacked, det).p;
     $("cleanText").textContent = orig;
     $("attText").textContent = attacked;
     $("cleanP").textContent = pct(cp); $("cleanP").style.color = colorFor(cp);
     $("attP").textContent = pct(ap); $("attP").style.color = colorFor(ap);
-    const cleanFlag = cp >= THRESHOLD, attFlag = ap >= THRESHOLD, bv = $("bigVerdict");
-    if (cleanFlag && !attFlag) {
-      bv.className = "big-verdict evaded";
-      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${pct(cp)} → ${pct(ap)})`;
-    } else if (!cleanFlag) {
+    const cleanFlag = cp >= THRESHOLD, attFlag = ap >= THRESHOLD, evaded = cleanFlag && !attFlag;
+
+    const defended = defName !== "none";
+    let dp = null, defFlag = null, recovered = false;
+    $("cmpGrid").classList.toggle("three", defended);
+    $("defBox").style.display = defended ? "block" : "none";
+    if (defended) {
+      const defendedText = DEFENSES[defName](attacked);
+      dp = score(defendedText, det).p; defFlag = dp >= THRESHOLD; recovered = evaded && defFlag;
+      $("defText").textContent = defendedText;
+      $("defP").textContent = pct(dp); $("defP").style.color = colorFor(dp);
+    }
+
+    const bv = $("bigVerdict");
+    const arrow = `${pct(cp)} → ${pct(ap)}`;
+    if (!cleanFlag) {
       bv.className = "big-verdict neutral";
       bv.textContent = `The detector didn't flag the original either (${pct(cp)}) — nothing to evade. Try a stronger message or the keyword detector.`;
+    } else if (evaded && defended && recovered) {
+      bv.className = "big-verdict held";
+      bv.textContent = `✓ RECOVERED — the attack evaded the raw detector (${arrow}), but ${defName} normalization caught it back (${pct(dp)}).`;
+    } else if (evaded && defended && !recovered) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED THROUGH THE DEFENSE — still missed even after ${defName} (${arrow}, defended ${pct(dp)}). This attack isn't typographic — normalization can't reach it.`;
+    } else if (evaded) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${arrow}). Try Defense → normalize.`;
     } else {
       bv.className = "big-verdict held";
-      bv.textContent = `✓ HELD — the detector still flags it after the attack (${pct(cp)} → ${pct(ap)})`;
+      bv.textContent = `✓ HELD — the detector still flags it after the attack (${arrow})`;
     }
     $("attackResult").style.display = "block";
   } catch (e) { $("attackErr").textContent = e.message; }
