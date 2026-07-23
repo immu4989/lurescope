@@ -73,6 +73,60 @@ def test_llm_attack_without_provider_is_a_clean_400():
     assert "provider" in r.json()["detail"].lower()
 
 
+def test_capabilities_advertises_extended_detectors_and_defenses():
+    c = client.get("/capabilities").json()
+    # Always-on set stays the safe default; the gated content-safety / LLM detectors
+    # are still advertised in the catalog with the requirement spelled out.
+    assert set(c["detectors"]) == {"tfidf-logreg", "heuristic-v0"}
+    catalog = {d["name"]: d for d in c["detector_catalog"]}
+    assert catalog["tfidf-logreg"]["always_on"] is True
+    assert catalog["llm-judge"]["always_on"] is False
+    assert catalog["llm-judge"]["requires"]  # non-empty guidance string
+    for name in ("openai-moderation", "llama-guard-3", "binoculars"):
+        assert name in catalog
+    assert "normalize" in c["defenses"]
+
+
+def test_gated_detector_without_key_is_a_clean_400_not_500():
+    # llm-judge needs a provider; with none configured the request must fail cleanly.
+    r = client.post("/score", json={"text": LURE, "detector": "llm-judge"})
+    assert r.status_code == 400
+    assert "llm-judge" in r.json()["detail"]
+
+
+def test_normalize_defense_recovers_a_homoglyph_evasion():
+    r = client.post(
+        "/attack",
+        json={
+            "text": LURE,
+            "attack": "homoglyph",
+            "detector": "heuristic-v0",
+            "defense": "normalize",
+        },
+    )
+    d = r.json()
+    assert d["evaded"] is True                 # homoglyphs defeat the raw detector
+    assert d["defense"] == "normalize"
+    assert d["defended_flagged"] is True       # normalization restores detection
+    assert d["defense_recovered"] is True
+    assert d["defended_evaded"] is False
+
+
+def test_attack_rejects_unknown_defense():
+    r = client.post(
+        "/attack", json={"text": LURE, "attack": "homoglyph", "defense": "magic"}
+    )
+    assert r.status_code == 400
+
+
+def test_defense_defaults_to_none_and_stays_backward_compatible():
+    d = client.post(
+        "/attack", json={"text": LURE, "attack": "homoglyph", "detector": "heuristic-v0"}
+    ).json()
+    assert d["defense"] == "none"
+    assert d["defended_probability"] is None
+
+
 def test_demo_page_served_at_root():
     r = client.get("/")
     assert r.status_code == 200

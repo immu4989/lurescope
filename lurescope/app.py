@@ -20,6 +20,7 @@ from .models import (
     AttackRequest,
     AttackResponse,
     CapabilitiesResponse,
+    DetectorInfo,
     ScoreRequest,
     ScoreResponse,
 )
@@ -45,25 +46,40 @@ def health() -> dict:
 def capabilities() -> CapabilitiesResponse:
     return CapabilitiesResponse(
         detectors=service.available_detectors(),
+        detector_catalog=[DetectorInfo(**d) for d in service.detector_catalog()],
         attacks=service.available_attacks(),
+        defenses=service.available_defenses_(),
         default_detector=service.DEFAULT_DETECTOR,
     )
 
 
 @app.post("/score", response_model=ScoreResponse)
 def score(req: ScoreRequest) -> ScoreResponse:
-    if req.detector not in service.available_detectors():
+    if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
-    r = service.score(req.text, detector_name=req.detector, threshold=req.threshold)
+    try:
+        r = service.score(
+            req.text,
+            detector_name=req.detector,
+            threshold=req.threshold,
+            engine=req.engine,
+            model=req.model,
+        )
+    except service.DetectorUnavailable as exc:  # detector needs a key/dep not configured
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - provider/model failure at score time
+        raise HTTPException(502, f"score failed: {type(exc).__name__}: {exc}") from exc
     return ScoreResponse(**r.__dict__)
 
 
 @app.post("/attack", response_model=AttackResponse)
 def attack(req: AttackRequest) -> AttackResponse:
-    if req.detector not in service.available_detectors():
+    if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
     if req.attack not in service.available_attacks():
         raise HTTPException(400, f"unknown attack {req.attack!r}")
+    if req.defense not in service.available_defenses_():
+        raise HTTPException(400, f"unknown defense {req.defense!r}")
     try:
         r = service.attack(
             req.text,
@@ -72,8 +88,9 @@ def attack(req: AttackRequest) -> AttackResponse:
             threshold=req.threshold,
             engine=req.engine,
             model=req.model,
+            defense=req.defense,
         )
-    except ValueError as exc:  # e.g. llm attack without a configured provider
+    except ValueError as exc:  # llm attack/detector without a configured provider
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - provider/model failure, keep it a 502
         raise HTTPException(502, f"attack failed: {type(exc).__name__}: {exc}") from exc

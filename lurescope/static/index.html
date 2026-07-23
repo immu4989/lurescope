@@ -62,7 +62,8 @@
     background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
     padding: 2px 8px; margin: 3px 4px 0 0; }
   .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
-  @media (max-width: 620px) { .cmp { grid-template-columns: 1fr; } }
+  .cmp.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 620px) { .cmp, .cmp.three { grid-template-columns: 1fr; } }
   .cmp .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
   .cmp .box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .cmp .text { font-family: var(--mono); font-size: 13px; word-break: break-word; min-height: 40px; }
@@ -118,15 +119,19 @@
         <label for="attack">Attack</label>
         <select id="attack"></select>
       </div>
+      <div class="field">
+        <label for="defense">Defense (re-score after)</label>
+        <select id="defense"></select>
+      </div>
       <div class="field" style="flex:0 0 auto;">
         <button id="attackBtn" class="ghost">Attack it</button>
       </div>
     </div>
-    <div class="hint">Character attacks (homoglyph, leet, zero-width, whitespace) run instantly. <code>llm-*</code> attacks need a provider key configured on the server.</div>
+    <div class="hint">Character attacks (homoglyph, leet, zero-width, whitespace) run instantly. <code>llm-*</code> attacks need a provider key configured on the server. Set <b>Defense → normalize</b> to see whether input normalization catches the attack back — it reverses homoglyph and zero-width losslessly, but not semantic paraphrase.</div>
     <div class="err" id="attackErr"></div>
 
     <div class="result" id="attackResult">
-      <div class="cmp">
+      <div class="cmp" id="cmpGrid">
         <div class="box">
           <h4>Original — score <span id="cleanP"></span></h4>
           <div class="text" id="cleanText"></div>
@@ -134,6 +139,10 @@
         <div class="box">
           <h4>After attack — score <span id="attP"></span></h4>
           <div class="text" id="attText"></div>
+        </div>
+        <div class="box" id="defBox" style="display:none;">
+          <h4>After defense — score <span id="defP"></span></h4>
+          <div class="text" id="defText"></div>
         </div>
       </div>
       <div class="big-verdict neutral" id="bigVerdict"></div>
@@ -156,6 +165,9 @@ async function loadCaps() {
   $("detector").innerHTML = c.detectors.map(d =>
     `<option ${d === c.default_detector ? "selected" : ""}>${d}</option>`).join("");
   $("attack").innerHTML = c.attacks.map(a => `<option>${a}</option>`).join("");
+  const defenses = c.defenses || ["none"];
+  $("defense").innerHTML = defenses.map(d =>
+    `<option value="${d}">${d === "none" ? "none (raw)" : d}</option>`).join("");
 }
 
 async function doScore() {
@@ -189,7 +201,8 @@ async function doAttack() {
   $("attackErr").textContent = "";
   $("attackBtn").disabled = true;
   try {
-    const body = { text: $("text").value, detector: $("detector").value, attack: $("attack").value };
+    const defense = $("defense").value;
+    const body = { text: $("text").value, detector: $("detector").value, attack: $("attack").value, defense };
     const r = await fetch("attack", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
     const d = await r.json();
@@ -199,16 +212,33 @@ async function doAttack() {
     $("cleanP").style.color = colorFor(d.clean_probability, d.threshold);
     $("attP").textContent = pct(d.attacked_probability);
     $("attP").style.color = colorFor(d.attacked_probability, d.threshold);
+
+    const defended = d.defense && d.defense !== "none" && d.defended_probability !== null;
+    $("cmpGrid").classList.toggle("three", defended);
+    $("defBox").style.display = defended ? "block" : "none";
+    if (defended) {
+      $("defText").textContent = d.defended_text;
+      $("defP").textContent = pct(d.defended_probability);
+      $("defP").style.color = colorFor(d.defended_probability, d.threshold);
+    }
+
     const bv = $("bigVerdict");
-    if (d.evaded) {
-      bv.className = "big-verdict evaded";
-      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${pct(d.clean_probability)} → ${pct(d.attacked_probability)})`;
-    } else if (!d.clean_flagged) {
+    const arrow = `${pct(d.clean_probability)} → ${pct(d.attacked_probability)}`;
+    if (!d.clean_flagged) {
       bv.className = "big-verdict neutral";
       bv.textContent = `The detector didn't flag the original either (${pct(d.clean_probability)}) — nothing to evade. Try a stronger message or the keyword detector.`;
+    } else if (d.evaded && defended && d.defense_recovered) {
+      bv.className = "big-verdict held";
+      bv.textContent = `✓ RECOVERED — the attack evaded the raw detector (${arrow}), but ${d.defense} normalization caught it back (${pct(d.defended_probability)}).`;
+    } else if (d.evaded && defended && !d.defense_recovered) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED THROUGH THE DEFENSE — still missed even after ${d.defense} (${arrow}, defended ${pct(d.defended_probability)}). This attack isn't typographic — normalization can't reach it.`;
+    } else if (d.evaded) {
+      bv.className = "big-verdict evaded";
+      bv.textContent = `⚠ EVADED — the detector caught the original but missed the attacked version (${arrow}). Try Defense → normalize.`;
     } else {
       bv.className = "big-verdict held";
-      bv.textContent = `✓ HELD — the detector still flags it after the attack (${pct(d.clean_probability)} → ${pct(d.attacked_probability)})`;
+      bv.textContent = `✓ HELD — the detector still flags it after the attack (${arrow})`;
     }
     $("attackResult").style.display = "block";
   } catch (e) {

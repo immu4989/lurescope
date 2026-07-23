@@ -20,15 +20,56 @@ from lurebench.attacks import get_attack
 from lurebench.detectors import get_detector
 from lurebench.schema import Lure
 
+from .defense import apply_defense, available_defenses
+
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 _DEFAULT_TFIDF = os.path.join(_MODEL_DIR, "tfidf-logreg-fraud.joblib")
 _TOKEN = re.compile(r"[a-z0-9']+")
 
-# Detectors we expose. tfidf-logreg is the strong default (bundled trained model);
-# heuristic-v0 is the dependency-free keyword baseline, kept because its dramatic
-# collapse under attack is the clearest illustration of the robustness gap.
 DEFAULT_DETECTOR = "tfidf-logreg"
-EXPOSED_DETECTORS = ("tfidf-logreg", "heuristic-v0")
+
+# Always-on detectors: no key, no heavy deps, run anywhere (including the fully
+# client-side HF Space). tfidf-logreg is the strong bundled baseline and the
+# default; heuristic-v0 is the keyword detector kept because its collapse under a
+# single homoglyph swap is the clearest illustration of the robustness gap.
+ALWAYS_ON = ("tfidf-logreg", "heuristic-v0")
+
+# Extended detectors reused straight from LureBench. These are the models a team
+# actually deploys — an LLM-as-classifier and content-safety systems — so the
+# interesting question is whether *they* survive the same attacks. They need a
+# provider key or heavy local weights, so they are advertised as requestable but
+# only construct when their requirement is met; otherwise the request 400s with a
+# clear reason (mirroring the LLM-attack gate). The headline benchmark finding —
+# Llama Guard scoring 0% true-positive on romance-baiting lures — lives in
+# LureBench; LureScope lets you probe these detectors on a single message.
+EXTENDED = ("llm-judge", "openai-moderation", "llama-guard-3", "binoculars")
+
+# name -> (one-line kind, requirement string or None for always-on).
+DETECTOR_INFO = {
+    "tfidf-logreg": ("trained TF-IDF + logistic-regression baseline", None),
+    "heuristic-v0": ("dependency-free keyword rules", None),
+    "llm-judge": (
+        "LLM-as-classifier (reads meaning, not tokens)",
+        "an OpenAI-compatible provider: set LURESCOPE_LLM_ENGINE (e.g. deepseek, "
+        "mistral) and that provider's API key",
+    ),
+    "openai-moderation": (
+        "content-safety moderation API (a fraud proxy, not a fraud model)",
+        "OPENAI_API_KEY and the 'openai' package",
+    ),
+    "llama-guard-3": (
+        "Meta Llama Guard 3 content-safety model",
+        "torch/transformers and gated access to meta-llama/Llama-Guard-3-8B",
+    ),
+    "binoculars": (
+        "perplexity-based AI-generated-text detector",
+        "torch/transformers and the reference model weights",
+    ),
+}
+
+
+class DetectorUnavailable(ValueError):
+    """A known detector was requested but its key/dependency is not configured."""
 
 
 def _as_lure(text: str) -> Lure:
@@ -37,14 +78,56 @@ def _as_lure(text: str) -> Lure:
 
 
 @lru_cache(maxsize=None)
-def _detector(name: str):
+def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = None):
     if name == "tfidf-logreg":
         return get_detector("tfidf-logreg", model_path=_DEFAULT_TFIDF)
+    if name == "llm-judge":
+        engine = engine or os.environ.get("LURESCOPE_LLM_ENGINE")
+        if not engine:
+            raise DetectorUnavailable(_needs(name))
+        try:
+            return get_detector("llm-judge", engine=engine, model=model)
+        except DetectorUnavailable:
+            raise
+        except Exception as exc:  # noqa: BLE001 - missing key/dep -> clean 400
+            raise DetectorUnavailable(f"{_needs(name)} ({type(exc).__name__}: {exc})") from exc
+    if name in EXTENDED:
+        try:
+            return get_detector(name)
+        except Exception as exc:  # noqa: BLE001 - missing key/dep -> clean 400
+            raise DetectorUnavailable(f"{_needs(name)} ({type(exc).__name__}: {exc})") from exc
     return get_detector(name)
 
 
+def _needs(name: str) -> str:
+    kind, requires = DETECTOR_INFO.get(name, (name, None))
+    if not requires:
+        return f"{name} is available"
+    return f"detector {name!r} ({kind}) needs {requires}"
+
+
 def available_detectors() -> List[str]:
-    return list(EXPOSED_DETECTORS)
+    """Always-on detectors, safe to advertise everywhere (used as the demo default)."""
+    return list(ALWAYS_ON)
+
+
+def all_detectors() -> List[str]:
+    """Every requestable detector, including the key/dep-gated extended ones."""
+    return list(ALWAYS_ON) + list(EXTENDED)
+
+
+def detector_catalog() -> List[dict]:
+    """Rich listing for /capabilities: name, kind, always-on vs its requirement."""
+    out = []
+    for name in all_detectors():
+        kind, requires = DETECTOR_INFO.get(name, (name, None))
+        out.append({"name": name, "kind": kind, "always_on": requires is None,
+                    "requires": requires})
+    return out
+
+
+def available_defenses_() -> List[str]:
+    return available_defenses()
 
 
 def available_attacks() -> List[str]:
@@ -75,6 +158,14 @@ class AttackResult:
     clean_flagged: bool
     attacked_flagged: bool
     evaded: bool
+    # Defense: populated when a defense other than "none" is applied. The defense
+    # normalizes the *attacked* text before the detector re-scores it.
+    defense: str = "none"
+    defended_text: Optional[str] = None
+    defended_probability: Optional[float] = None
+    defended_flagged: Optional[bool] = None
+    defense_recovered: Optional[bool] = None  # attack evaded, but the defense caught it back
+    defended_evaded: Optional[bool] = None    # caught clean, still slips past even defended
 
 
 def _top_signals(detector, text: str, top_k: int = 6) -> List[str]:
@@ -97,8 +188,14 @@ def _top_signals(detector, text: str, top_k: int = 6) -> List[str]:
     return out
 
 
-def score(text: str, detector_name: str = DEFAULT_DETECTOR, threshold: float = 0.5) -> ScoreResult:
-    det = _detector(detector_name)
+def score(
+    text: str,
+    detector_name: str = DEFAULT_DETECTOR,
+    threshold: float = 0.5,
+    engine: Optional[str] = None,
+    model: Optional[str] = None,
+) -> ScoreResult:
+    det = _detector(detector_name, engine, model)
     prob = det.score(_as_lure(text))
     prob = 0.0 if prob is None else float(prob)
     return ScoreResult(
@@ -132,9 +229,11 @@ def attack(
     threshold: float = 0.5,
     engine: Optional[str] = None,
     model: Optional[str] = None,
+    defense: str = "none",
 ) -> AttackResult:
-    """Score ``text``, apply ``attack_name``, and re-score to see if it now evades."""
-    det = _detector(detector_name)
+    """Score ``text``, apply ``attack_name``, re-score, and optionally re-score once
+    more after a ``defense`` normalizes the attacked text."""
+    det = _detector(detector_name, engine, model)
 
     complete_fn = None
     if attack_name.startswith("llm-"):
@@ -151,14 +250,17 @@ def attack(
     atk = _build_attack(attack_name, det, complete_fn)
     attacked_text = atk.apply(text)
 
-    clean_p = det.score(_as_lure(text))
-    clean_p = 0.0 if clean_p is None else float(clean_p)
-    att_p = det.score(_as_lure(attacked_text))
-    att_p = 0.0 if att_p is None else float(att_p)
+    def _p(t: str) -> float:
+        p = det.score(_as_lure(t))
+        return 0.0 if p is None else float(p)
 
+    clean_p = _p(text)
+    att_p = _p(attacked_text)
     clean_flag = clean_p >= threshold
     att_flag = att_p >= threshold
-    return AttackResult(
+    evaded = clean_flag and not att_flag  # was caught, now slips through
+
+    result = AttackResult(
         detector=detector_name,
         attack=attack_name,
         original=text,
@@ -168,5 +270,19 @@ def attack(
         threshold=threshold,
         clean_flagged=clean_flag,
         attacked_flagged=att_flag,
-        evaded=clean_flag and not att_flag,  # was caught, now slips through
+        evaded=evaded,
+        defense=defense,
     )
+
+    if defense and defense != "none":
+        defended_text = apply_defense(defense, attacked_text)
+        def_p = _p(defended_text)
+        def_flag = def_p >= threshold
+        result.defended_text = defended_text
+        result.defended_probability = def_p
+        result.defended_flagged = def_flag
+        # The defense earns its keep only where the attack actually evaded.
+        result.defense_recovered = evaded and def_flag
+        result.defended_evaded = clean_flag and not def_flag
+
+    return result

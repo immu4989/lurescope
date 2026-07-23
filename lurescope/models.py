@@ -11,6 +11,8 @@ class ScoreRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=20000, description="Message to score")
     detector: str = Field("tfidf-logreg", description="Detector to use")
     threshold: float = Field(0.5, ge=0.0, le=1.0)
+    engine: Optional[str] = Field(None, description="Provider engine for the llm-judge detector")
+    model: Optional[str] = Field(None, description="Provider model id for the llm-judge detector")
 
 
 class ScoreResponse(BaseModel):
@@ -29,8 +31,11 @@ class AttackRequest(BaseModel):
     attack: str = Field(..., description="Attack id, e.g. homoglyph / leet / llm-paraphrase")
     detector: str = Field("tfidf-logreg")
     threshold: float = Field(0.5, ge=0.0, le=1.0)
-    engine: Optional[str] = Field(None, description="Provider engine for llm-* attacks")
-    model: Optional[str] = Field(None, description="Provider model id for llm-* attacks")
+    engine: Optional[str] = Field(None, description="Provider engine for llm-* attacks/detector")
+    model: Optional[str] = Field(None, description="Provider model id for llm-* attacks/detector")
+    defense: str = Field(
+        "none", description="Defense applied to the attacked text before re-scoring, e.g. normalize"
+    )
 
 
 class AttackResponse(BaseModel):
@@ -44,9 +49,24 @@ class AttackResponse(BaseModel):
     clean_flagged: bool
     attacked_flagged: bool
     evaded: bool
+    defense: str = "none"
+    defended_text: Optional[str] = None
+    defended_probability: Optional[float] = None
+    defended_flagged: Optional[bool] = None
+    defense_recovered: Optional[bool] = None
+    defended_evaded: Optional[bool] = None
+
+
+class DetectorInfo(BaseModel):
+    name: str
+    kind: str
+    always_on: bool
+    requires: Optional[str] = None
 
 
 class CapabilitiesResponse(BaseModel):
-    detectors: List[str]
+    detectors: List[str]  # always-on detectors (the demo default set)
+    detector_catalog: List[DetectorInfo]  # every requestable detector + its requirement
     attacks: List[str]
+    defenses: List[str]
     default_detector: str
