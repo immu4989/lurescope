@@ -7,7 +7,7 @@ summary: >
   scorecard for fraud-lure detectors, and where a normalization defense helps
   and where it quietly does not.
 tags: [fraud-detection, adversarial-ml, phishing, robustness, security]
-canonical_url: https://github.com/immu4989/lurescope/blob/main/blog/2026-07-23-robustness-gap-fraud-detection.md
+canonical_url: https://dev.to/immu4989/a-fraud-classifier-at-96-recall-and-the-one-character-edit-that-walks-the-lure-through-36kb
 ---
 
 A fraud-lure detector that scores 96% recall on clean text looks production-ready. Then someone swaps the Latin `e` in "verify" for the Cyrillic `е`, and the same message slips under the threshold. Nothing about the content changed. The classifier just never saw that token.
