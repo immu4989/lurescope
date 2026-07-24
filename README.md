@@ -51,6 +51,24 @@ Read the pattern, not the cells. Normalization drives the `homoglyph` and `zero-
 python scripts/robustness_scorecard.py --data <corpus.jsonl> --out-md SCORECARD.md --out-png docs/assets/scorecard.png
 ```
 
+## Cross-model: do LLM detectors survive?
+
+The scorecard above uses two token detectors. The natural next question is whether an LLM-as-classifier — which reads meaning rather than tokens — survives the same attacks, and whether the semantic paraphrase is the attack that finally bites. Running the `llm-judge` detector across five models (via one OpenRouter key) over 120 fraud lures answers it:
+
+<p align="center">
+  <img src="docs/assets/llm_scorecard.png" width="820" alt="Cross-model evasion-rate heatmap: token detectors collapse under character attacks; LLM judges are near-immune to character attacks but have lower clean recall and are most evadable under paraphrase.">
+</p>
+
+Three findings, and the third is the honest one. First, the strong LLM judges are **essentially immune to character attacks** (0–6% evasion where the keyword detector hits 100%): they read the meaning straight through the homoglyphs. Second, that immunity is **paid for in recall** — the judges catch only 27–65% of these lures on clean text versus tfidf's 96%, so they miss a lot of fraud before any attack (this sample leans on the subtle romance / BEC / pig-butchering typologies). Third, `paraphrase` is the attack that most erodes the judges, and the best-recall judge (`deepseek-v4-flash`, 65%) is the most paraphrase-evadable (27%). No single detector is robust down every axis: token detectors trade typographic fragility for recall, LLM judges trade recall for typographic immunity, and paraphrase is the crack in the latter.
+
+Full table and caveats in [LLM_SCORECARD.md](LLM_SCORECARD.md); reproduce with your own key and model list:
+
+```bash
+export OPENROUTER_API_KEY=...
+python scripts/llm_scorecard.py --data <corpus.jsonl> --limit 120 \
+  --out-md LLM_SCORECARD.md --out-png docs/assets/llm_scorecard.png
+```
+
 ## The detectors that matter
 
 The headline comparison above is toy-vs-toy on purpose (it runs with zero keys, including fully in-browser). The more useful question is whether the detectors a team *actually deploys* survive the same attacks — so LureScope exposes LureBench's real detectors too:
