@@ -21,6 +21,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[dev]"
       - name: Lint
-        run: ruff check lurescope tests
+        run: ruff check lurescope tests scripts
       - name: Test
         run: pytest -q

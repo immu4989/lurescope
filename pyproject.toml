@@ -4,13 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lurescope"
-version = "0.1.0"
+version = "0.2.0"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Imran Ahamed" }]
 keywords = ["fraud", "phishing", "detection", "adversarial", "api", "security"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
 dependencies = [
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
@@ -27,7 +43,10 @@ viz = ["matplotlib>=3.6"]
 
 [project.urls]
 Homepage = "https://github.com/immu4989/lurescope"
+Demo = "https://huggingface.co/spaces/immu4989/lurescope"
 Benchmark = "https://github.com/immu4989/lurebench"
+Changelog = "https://github.com/immu4989/lurescope/blob/main/CHANGELOG.md"
+Issues = "https://github.com/immu4989/lurescope/issues"
 
 [project.scripts]
 lurescope = "lurescope.cli:main"

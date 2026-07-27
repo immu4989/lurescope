@@ -1,0 +1,74 @@
+# Security Policy
+
+LureScope serves a fraud-detection model over HTTP and demonstrates evasion
+against it. It is defensive research tooling, and it is also a web service, so
+this policy covers both conventional vulnerabilities and the dual-use questions
+specific to the project.
+
+## Reporting a vulnerability
+
+Report privately to **immu4989@gmail.com**. Please do not open a public issue for
+anything that could be exploited before a fix ships.
+
+Include what you have: affected version or commit, reproduction steps, and the
+impact you see. A rough report sent promptly is more useful than a polished one
+sent late.
+
+Expect an acknowledgement within **5 working days** and an assessment within
+**15 working days**. This is a single-maintainer research project, not a vendor
+with an on-call rotation, so those are honest targets rather than an SLA. You
+will get credit in the changelog for anything you report unless you ask
+otherwise.
+
+## What is in scope
+
+- Anything reachable through the API: injection, path traversal, SSRF via the
+  configurable provider engine, or code execution through request payloads.
+- Denial of service that a single unauthenticated request can trigger, beyond the
+  documented input size limit.
+- Leakage of provider API keys through responses, logs, or error messages. The
+  service accepts an `engine` and `model` per request and reads keys from the
+  environment, so key handling is a real surface.
+- Scored text reaching a network endpoint the operator did not configure.
+- Anything in the browser demo that lets one visitor affect another, or that
+  sends page content off the page. The Hugging Face Space is a static build and
+  is meant to run entirely client-side.
+
+## What is not a vulnerability
+
+- **That the attacks work.** `homoglyph`, `leet`, `zero-width`, `whitespace`, and
+  the LLM rewrites are supposed to evade detectors. `/attack` exists to measure
+  that. A new evasion technique is a welcome *contribution*, not a report.
+- **That the `normalize` defense does not stop everything.** It reverses
+  typographic obfuscation and deliberately does not touch word-splitting or
+  semantic paraphrase, because neither can be undone without corrupting
+  legitimate text. This is documented behaviour.
+- **That a detector scores badly**, or that a gated detector returns `400`
+  without its key. Both are intended.
+
+## Deployment notes
+
+The service ships with no authentication and no rate limiting. It is built for
+local use, demos, and research. If you expose it publicly, put it behind your own
+authentication, rate limiting, and request-size controls. Treat every scored
+message as sensitive: `/score` and `/attack` echo the submitted text back in the
+response, and the LLM-backed attacks send it to whichever provider you configure.
+
+The container runs as a normal user and needs no privileged capabilities.
+
+## Acceptable use
+
+This project is licensed under Apache-2.0, which does not restrict use. That is a
+licensing fact, not an endorsement. The intended uses are scoring your own
+messages, stress-testing your own detectors, and researching detection and
+defense.
+
+The service does not generate deliverable lures, personalize to real targets, or
+embed working links or payment rails. Using it to build or refine fraud against
+real people is outside the intent of the project and is a Code of Conduct
+violation if it involves this community.
+
+## Supported versions
+
+The `main` branch is supported. Fixes ship in the next release rather than as
+backports to older tags.

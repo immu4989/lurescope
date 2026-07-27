@@ -8,10 +8,11 @@ A deployable API and demo for AI-generated fraud-lure detection. The serving com
 
 [![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.1.0-4a3aa7)
+![Version](https://img.shields.io/badge/version-0.2.0-4a3aa7)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 
 **▶ Try it live, no install:** [huggingface.co/spaces/immu4989/lurescope](https://huggingface.co/spaces/immu4989/lurescope)
 
@@ -145,6 +146,19 @@ LureScope reuses [LureBench](https://github.com/immu4989/lurebench)'s detectors 
 ## Responsible use
 
 This is a defensive research tool. It scores text you supply and demonstrates evasion against your own detectors; it does not generate deliverable lures, personalize to real targets, or embed working links or payment rails. See [LureBench's DATA.md](https://github.com/immu4989/lurebench/blob/main/DATA.md) for the data and generation ethics that underpin the bundled model.
+
+## Contributing
+
+Contributions are welcome, especially new defenses and corrections to published
+numbers. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and the
+parity bar for the browser build, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for
+community expectations, and [SECURITY.md](SECURITY.md) for what counts as a
+vulnerability here (the attacks working is not one). Release history is in
+[CHANGELOG.md](CHANGELOG.md).
+
+## Citing
+
+If you use LureScope in your work, see [CITATION.cff](CITATION.cff).
 
 ## License
 
