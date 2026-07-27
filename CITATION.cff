@@ -6,6 +6,7 @@ authors:
   - family-names: Ahamed
     given-names: Imran
     email: immu4989@gmail.com
+    orcid: "https://orcid.org/0009-0002-7717-7480"
 repository-code: "https://github.com/immu4989/lurescope"
 url: "https://huggingface.co/spaces/immu4989/lurescope"
 abstract: >-
@@ -30,4 +31,5 @@ references:
     authors:
       - family-names: Ahamed
         given-names: Imran
+        orcid: "https://orcid.org/0009-0002-7717-7480"
     repository-code: "https://github.com/immu4989/lurebench"
