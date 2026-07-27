@@ -1,0 +1,33 @@
+{
+  "title": "LureScope: A Deployable Fraud-Lure Scoring API with a Live Adversarial-Evasion Demo",
+  "description": "<p>LureScope is the serving companion to LureBench. It wraps a fraud-lure detector behind a small HTTP API and a browser demo so a single message can be scored, attacked, and then re-scored after an input-normalization defense, making the gap between clean-data accuracy and deployment accuracy visible interactively.</p><p>It reuses LureBench's detectors and attacks directly, so the served model and the benchmarked model cannot drift. The bundled demo also ships as a zero-backend static build that runs both baseline detectors, all four character attacks, and the normalization defense entirely in the browser, with the JavaScript port verified against the Python implementation.</p><p>The repository additionally publishes two corpus-level robustness scorecards: detector-by-attack evasion rates before and after the defense, and a cross-model comparison of LLM-as-classifier judges.</p>",
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Ahamed, Imran",
+      "orcid": "0009-0002-7717-7480"
+    }
+  ],
+  "keywords": [
+    "fraud detection",
+    "phishing",
+    "adversarial robustness",
+    "model serving",
+    "AI security",
+    "input normalization"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/immu4989/lurescope",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/immu4989/lurebench",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    }
+  ]
+}
