@@ -13,6 +13,7 @@ A deployable API and demo for AI-generated fraud-lure detection. The serving com
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
 **▶ Try it live, no install:** [huggingface.co/spaces/immu4989/lurescope](https://huggingface.co/spaces/immu4989/lurescope)
 
@@ -158,7 +159,7 @@ vulnerability here (the attacks working is not one). Release history is in
 
 ## Citing
 
-If you use LureScope in your work, see [CITATION.cff](CITATION.cff).
+If you use LureScope in your work, see [CITATION.cff](CITATION.cff). Archived releases carry a DOI: cite the concept DOI [10.5281/zenodo.21631787](https://doi.org/10.5281/zenodo.21631787), which always resolves to the latest version.
 
 ## License
 
