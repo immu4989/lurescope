@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.2.1 — 2026-07-30
+
+### Fixed
+- **The cross-model scorecard measured a smaller sample than it reported.**
+  `scripts/llm_scorecard.py` keyed its per-record maps by `rec["id"]`, and
+  LureBench shipped roughly 500 generated records whose ids collided across
+  generators. Colliding records overwrote each other, so the table headed
+  *120 fraud lures* was computed over 73 distinct records, 25 of them counted two
+  or three times. The maps are now keyed by position, which cannot collide, and
+  the ids themselves are fixed upstream in LureBench 0.8.0.
+
+  The effect was not uniform, because the collided records were mostly the harder
+  BEC lures: judge clean recall was understated by 4 to 10 points, and
+  `deepseek-v4-flash` paraphrase evasion moved from 27% to 16% while
+  `qwen-2.5-7b` moved from 21% to 29%. `LLM_SCORECARD.md` and the README are
+  regenerated and corrected.
+
+  One claim does not survive: the best-recall judge is no longer the most
+  paraphrase-evadable. `qwen-2.5-7b` now holds that position and has among the
+  lowest recall.
+
+- **Corrections are no longer deleted by regeneration.** The 2026-07-26
+  calibration correction had been written into `LLM_SCORECARD.md` by hand and was
+  silently removed the next time the script rebuilt the file. Both corrections now
+  live in the generator and survive a rerun.
+
+- `ruff` is pinned in the `dev` extra. An unpinned linter installs a newer default
+  rule set in CI than the one used locally, which is how LureBench's CI went red
+  on a green commit.
+
+### Added
+- A regression test that runs three distinct texts sharing one record id and
+  asserts none are dropped. It fails against the previous id-keyed implementation.
+
+
 ## 0.2.0 — 2026-07-27
 
 Adds a defense, exposes the detectors teams actually deploy, and publishes two

@@ -17,7 +17,7 @@ abstract: >-
   clean-data accuracy and deployment accuracy visible on a single message. It
   reuses LureBench's detectors and attacks directly, so the served model and the
   benchmarked model cannot drift.
-version: 0.2.0
+version: 0.2.1
 date-released: "2026-07-27"
 license: Apache-2.0
 keywords:

@@ -124,21 +124,30 @@ def attacked_variants(lure_text: str, attacker: LLMParaphraseAttack,
 
 
 def run(lures, dets, attacker, cache, para_cache, workers, lock) -> dict:
-    """Score every (detector, lure, variant). Returns nested scores dict."""
-    # Precompute all attacked texts (fills the paraphrase cache in parallel).
-    variants_by_lure: Dict[str, Dict[str, str]] = {}
+    """Score every (detector, lure, variant). Returns nested scores dict.
 
-    def _prep(rec):
-        variants_by_lure[rec["id"]] = attacked_variants(rec["text"], attacker, para_cache, lock)
+    Keyed by position in ``lures``, never by ``rec["id"]``. Record ids are not
+    reliably unique across a shard: LureBench shipped ~500 generated records whose
+    ids collided across generators, and an earlier version of this script keyed
+    these maps by id, so colliding records silently overwrote each other. That
+    turned a stated 120-lure sample into 73 distinct records, some counted three
+    times. An index cannot collide.
+    """
+    # Precompute all attacked texts (fills the paraphrase cache in parallel).
+    variants_by_lure: Dict[int, Dict[str, str]] = {}
+
+    def _prep(item):
+        idx, rec = item
+        variants_by_lure[idx] = attacked_variants(rec["text"], attacker, para_cache, lock)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-        list(ex.map(_prep, lures))
+        list(ex.map(_prep, list(enumerate(lures))))
 
     # Build the scoring worklist, skipping anything already cached.
     tasks = []
     for det_id in dets:
-        for rec in lures:
-            for text in variants_by_lure[rec["id"]].values():
+        for idx in range(len(lures)):
+            for text in variants_by_lure[idx].values():
                 ck = f"{det_id}\n{_hash(text)}"
                 if ck not in cache:
                     tasks.append((det_id, text, ck))
@@ -161,9 +170,9 @@ def run(lures, dets, attacker, cache, para_cache, workers, lock) -> dict:
     results = {}
     for det_id in dets:
         results[det_id] = {}
-        for rec in lures:
-            v = variants_by_lure[rec["id"]]
-            results[det_id][rec["id"]] = {
+        for idx in range(len(lures)):
+            v = variants_by_lure[idx]
+            results[det_id][idx] = {
                 variant: cache.get(f"{det_id}\n{_hash(text)}") for variant, text in v.items()
             }
     return results
@@ -174,12 +183,12 @@ def scorecard(results, dets, lures, threshold=0.5) -> dict:
     for det_id in dets:
         per = results[det_id]
         caught, recall_abstain = [], 0
-        for rec in lures:
-            cp = per[rec["id"]]["clean"]
+        for idx in range(len(lures)):
+            cp = per[idx]["clean"]
             if cp is None:
                 recall_abstain += 1
             elif cp >= threshold:
-                caught.append(rec["id"])
+                caught.append(idx)
         row = {
             "clean_recall": len(caught) / len(lures) if lures else 0.0,
             "n_caught": len(caught),
@@ -203,6 +212,46 @@ def scorecard(results, dets, lures, threshold=0.5) -> dict:
             }
         card["detectors"][det_id] = row
     return card
+
+
+def _corrections() -> list:
+    """Corrections to previously published versions of this table.
+
+    These live in the generator rather than being appended to the file by hand.
+    An earlier calibration correction was written straight into LLM_SCORECARD.md
+    and then silently deleted the next time the script regenerated it, which is
+    exactly the failure mode a correction is supposed to prevent.
+    """
+    return [
+        "",
+        "## Corrections to earlier versions of this table",
+        "",
+        "**2026-07-30 - the sample was smaller than stated.** This script keyed its "
+        "per-record maps by `rec[\"id\"]`, and LureBench shipped roughly 500 generated "
+        "records whose ids collided across generators (`gen-bec-000006` existed once "
+        "per model, with different text each time). Colliding records overwrote each "
+        "other, so the table headed *120 fraud lures* was computed over **73 distinct "
+        "records**, 25 of them counted two or three times. The maps are now keyed by "
+        "position and the ids themselves are fixed upstream.",
+        "",
+        "The effect was not uniform, because the collided records were mostly the "
+        "harder BEC lures: judge clean recall was understated by 4 to 10 points, and "
+        "`deepseek-v4-flash` paraphrase evasion moved from 27% to 16% while "
+        "`qwen-2.5-7b` moved from 21% to 29%. One claim built on the old numbers - "
+        "that the best-recall judge was also the most paraphrase-evadable - does not "
+        "survive: `qwen-2.5-7b` is now the most paraphrase-evadable and has among the "
+        "lowest recall.",
+        "",
+        "**2026-07-26 - low clean recall was mostly a threshold artifact.** An earlier "
+        "version read the judges' low clean recall as a capability trade-off, "
+        "\"immunity to character attacks bought with recall\". Measured threshold-free "
+        "over the full 2,056-record `core/test` set, the judges post an AUC of 0.89 to "
+        "0.94: they rank fraud above benign well and are simply miscalibrated at the "
+        "0.50 cutoff this table uses. Dropping `deepseek-v4-flash` to a 0.10 threshold "
+        "lifts recall from 0.750 to 0.856 at a 2.5% false-positive rate. Calibrate on "
+        "your own data rather than assuming 0.50.",
+        "",
+    ]
 
 
 def to_markdown(card, corpus_label, judges, attacker) -> str:
@@ -230,6 +279,7 @@ def to_markdown(card, corpus_label, judges, attacker) -> str:
             ev = row["attacks"][a]["evasion"]
             cells.append("—" if ev is None else f"{ev:.0%}")
         lines.append("| " + " | ".join(cells) + " |")
+    lines += _corrections()
     lines += [
         "",
         "Three things to read here. First, the token detectors (`tfidf-logreg`, "

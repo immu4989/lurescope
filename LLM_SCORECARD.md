@@ -6,32 +6,23 @@ Evasion rate = of the fraud lures a detector caught on clean text, the fraction 
 
 | Detector | Clean recall | homoglyph | leet | zero-width | whitespace | paraphrase |
 |---|---|---|---|---|---|---|
-| `tfidf-logreg` | 96% (115) | 52% | 19% | 2% | 0% | 1% |
-| `heuristic-v0` | 30% (36) | 100% | 100% | 100% | 56% | 19% |
-| `judge:openai/gpt-5-nano` | 27% (32) | 0% | 0% | 0% | 0% | 4% |
-| `judge:google/gemini-2.5-flash-lite` | 43% (52) | 4% | 0% | 4% | 4% | 6% |
-| `judge:deepseek/deepseek-v4-flash` | 65% (78) | 3% | 4% | 6% | 5% | 27% |
-| `judge:qwen/qwen-2.5-7b-instruct` | 28% (34) | 18% | 15% | 24% | 15% | 21% |
-| `judge:meta-llama/llama-3.1-8b-instruct` | 40% (48) | 12% | 12% | 12% | 19% | 15% |
+| `tfidf-logreg` | 97% (116) | 47% | 16% | 3% | 1% | 3% |
+| `heuristic-v0` | 29% (35) | 100% | 100% | 100% | 63% | 20% |
+| `judge:openai/gpt-5-nano` | 36% (43) | 0% | 0% | 0% | 0% | 3% |
+| `judge:google/gemini-2.5-flash-lite` | 53% (64) | 5% | 0% | 2% | 2% | 6% |
+| `judge:deepseek/deepseek-v4-flash` | 68% (82) | 1% | 1% | 7% | 10% | 16% |
+| `judge:qwen/qwen-2.5-7b-instruct` | 29% (35) | 9% | 6% | 20% | 9% | 29% |
+| `judge:meta-llama/llama-3.1-8b-instruct` | 44% (53) | 13% | 9% | 23% | 19% | 21% |
 
-Three things to read here. First, the token detectors (`tfidf-logreg`, `heuristic-v0`) collapse under character attacks while the stronger LLM judges are essentially immune to them — they read the meaning through the homoglyphs. Second, the judges' clean recall in this table is much lower than the TF-IDF baseline's — but see the correction below before reading that as a capability gap. Third, `paraphrase` — the only attack that changes meaning rather than spelling — is where the judges are most evadable, and the small judges are weak on every axis at once. No single detector is robust down all of them.
+## Corrections to earlier versions of this table
+
+**2026-07-30 - the sample was smaller than stated.** This script keyed its per-record maps by `rec["id"]`, and LureBench shipped roughly 500 generated records whose ids collided across generators (`gen-bec-000006` existed once per model, with different text each time). Colliding records overwrote each other, so the table headed *120 fraud lures* was computed over **73 distinct records**, 25 of them counted two or three times. The maps are now keyed by position and the ids themselves are fixed upstream.
+
+The effect was not uniform, because the collided records were mostly the harder BEC lures: judge clean recall was understated by 4 to 10 points, and `deepseek-v4-flash` paraphrase evasion moved from 27% to 16% while `qwen-2.5-7b` moved from 21% to 29%. One claim built on the old numbers - that the best-recall judge was also the most paraphrase-evadable - does not survive: `qwen-2.5-7b` is now the most paraphrase-evadable and has among the lowest recall.
+
+**2026-07-26 - low clean recall was mostly a threshold artifact.** An earlier version read the judges' low clean recall as a capability trade-off, "immunity to character attacks bought with recall". Measured threshold-free over the full 2,056-record `core/test` set, the judges post an AUC of 0.89 to 0.94: they rank fraud above benign well and are simply miscalibrated at the 0.50 cutoff this table uses. Dropping `deepseek-v4-flash` to a 0.10 threshold lifts recall from 0.750 to 0.856 at a 2.5% false-positive rate. Calibrate on your own data rather than assuming 0.50.
+
+
+Three things to read here. First, the token detectors (`tfidf-logreg`, `heuristic-v0`) collapse under character attacks while the stronger LLM judges are essentially immune to them — they read the meaning through the homoglyphs. Second, that immunity is bought with recall: the judges catch far fewer of these lures on clean text than the TF-IDF baseline does, so they miss a great deal of fraud before any attack is applied (this sample is weighted toward the subtle romance / BEC / pig-butchering typologies). Third, `paraphrase` — the only attack that changes meaning rather than spelling — is where the judges are most evadable, and the small judges are weak on every axis at once. No single detector is robust down all of them.
 
 Caveat: the paraphrase attacker (`deepseek/deepseek-v4-flash`) is itself one of the judged model families, so read that judge's `paraphrase` cell with the coupling in mind. Evasion is conditioned on a clean catch, so low-recall rows rest on fewer lures.
-
-## Correction (2026-07-26): the low clean recall is mostly a threshold artifact
-
-The first version of this page read the judges' clean-recall column as a capability trade-off — "immunity to character attacks is bought with recall." A follow-up run over the full 2,056-record `core/test` set, with threshold-free metrics, shows that reading was wrong.
-
-The judges rank fraud above benign well. What they do badly is land on the 0.50 cut this table uses:
-
-| Judge | AUC | TPR @ 0.50 | best-F1 threshold | TPR there | FPR there |
-|---|---|---|---|---|---|
-| `deepseek/deepseek-v4-flash` | 0.940 | 0.750 | 0.10 | 0.856 | 0.025 |
-| `google/gemini-2.5-flash-lite` | 0.937 | 0.726 | 0.05 | 0.870 | 0.049 |
-| `qwen/qwen-2.5-7b-instruct` | 0.889 | 0.576 | 0.20 | 0.832 | 0.143 |
-
-An AUC of 0.89–0.94 is not a detector that "misses a great deal of fraud." It is a detector whose scores are compressed toward zero, so a 0.50 cut throws away recall that a lower threshold recovers at a low false-positive cost. The remaining gap against `tfidf-logreg` is real but much smaller than this table implies, and part of what is left comes from the 120-lure sample here being deliberately weighted toward the subtle romance / BEC / pig-butchering typologies rather than phishing.
-
-What survives unchanged: the character-attack immunity, and paraphrase as the attack that actually erodes the judges. What does not: the claim that the immunity is paid for in recall. If you deploy an LLM judge, calibrate its threshold on your own data instead of assuming 0.50.
-
-Full leaderboard with threshold-free metrics: [LureBench `docs/leaderboard.md`](https://github.com/immu4989/lurebench/blob/main/docs/leaderboard.md).

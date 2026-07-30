@@ -10,191 +10,191 @@
   ],
   "detectors": {
     "tfidf-logreg": {
-      "clean_recall": 0.9583333333333334,
-      "n_caught": 115,
+      "clean_recall": 0.9666666666666667,
+      "n_caught": 116,
       "clean_abstain": 0,
       "attacks": {
         "homoglyph": {
-          "evasion": 0.5217391304347826,
-          "n_scored": 115
+          "evasion": 0.47413793103448276,
+          "n_scored": 116
         },
         "leet": {
-          "evasion": 0.19130434782608696,
-          "n_scored": 115
+          "evasion": 0.15517241379310345,
+          "n_scored": 116
         },
         "zero-width": {
-          "evasion": 0.017391304347826087,
-          "n_scored": 115
+          "evasion": 0.02586206896551724,
+          "n_scored": 116
         },
         "whitespace": {
-          "evasion": 0.0,
-          "n_scored": 115
+          "evasion": 0.008620689655172414,
+          "n_scored": 116
         },
         "paraphrase": {
-          "evasion": 0.008695652173913044,
-          "n_scored": 115
+          "evasion": 0.02586206896551724,
+          "n_scored": 116
         }
       }
     },
     "heuristic-v0": {
-      "clean_recall": 0.3,
-      "n_caught": 36,
+      "clean_recall": 0.2916666666666667,
+      "n_caught": 35,
       "clean_abstain": 0,
       "attacks": {
         "homoglyph": {
           "evasion": 1.0,
-          "n_scored": 36
+          "n_scored": 35
         },
         "leet": {
           "evasion": 1.0,
-          "n_scored": 36
+          "n_scored": 35
         },
         "zero-width": {
           "evasion": 1.0,
-          "n_scored": 36
+          "n_scored": 35
         },
         "whitespace": {
-          "evasion": 0.5555555555555556,
-          "n_scored": 36
+          "evasion": 0.6285714285714286,
+          "n_scored": 35
         },
         "paraphrase": {
-          "evasion": 0.19444444444444445,
-          "n_scored": 36
+          "evasion": 0.2,
+          "n_scored": 35
         }
       }
     },
     "judge:openai/gpt-5-nano": {
-      "clean_recall": 0.26666666666666666,
-      "n_caught": 32,
-      "clean_abstain": 82,
+      "clean_recall": 0.35833333333333334,
+      "n_caught": 43,
+      "clean_abstain": 67,
       "attacks": {
         "homoglyph": {
           "evasion": 0.0,
-          "n_scored": 22
+          "n_scored": 30
         },
         "leet": {
           "evasion": 0.0,
-          "n_scored": 16
+          "n_scored": 23
         },
         "zero-width": {
           "evasion": 0.0,
-          "n_scored": 24
+          "n_scored": 28
         },
         "whitespace": {
           "evasion": 0.0,
-          "n_scored": 18
+          "n_scored": 31
         },
         "paraphrase": {
-          "evasion": 0.043478260869565216,
-          "n_scored": 23
+          "evasion": 0.02702702702702703,
+          "n_scored": 37
         }
       }
     },
     "judge:google/gemini-2.5-flash-lite": {
-      "clean_recall": 0.43333333333333335,
-      "n_caught": 52,
+      "clean_recall": 0.5333333333333333,
+      "n_caught": 64,
       "clean_abstain": 0,
       "attacks": {
         "homoglyph": {
-          "evasion": 0.038461538461538464,
-          "n_scored": 52
+          "evasion": 0.046875,
+          "n_scored": 64
         },
         "leet": {
           "evasion": 0.0,
-          "n_scored": 52
+          "n_scored": 64
         },
         "zero-width": {
-          "evasion": 0.038461538461538464,
-          "n_scored": 52
+          "evasion": 0.015625,
+          "n_scored": 64
         },
         "whitespace": {
-          "evasion": 0.038461538461538464,
-          "n_scored": 52
+          "evasion": 0.015625,
+          "n_scored": 64
         },
         "paraphrase": {
-          "evasion": 0.057692307692307696,
-          "n_scored": 52
+          "evasion": 0.0625,
+          "n_scored": 64
         }
       }
     },
     "judge:deepseek/deepseek-v4-flash": {
-      "clean_recall": 0.65,
-      "n_caught": 78,
+      "clean_recall": 0.6833333333333333,
+      "n_caught": 82,
       "clean_abstain": 0,
       "attacks": {
         "homoglyph": {
-          "evasion": 0.02564102564102564,
-          "n_scored": 78
+          "evasion": 0.012195121951219513,
+          "n_scored": 82
         },
         "leet": {
-          "evasion": 0.03896103896103896,
-          "n_scored": 77
+          "evasion": 0.012345679012345678,
+          "n_scored": 81
         },
         "zero-width": {
-          "evasion": 0.0641025641025641,
-          "n_scored": 78
+          "evasion": 0.07317073170731707,
+          "n_scored": 82
         },
         "whitespace": {
-          "evasion": 0.05263157894736842,
-          "n_scored": 76
+          "evasion": 0.09876543209876543,
+          "n_scored": 81
         },
         "paraphrase": {
-          "evasion": 0.2692307692307692,
-          "n_scored": 78
+          "evasion": 0.15853658536585366,
+          "n_scored": 82
         }
       }
     },
     "judge:qwen/qwen-2.5-7b-instruct": {
-      "clean_recall": 0.2833333333333333,
-      "n_caught": 34,
+      "clean_recall": 0.2916666666666667,
+      "n_caught": 35,
       "clean_abstain": 0,
       "attacks": {
         "homoglyph": {
-          "evasion": 0.17647058823529413,
-          "n_scored": 34
+          "evasion": 0.08571428571428572,
+          "n_scored": 35
         },
         "leet": {
-          "evasion": 0.14705882352941177,
-          "n_scored": 34
+          "evasion": 0.05714285714285714,
+          "n_scored": 35
         },
         "zero-width": {
-          "evasion": 0.23529411764705882,
-          "n_scored": 34
+          "evasion": 0.2,
+          "n_scored": 35
         },
         "whitespace": {
-          "evasion": 0.14705882352941177,
-          "n_scored": 34
+          "evasion": 0.08571428571428572,
+          "n_scored": 35
         },
         "paraphrase": {
-          "evasion": 0.20588235294117646,
-          "n_scored": 34
+          "evasion": 0.2857142857142857,
+          "n_scored": 35
         }
       }
     },
     "judge:meta-llama/llama-3.1-8b-instruct": {
-      "clean_recall": 0.4,
-      "n_caught": 48,
-      "clean_abstain": 0,
+      "clean_recall": 0.44166666666666665,
+      "n_caught": 53,
+      "clean_abstain": 2,
       "attacks": {
         "homoglyph": {
-          "evasion": 0.125,
-          "n_scored": 48
+          "evasion": 0.1320754716981132,
+          "n_scored": 53
         },
         "leet": {
-          "evasion": 0.125,
-          "n_scored": 48
+          "evasion": 0.09433962264150944,
+          "n_scored": 53
         },
         "zero-width": {
-          "evasion": 0.125,
-          "n_scored": 48
+          "evasion": 0.22641509433962265,
+          "n_scored": 53
         },
         "whitespace": {
-          "evasion": 0.1875,
-          "n_scored": 48
+          "evasion": 0.18867924528301888,
+          "n_scored": 53
         },
         "paraphrase": {
-          "evasion": 0.14583333333333334,
-          "n_scored": 48
+          "evasion": 0.20754716981132076,
+          "n_scored": 53
         }
       }
     }
