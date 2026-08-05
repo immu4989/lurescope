@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — 2026-08-05
+
+### Added
+- Strict loading of versioned decision policies exported by LureBench 0.9 through
+  `LURESCOPE_POLICY_PATH`. Policies must carry a validation row count and SHA-256
+  provenance digest and must target fraud detection.
+- `/score` now reports `policy_id` and `threshold_source`, distinguishing a
+  validation-selected policy from a caller override or the legacy 0.5 default.
+
+### Changed
+- Omitting `/score.threshold` uses a configured policy when its detector matches.
+  Explicit thresholds remain fully backward compatible and always take priority.
+
 ## 0.2.1 — 2026-07-30
 
 ### Fixed

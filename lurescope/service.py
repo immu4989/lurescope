@@ -21,6 +21,7 @@ from lurebench.detectors import get_detector
 from lurebench.schema import Lure
 
 from .defense import apply_defense, available_defenses
+from .policy import configured_policy
 
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 _DEFAULT_TFIDF = os.path.join(_MODEL_DIR, "tfidf-logreg-fraud.joblib")
@@ -144,6 +145,8 @@ class ScoreResult:
     label: str
     threshold: float
     signals: List[str]
+    policy_id: Optional[str] = None
+    threshold_source: str = "default"
 
 
 @dataclass
@@ -191,10 +194,23 @@ def _top_signals(detector, text: str, top_k: int = 6) -> List[str]:
 def score(
     text: str,
     detector_name: str = DEFAULT_DETECTOR,
-    threshold: float = 0.5,
+    threshold: Optional[float] = None,
     engine: Optional[str] = None,
     model: Optional[str] = None,
 ) -> ScoreResult:
+    policy = configured_policy()
+    if threshold is not None:
+        resolved_threshold = threshold
+        policy_id = None
+        threshold_source = "request"
+    elif policy is not None and policy.detector == detector_name:
+        resolved_threshold = policy.threshold
+        policy_id = policy.policy_id
+        threshold_source = "validated_policy"
+    else:
+        resolved_threshold = 0.5
+        policy_id = None
+        threshold_source = "default"
     det = _detector(detector_name, engine, model)
     prob = det.score(_as_lure(text))
     prob = 0.0 if prob is None else float(prob)
@@ -202,9 +218,11 @@ def score(
         text=text,
         detector=detector_name,
         fraud_probability=prob,
-        label="fraud" if prob >= threshold else "benign",
-        threshold=threshold,
+        label="fraud" if prob >= resolved_threshold else "benign",
+        threshold=resolved_threshold,
         signals=_top_signals(det, text),
+        policy_id=policy_id,
+        threshold_source=threshold_source,
     )
 
 

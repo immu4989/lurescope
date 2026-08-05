@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 class ScoreRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=20000, description="Message to score")
     detector: str = Field("tfidf-logreg", description="Detector to use")
-    threshold: float = Field(0.5, ge=0.0, le=1.0)
+    threshold: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Explicit threshold override; omit to use a configured validated policy",
+    )
     engine: Optional[str] = Field(None, description="Provider engine for the llm-judge detector")
     model: Optional[str] = Field(None, description="Provider model id for the llm-judge detector")
 
@@ -24,6 +27,8 @@ class ScoreResponse(BaseModel):
     signals: List[str] = Field(
         default_factory=list, description="Words in the text the detector keys on"
     )
+    policy_id: Optional[str] = None
+    threshold_source: str = "default"
 
 
 class AttackRequest(BaseModel):

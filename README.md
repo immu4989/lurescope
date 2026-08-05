@@ -65,6 +65,22 @@ Three findings. First, the strong LLM judges are **essentially immune to charact
 
 > **Corrections.** Two published claims in this section have been revised; both are recorded in full in [LLM_SCORECARD.md](LLM_SCORECARD.md). In summary: **(2026-07-30)** the table's stated 120-lure sample was really 73 distinct records, because colliding record ids in the upstream corpus caused this script to overwrite records; judge recall was understated by 4–10 points and `deepseek-v4-flash` paraphrase evasion moved from 27% to 16%. **(2026-07-26).** This section originally read the judges' low clean recall as "immunity paid for in recall." Re-measured over the full 2,056-record `core/test` set with threshold-free metrics, the judges post an **AUC of 0.89–0.94** — they rank fraud above benign well, they are just badly calibrated at the 0.50 cut. Dropping `deepseek-v4-flash` to a 0.10 threshold lifts recall from 0.750 to 0.856 at a 2.5% false-positive rate. The character-attack immunity and the paraphrase weakness both stand; the recall trade-off does not. Details in [LLM_SCORECARD.md](LLM_SCORECARD.md), full leaderboard in [LureBench](https://github.com/immu4989/lurebench/blob/main/docs/leaderboard.md).
 
+### Serve a validated decision policy
+
+LureBench 0.9 can select a threshold on a validation split and export a policy
+with its objective and validation-data digest. Point LureScope at that artifact:
+
+```bash
+export LURESCOPE_POLICY_PATH=/absolute/path/to/tfidf-1pct-fpr.json
+uvicorn lurescope.app:app
+```
+
+When `/score` omits `threshold`, LureScope applies a configured policy whose
+detector matches the request. The response includes `policy_id` and
+`threshold_source=validated_policy`. An explicit request threshold remains a
+supported override and is identified as `threshold_source=request`; with no
+matching policy, the backward-compatible 0.5 default remains.
+
 Full table and caveats in [LLM_SCORECARD.md](LLM_SCORECARD.md); reproduce with your own key and model list:
 
 ```bash

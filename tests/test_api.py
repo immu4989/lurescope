@@ -46,6 +46,13 @@ def test_score_returns_signal_words():
     assert all(s in LURE.lower() for s in d["signals"])
 
 
+def test_score_identifies_default_threshold_provenance():
+    d = client.post("/score", json={"text": LURE}).json()
+    assert d["threshold"] == 0.5
+    assert d["threshold_source"] == "default"
+    assert d["policy_id"] is None
+
+
 def test_score_rejects_unknown_detector():
     r = client.post("/score", json={"text": LURE, "detector": "nope"})
     assert r.status_code == 400
