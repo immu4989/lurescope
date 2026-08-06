@@ -1,21 +1,21 @@
 <div align="center">
 
-# 🔬 LureScope
+<img src="docs/assets/brand-hero.svg" width="100%" alt="LureScope — score, attack, defend. An adversarial workbench for fraud detectors.">
 
-### Score a message for fraud, watch an attacker evade the detector, then watch a defense catch it back — live
+### Break your fraud detector before an attacker does
 
-A deployable API and demo for AI-generated fraud-lure detection. The serving companion to [LureBench](https://github.com/immu4989/lurebench).
+Paste a message. Measure the score. Apply an evasion. Verify whether the defense recovers.
 
 [![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.2.1-4a3aa7)
+![Version](https://img.shields.io/badge/version-0.3.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
-**▶ Try it live, no install:** [huggingface.co/spaces/immu4989/lurescope](https://huggingface.co/spaces/immu4989/lurescope)
+**[Launch the live adversarial lab →](https://huggingface.co/spaces/immu4989/lurescope)**
 
 </div>
 
@@ -23,9 +23,9 @@ A deployable API and demo for AI-generated fraud-lure detection. The serving com
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
 
-<p align="center">
-  <img src="docs/assets/demo.png" width="720" alt="LureScope demo: a phishing message scored 90% fraud by the trained detector; after a homoglyph attack the keyword detector's score drops from 69% to 17% and the message evades detection.">
-</p>
+| 01 · Score | 02 · Attack | 03 · Defend |
+|:--|:--|:--|
+| Establish the clean fraud signal and operating threshold. | Apply a deterministic or semantic evasion and measure the drop. | Normalize, re-score, and verify whether the catch is actually recovered. |
 
 ## Why this exists
 

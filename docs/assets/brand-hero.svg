@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">LureScope — score, attack, defend</title>
+  <desc id="desc">A dark operational console showing a fraud score passing through an attack and recovering after defense.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071218"/><stop offset=".55" stop-color="#0b1a20"/><stop offset="1" stop-color="#14131b"/></linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#57f2c1"/><stop offset=".5" stop-color="#ff716b"/><stop offset="1" stop-color="#62c7ff"/></linearGradient>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#8cebd0" stroke-opacity=".055"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/><rect width="1200" height="420" rx="28" fill="url(#grid)"/>
+  <g transform="translate(70 70)" font-family="Inter,Segoe UI,sans-serif">
+    <circle cx="48" cy="48" r="44" fill="#10272a" stroke="#57f2c1" stroke-width="2"/>
+    <path d="M24 48c15-20 33-28 50-13 8 7 9 20 1 29-12 14-35 8-35-8 0-9 9-15 17-11" fill="none" stroke="#57f2c1" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+    <circle cx="57" cy="45" r="4" fill="#57f2c1"/>
+    <text x="0" y="170" fill="#f2fbf8" font-size="60" font-weight="750" letter-spacing="-2">LureScope</text>
+    <text x="2" y="209" fill="#9bb3b2" font-size="21">SCORE  /  ATTACK  /  DEFEND</text>
+    <text x="2" y="252" fill="#c5d4d2" font-size="16">An adversarial workbench for fraud detectors.</text>
+    <rect x="2" y="274" width="385" height="2" fill="url(#line)"/>
+  </g>
+  <g transform="translate(530 70)" font-family="Inter,Segoe UI,sans-serif">
+    <path d="M160 102H222M352 102H414" stroke="url(#line)" stroke-width="3" stroke-dasharray="7 7"/>
+    <g><rect width="160" height="205" rx="18" fill="#0d1d21" stroke="#2f4e4b"/><text x="20" y="31" fill="#78918f" font-size="11" letter-spacing="1.5">01 / SCORE</text><text x="20" y="81" fill="#f2fbf8" font-size="38" font-weight="700">90%</text><text x="20" y="107" fill="#57f2c1" font-size="13">FRAUD LURE</text><rect x="20" y="135" width="120" height="7" rx="4" fill="#17302d"/><rect x="20" y="135" width="108" height="7" rx="4" fill="#57f2c1"/></g>
+    <g transform="translate(222)"><rect width="130" height="205" rx="18" fill="#20171a" stroke="#6c3436"/><text x="18" y="31" fill="#a77979" font-size="11" letter-spacing="1.5">02 / ATTACK</text><text x="18" y="81" fill="#f2fbf8" font-size="38" font-weight="700">17%</text><text x="18" y="107" fill="#ff716b" font-size="13">EVADED</text><path d="M22 152 46 130l24 19 35-42" fill="none" stroke="#ff716b" stroke-width="3"/></g>
+    <g transform="translate(414)"><rect width="160" height="205" rx="18" fill="#101c26" stroke="#31526d"/><text x="20" y="31" fill="#7892a7" font-size="11" letter-spacing="1.5">03 / DEFEND</text><text x="20" y="81" fill="#f2fbf8" font-size="38" font-weight="700">90%</text><text x="20" y="107" fill="#62c7ff" font-size="13">RECOVERED</text><path d="m30 154 18 18 50-56" fill="none" stroke="#62c7ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/></g>
+    <rect x="0" y="235" width="574" height="48" rx="14" fill="#0d181e" stroke="#26373d"/><circle cx="24" cy="259" r="5" fill="#57f2c1"/><text x="40" y="264" fill="#b9cbc8" font-size="13">Same detector. One character changed. Defense verified.</text>
+  </g>
+</svg>

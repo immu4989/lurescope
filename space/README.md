@@ -26,9 +26,9 @@ This Static Space runs both detectors, all four attacks, and the normalization d
 The two detectors here are token-based, which is why a homoglyph swap breaks them. Running the same attacks against an LLM-as-classifier across five models (measured offline over 120 fraud lures, not in this browser demo) gives a sharper picture:
 
 - Strong LLM judges are **essentially immune to the character attacks**: 0-6% evasion, where the keyword detector above hits 100%. They read the meaning straight through the homoglyphs.
-- That immunity is **paid for in recall**. The judges catch only 27-65% of these lures on clean text, against 96% for the trained TF-IDF baseline, so they miss a lot of fraud before any attack is applied.
+- Their lower recall at the default 0.50 threshold is mostly a **calibration artifact**, not a capability trade-off. Threshold-free AUC is 0.89–0.94 on the full test set; deployments must select an operating point on validation data.
 - **Paraphrase is the crack.** It is the attack that most erodes the judges, and the best-recall judge is also the most paraphrase-evadable.
 
-No single detector is robust on every axis. Full numbers and caveats: [LLM_SCORECARD.md](https://github.com/immu4989/lurescope/blob/main/LLM_SCORECARD.md).
+No single detector is robust on every axis. Full numbers, corrections, and caveats: [LLM_SCORECARD.md](https://github.com/immu4989/lurescope/blob/main/LLM_SCORECARD.md).
 
 Full REST API (with the real content-safety detectors and LLM-based attacks) and source: **[github.com/immu4989/lurescope](https://github.com/immu4989/lurescope)**. Background and the corpus-level robustness numbers: **[the scorecard writeup](https://github.com/immu4989/lurescope/blob/main/blog/2026-07-23-robustness-gap-fraud-detection.md)**.

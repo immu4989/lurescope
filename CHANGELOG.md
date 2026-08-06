@@ -3,6 +3,10 @@
 ## 0.3.0 — 2026-08-05
 
 ### Added
+- A complete visual redesign for both the API-backed demo and zero-backend Space:
+  forensic-console identity, guided score/attack/defend flow, responsive layouts,
+  visible threshold provenance, keyboard focus states, and reduced-motion support.
+- A coordinated repository hero graphic shared with the LureBench visual system.
 - Strict loading of versioned decision policies exported by LureBench 0.9 through
   `LURESCOPE_POLICY_PATH`. Policies must carry a validation row count and SHA-256
   provenance digest and must target fraud detection.
