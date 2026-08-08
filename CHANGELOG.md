@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — 2026-08-08
+
+### Added
+- Privacy-first `.eml` triage through the web lab, `lurescope triage`, and
+  `POST /triage/email`, including directory batches and JSONL output.
+- Safe standard-library email parsing that never fetches links or opens attachment
+  contents; HTML active content is excluded from scored visible text.
+- Transparent context evidence for Reply-To domain mismatch, explicit email-auth
+  failures, punycode/IP links, executable and archive attachment names.
+- Stable triage schema, risk routing, recommended human actions, defanged example,
+  and a real-world workflow guide with explicit safety boundaries.
+
 ## 0.3.0 — 2026-08-05
 
 ### Added

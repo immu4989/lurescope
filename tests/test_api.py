@@ -30,6 +30,7 @@ def test_capabilities_lists_detectors_and_attacks():
     assert "tfidf-logreg" in c["detectors"]
     assert "homoglyph" in c["attacks"]
     assert c["default_detector"] == "tfidf-logreg"
+    assert "email-triage" in c["workflows"]
 
 
 def test_score_flags_a_lure_higher_than_benign():
@@ -138,3 +139,27 @@ def test_demo_page_served_at_root():
     r = client.get("/")
     assert r.status_code == 200
     assert "LureScope" in r.text
+
+
+def test_email_triage_endpoint_returns_structured_evidence():
+    raw = (
+        "From: Security <alerts@example.org>\n"
+        "Reply-To: collect@other.example\n"
+        "To: user@example.org\n"
+        "Subject: Urgent account verification\n\n"
+        "Verify your account at http://192.0.2.10/login within 24 hours."
+    )
+    response = client.post("/triage/email", json={"raw_email": raw})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["schema_version"] == 1
+    assert data["risk_tier"] == "high"
+    assert {item["code"] for item in data["evidence"]} >= {
+        "reply_to_domain_mismatch", "ip_literal_url"
+    }
+    assert data["content_probability"] >= 0
+
+
+def test_email_triage_rejects_unreadable_message():
+    response = client.post("/triage/email", json={"raw_email": "From: empty@example.org\n\n"})
+    assert response.status_code == 400

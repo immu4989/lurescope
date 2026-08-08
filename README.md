@@ -8,7 +8,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 [![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.3.0-57f2c1)
+![Version](https://img.shields.io/badge/version-0.4.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -22,6 +22,26 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ---
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
+
+## Triage the artifact people actually receive
+
+LureScope now accepts raw `.eml` files—not just copied text. It safely extracts
+visible message content and reports model evidence alongside deterministic email
+context: Reply-To mismatch, explicit SPF/DKIM/DMARC failures, punycode and
+IP-address links, and risky attachment filename extensions.
+
+```bash
+# Human-readable result; everything runs locally by default
+lurescope triage examples/suspicious-invoice.eml
+
+# Help-desk queue → one structured JSON event per message
+lurescope triage ./reported-emails --recursive --json > triage-results.jsonl
+```
+
+The API-backed browser lab served by `lurescope` has a **Choose .eml file**
+workflow, and integrations can call `POST /triage/email`. LureScope never visits
+extracted links or opens attachment contents. See
+[real-world workflows and safety boundaries](docs/REAL_WORLD_USE_CASES.md).
 
 | 01 · Score | 02 · Attack | 03 · Defend |
 |:--|:--|:--|
@@ -144,6 +164,7 @@ docker build -t lurescope . && docker run -p 8000:8000 lurescope
 | `GET` | `/capabilities` | Detectors (with requirements), attacks, and defenses |
 | `POST` | `/score` | Fraud-lure probability + the words the detector keys on |
 | `POST` | `/attack` | Apply an attack, re-score, and (optionally) apply a defense and re-score again |
+| `POST` | `/triage/email` | Safely parse and triage a raw RFC 5322 email |
 | `GET` | `/` | Interactive demo (single self-contained page) |
 
 Interactive OpenAPI docs are served at `/docs`.

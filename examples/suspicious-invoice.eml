@@ -1,0 +1,14 @@
+From: Accounts Team <billing@example.org>
+Reply-To: payment-review@other.example
+To: employee@example.org
+Subject: Urgent invoice account verification
+Message-ID: <defanged-example@example.org>
+Authentication-Results: mx.example.org; spf=fail; dkim=fail; dmarc=fail
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Your invoice account requires immediate verification. Confirm your details within
+24 hours at http://192.0.2.10/defanged-example or payment access will be suspended.
+
+This is a defanged synthetic example for defensive testing. The TEST-NET address
+above is reserved for documentation and is not contacted by LureScope.

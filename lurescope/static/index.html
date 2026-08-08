@@ -100,6 +100,23 @@
   .signal-list span { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink-2); background: #09151a; font: 11px var(--mono); }
   .error { min-height: 19px; margin-top: 10px; color: var(--coral); font-size: 12px; }
   .attack-lab { margin-top: 22px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: rgba(11,23,29,.92); }
+  .email-lab { margin-top: 22px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(120deg, rgba(87,242,193,.055), rgba(11,23,29,.94) 38%); }
+  .email-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .email-copy { color: var(--ink-2); font-size: 13px; max-width: 680px; margin: 8px 0 0; }
+  .file-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px; border: 1px solid rgba(98,199,255,.45); border-radius: 10px; color: var(--cyan); background: rgba(98,199,255,.08); font-weight: 730; cursor: pointer; }
+  .file-button:hover { border-color: var(--cyan); transform: translateY(-1px); }
+  .triage-result { display: none; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .triage-summary { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+  .risk { padding: 7px 11px; border-radius: 999px; font: 700 10px var(--mono); letter-spacing: .1em; }
+  .risk.high { color: var(--coral); border: 1px solid rgba(255,113,107,.45); background: var(--coral-soft); }
+  .risk.review { color: var(--amber); border: 1px solid rgba(245,198,93,.45); background: rgba(245,198,93,.08); }
+  .risk.low { color: var(--mint); border: 1px solid rgba(87,242,193,.45); background: var(--mint-soft); }
+  .triage-title strong, .triage-title small { display: block; } .triage-title small { color: var(--muted); margin-top: 3px; }
+  .triage-score { font: 28px var(--mono); }
+  .evidence-list { display: grid; gap: 8px; margin-top: 17px; }
+  .evidence-item { padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-2); font-size: 12px; background: #09151a; }
+  .evidence-item b { color: var(--ink); margin-right: 7px; }
+  .triage-action { margin: 15px 0 0; color: var(--cyan); font-size: 12px; }
   .attack-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
   .secondary { min-height: 44px; padding: 0 20px; border: 1px solid rgba(255,113,107,.45); border-radius: 10px; color: var(--coral); background: var(--coral-soft); font-weight: 730; cursor: pointer; }
   .secondary:hover { border-color: var(--coral); transform: translateY(-1px); }
@@ -125,7 +142,7 @@
     .shell { padding: 20px 14px 48px; } .status { display: none; } .hero { padding: 50px 2px 38px; }
     h1 { font-size: 52px; } .compose, .panel, .attack-lab { padding: 20px; }
     .controls, .attack-grid { grid-template-columns: 1fr; } .primary, .secondary { width: 100%; }
-    .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } footer { display: block; } footer span { display: block; margin-top: 8px; }
+    .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } .email-row, .triage-summary { grid-template-columns: 1fr; } .file-button { width: 100%; } footer { display: block; } footer span { display: block; margin-top: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 </style>
@@ -178,6 +195,18 @@
         <div class="meta-grid"><div class="meta-card"><small>Detector</small><strong id="detectorMeta">—</strong></div><div class="meta-card"><small>Threshold source</small><strong id="policyMeta">—</strong></div></div>
         <div class="signals"><label>Contributing terms</label><div class="signal-list" id="signals"></div></div>
       </div>
+    </div>
+  </section>
+
+  <section class="email-lab" aria-label="Email file triage">
+    <div class="email-row">
+      <div><span class="step">Real-world workflow / RFC 5322</span><h2>Triage a suspicious email file</h2><p class="email-copy">Choose a saved <code>.eml</code>. LureScope reads its message text, headers, link names, and attachment names locally. It never visits links or opens attachment contents.</p></div>
+      <div><input id="emailFile" type="file" accept=".eml,message/rfc822" hidden><label class="file-button" for="emailFile">Choose .eml file</label></div>
+    </div>
+    <div class="error" id="triageErr" role="alert"></div>
+    <div class="triage-result" id="triageResult" aria-live="polite">
+      <div class="triage-summary"><span class="risk" id="riskTier">—</span><div class="triage-title"><strong id="triageSubject">—</strong><small id="triageSender">—</small></div><strong class="triage-score" id="triageScore">—</strong></div>
+      <div class="evidence-list" id="triageEvidence"></div><p class="triage-action" id="triageAction"></p>
     </div>
   </section>
 
@@ -260,8 +289,25 @@ async function attack() {
   finally { $("attackBtn").disabled = false; $("attackBtn").textContent = "Launch controlled attack"; }
 }
 
+async function triageFile(file) {
+  $("triageErr").textContent = ""; $("triageResult").style.display = "none";
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { $("triageErr").textContent = "Email exceeds the 5 MB safety limit."; return; }
+  try {
+    const raw = await file.text();
+    const response = await fetch("triage/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: raw, detector: $("detector").value})});
+    const data = await response.json(); if (!response.ok) throw new Error(data.detail || response.statusText);
+    $("riskTier").textContent = `${data.risk_tier.toUpperCase()} RISK`; $("riskTier").className = `risk ${data.risk_tier}`;
+    $("triageSubject").textContent = data.subject || "No subject"; $("triageSender").textContent = data.from_address || "Unknown sender";
+    $("triageScore").textContent = pct(data.content_probability); $("triageScore").style.color = tone(data.content_probability, data.threshold);
+    $("triageEvidence").innerHTML = data.evidence.length ? data.evidence.map(item => `<div class="evidence-item"><b>${safe(item.severity.toUpperCase())}</b>${safe(item.title)} — ${safe(item.detail)}</div>`).join("") : '<div class="evidence-item">No deterministic header, link, or attachment flags found.</div>';
+    $("triageAction").textContent = data.recommended_action; $("triageResult").style.display = "block";
+  } catch (error) { $("triageErr").textContent = error.message; }
+}
+
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { $("text").value = samples[button.dataset.sample]; analyze(); }));
 $("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack); $("detector").addEventListener("change", analyze);
+$("emailFile").addEventListener("change", event => triageFile(event.target.files[0]));
 loadCapabilities().then(analyze).catch(error => { $("scoreErr").textContent = error.message; });
 </script>
 </body>
