@@ -15,7 +15,11 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
-**[Launch the live adversarial lab →](https://huggingface.co/spaces/immu4989/lurescope)**
+**[Launch live lab →](https://huggingface.co/spaces/immu4989/lurescope)** ·
+**[Open local web lab →](http://127.0.0.1:8000)** ·
+**[View web UI source →](lurescope/static/index.html)**
+
+<sub>Run <code>lurescope</code> first to open the local web lab.</sub>
 
 </div>
 
