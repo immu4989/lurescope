@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- A GitHub Pages edition of the adversarial lab. The exported 50,000-feature
+  model, deterministic attacks, normalization defense, and bounded `.eml`
+  preview run entirely in the browser without sending message content away.
+- Automated Pages deployment, social metadata, a web manifest, sitemap, and
+  browser-engine regression tests.
+
+### Changed
+- Replaced the static repository banner with a lightweight animated operational
+  radar that shows the score → attack → defend workflow.
+- The Pages edition explicitly routes strict LureProof creation, RFC-complete
+  parsing, and semantic attacks to the full local API rather than overstating
+  what a static browser runtime can verify.
+
 ## 0.5.1 — 2026-08-08
 
 ### Security and design correction

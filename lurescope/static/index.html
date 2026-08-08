@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#071218">
 <meta name="description" content="Score, attack, and defend fraud detectors in an interactive adversarial lab.">
+<meta property="og:title" content="LureScope — Break the detector before they do">
+<meta property="og:description" content="A private, browser-based adversarial lab for scoring fraud lures, measuring evasion, and testing normalization defenses.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://immu4989.github.io/lurescope/">
+<meta property="og:image" content="https://immu4989.github.io/lurescope/lurescope-social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://immu4989.github.io/lurescope/">
+<link rel="manifest" href="static/site.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23071218'/%3E%3Cpath d='M13 33c11-17 26-21 38-10 8 8 3 22-8 25-10 3-20-6-14-14 4-5 11-4 13 1' fill='none' stroke='%2357f2c1' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>LureScope — Adversarial fraud detection lab</title>
 <style>
@@ -44,6 +52,12 @@
   .brand small { display: block; color: var(--muted); font: 9px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
   .status { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font: 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
   .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); }
+  .top-actions { display: flex; align-items: center; gap: 20px; }
+  .repo-link { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); text-decoration: none; font: 10px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+  .repo-link:hover { color: var(--mint); border-color: rgba(87,242,193,.5); background: var(--mint-soft); }
+  .mode-note { display: none; margin: 22px 0 -38px; padding: 12px 15px; border: 1px solid rgba(98,199,255,.24); border-radius: 10px; color: var(--ink-2); background: rgba(98,199,255,.055); font-size: 12px; }
+  .mode-note strong { color: var(--cyan); }
+  .mode-note a { color: var(--ink); }
   .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: end; padding: 82px 0 58px; }
   .eyebrow { margin: 0 0 18px; color: var(--mint); font: 11px var(--mono); letter-spacing: .18em; text-transform: uppercase; }
   h1 { margin: 0; max-width: 790px; font-size: clamp(48px, 7vw, 92px); line-height: .94; letter-spacing: -.065em; font-weight: 720; }
@@ -143,7 +157,7 @@
     .score-empty { min-height: 220px; } .timeline { grid-template-columns: 1fr; }
   }
   @media (max-width: 620px) {
-    .shell { padding: 20px 14px 48px; } .status { display: none; } .hero { padding: 50px 2px 38px; }
+    .shell { padding: 20px 14px 48px; } .status { display: none; } .top-actions { gap: 8px; } .repo-link { font-size: 9px; } .mode-note { margin-bottom: -22px; } .hero { padding: 50px 2px 38px; }
     h1 { font-size: 52px; } .compose, .panel, .attack-lab { padding: 20px; }
     .controls, .attack-grid { grid-template-columns: 1fr; } .primary, .secondary { width: 100%; }
     .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } .email-row, .triage-summary { grid-template-columns: 1fr; } .file-button { width: 100%; } .proof-actions { align-items: stretch; flex-direction: column; } .proof-button { width: 100%; } footer { display: block; } footer span { display: block; margin-top: 8px; }
@@ -154,12 +168,13 @@
 <body>
 <main class="shell">
   <nav class="topbar" aria-label="Primary">
-    <a class="brand" href="/" aria-label="LureScope home">
+    <a class="brand" href="./" aria-label="LureScope home">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12c4-6 9-8 14-4 3 3 2 8-1 10-4 2-8-1-7-4 1-2 3-3 5-2" stroke="#57f2c1" stroke-width="1.8" stroke-linecap="round"/><circle cx="15" cy="12" r="1.5" fill="#57f2c1"/></svg></span>
       <span><strong>LureScope</strong><small>Adversarial detection lab</small></span>
     </a>
-    <span class="status">Local engine ready</span>
+    <div class="top-actions"><a class="repo-link" href="https://github.com/immu4989/lurescope">Star on GitHub ↗</a><span class="status" id="engineStatus">Checking engine…</span></div>
   </nav>
+  <div class="mode-note" id="modeNote"><strong>GitHub Pages edition.</strong> Scoring, character attacks, normalization, and bounded email preview run entirely in this tab. <a href="https://github.com/immu4989/lurescope#quickstart">Run the full local API</a> for RFC-complete triage, semantic attacks, and strict LureProof evidence.</div>
 
   <header class="hero">
     <div>
@@ -185,7 +200,7 @@
       </div>
       <div class="controls">
         <div><label for="detector">Detection engine</label><select id="detector"></select></div>
-        <button class="primary" id="scoreBtn" type="button">Analyze message →</button>
+        <button class="primary" id="scoreBtn" type="button" disabled>Analyze message →</button>
       </div>
       <div class="error" id="scoreErr" role="alert"></div>
     </div>
@@ -204,7 +219,7 @@
 
   <section class="email-lab" aria-label="Email file triage">
     <div class="email-row">
-      <div><span class="step">Real-world workflow / RFC 5322</span><h2>Triage a suspicious email file</h2><p class="email-copy">Choose a saved <code>.eml</code>. LureScope reads its message text, headers, link names, and attachment names locally. It never visits links or opens attachment contents.</p></div>
+      <div><span class="step">Real-world workflow / RFC 5322</span><h2>Triage a suspicious email file</h2><p class="email-copy" id="emailCopy">Choose a saved <code>.eml</code>. LureScope reads its message text, headers, link names, and attachment names locally. It never visits links or opens attachment contents.</p></div>
       <div><input id="emailFile" type="file" accept=".eml,message/rfc822" hidden><label class="file-button" for="emailFile">Choose .eml file</label></div>
     </div>
     <div class="error" id="triageErr" role="alert"></div>
@@ -220,7 +235,7 @@
     <div class="attack-grid">
       <div><label for="attack">Attack technique</label><select id="attack"></select></div>
       <div><label for="defense">Countermeasure</label><select id="defense"></select></div>
-      <button class="secondary" id="attackBtn" type="button">Launch controlled attack</button>
+      <button class="secondary" id="attackBtn" type="button" disabled>Launch controlled attack</button>
     </div>
     <div class="error" id="attackErr" role="alert"></div>
     <div class="attack-result" id="attackResult" aria-live="polite">
@@ -233,8 +248,9 @@
     </div>
   </section>
 
-  <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a href="/docs">API docs</a></span></footer>
+  <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a id="docsLink" href="/docs">API docs</a></span></footer>
 </main>
+<script src="static/browser-engine.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const pct = (value) => `${Math.round(value * 100)}%`;
@@ -246,21 +262,50 @@ const samples = {
   benign: "Hi team, the design review moved to Thursday at 2 PM. The agenda is in our shared project folder. Please add comments before Wednesday afternoon."
 };
 let currentEmail = null;
+const params = new URLSearchParams(window.location.search);
+const standalone = window.location.hostname.endsWith("github.io") || params.get("standalone") === "1";
+const directFile = window.location.protocol === "file:";
+const browserEngine = window.LureScopeBrowser;
+
+async function responseData(response) {
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || response.statusText);
+  return data;
+}
 
 async function loadCapabilities() {
-  const response = await fetch("capabilities");
-  if (!response.ok) throw new Error("Could not load detector capabilities");
-  const caps = await response.json();
+  if (directFile) throw new Error("Open the GitHub Pages site or run `lurescope`; direct file:// mode cannot load the model safely.");
+  let caps;
+  if (standalone) {
+    if (!browserEngine) throw new Error("Browser engine failed to load");
+    await browserEngine.loadModel("static/model.json");
+    caps = browserEngine.capabilities();
+    $("engineStatus").textContent = "Private browser engine ready";
+    $("modeNote").style.display = "block";
+    $("emailCopy").innerHTML = "Choose a saved <code>.eml</code> for a bounded browser preview. Headers, visible text, link names, and attachment names stay in this tab; links and attachments are never opened. Use the full local API for RFC-complete parsing.";
+    $("proofBtn").textContent = "Open full LureProof workflow ↗";
+    $("proofStatus").textContent = "Strict LureProof generation and verification require the full local API.";
+    $("docsLink").href = "https://github.com/immu4989/lurescope#api";
+    $("docsLink").textContent = "API reference";
+  } else {
+    const response = await fetch("capabilities");
+    if (!response.ok) throw new Error("Could not load detector capabilities");
+    caps = await response.json();
+    $("engineStatus").textContent = "Local API ready";
+  }
   $("detector").innerHTML = caps.detectors.map(name => `<option value="${safe(name)}" ${name === caps.default_detector ? "selected" : ""}>${safe(name)}</option>`).join("");
   $("attack").innerHTML = caps.attacks.map(name => `<option value="${safe(name)}">${safe(name)}</option>`).join("");
   $("defense").innerHTML = (caps.defenses || ["none"]).map(name => `<option value="${safe(name)}">${name === "none" ? "none / observe raw failure" : `${safe(name)} / normalize input`}</option>`).join("");
+  $("scoreBtn").disabled = false;
+  $("attackBtn").disabled = false;
 }
 
 async function analyze() {
   $("scoreErr").textContent = ""; $("scoreBtn").disabled = true; $("scoreBtn").textContent = "Analyzing…";
   try {
-    const response = await fetch("score", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({text: $("text").value, detector: $("detector").value})});
-    const data = await response.json(); if (!response.ok) throw new Error(data.detail || response.statusText);
+    const data = standalone
+      ? browserEngine.scoreMessage($("text").value, $("detector").value)
+      : await responseData(await fetch("score", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({text: $("text").value, detector: $("detector").value})}));
     const value = Math.round(data.fraud_probability * 100);
     $("probVal").innerHTML = `${value}<small>%</small>`; $("probVal").style.color = tone(data.fraud_probability, data.threshold);
     $("verdict").textContent = data.label === "fraud" ? "FRAUD LURE" : "LIKELY BENIGN"; $("verdict").className = `verdict ${data.label === "fraud" ? "fraud" : "benign"}`;
@@ -277,8 +322,9 @@ async function attack() {
   $("attackErr").textContent = ""; $("attackBtn").disabled = true; $("attackBtn").textContent = "Running attack…";
   try {
     const body = {text: $("text").value, detector: $("detector").value, attack: $("attack").value, defense: $("defense").value};
-    const response = await fetch("attack", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-    const data = await response.json(); if (!response.ok) throw new Error(data.detail || response.statusText);
+    const data = standalone
+      ? browserEngine.attackMessage(body.text, body.attack, body.detector, body.defense)
+      : await responseData(await fetch("attack", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}));
     $("cleanText").textContent = data.original; $("attText").textContent = data.attacked; $("cleanP").textContent = pct(data.clean_probability); $("attP").textContent = pct(data.attacked_probability);
     $("cleanP").style.color = tone(data.clean_probability, data.threshold); $("attP").style.color = tone(data.attacked_probability, data.threshold);
     const defended = data.defense && data.defense !== "none" && data.defended_probability !== null;
@@ -301,22 +347,26 @@ async function triageFile(file) {
   if (file.size > 5 * 1024 * 1024) { $("triageErr").textContent = "Email exceeds the 5 MB safety limit."; return; }
   try {
     const raw = await file.text();
-    const response = await fetch("triage/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: raw, detector: $("detector").value})});
-    const data = await response.json(); if (!response.ok) throw new Error(data.detail || response.statusText);
+    const data = standalone
+      ? browserEngine.triageEmail(raw, $("detector").value)
+      : await responseData(await fetch("triage/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: raw, detector: $("detector").value})}));
     $("riskTier").textContent = `${data.risk_tier.toUpperCase()} RISK`; $("riskTier").className = `risk ${data.risk_tier}`;
     $("triageSubject").textContent = data.subject || "No subject"; $("triageSender").textContent = data.from_address || "Unknown sender";
     $("triageScore").textContent = pct(data.content_probability); $("triageScore").style.color = tone(data.content_probability, data.threshold);
     $("triageEvidence").innerHTML = data.evidence.length ? data.evidence.map(item => `<div class="evidence-item"><b>${safe(item.severity.toUpperCase())}</b>${safe(item.title)} — ${safe(item.detail)}</div>`).join("") : '<div class="evidence-item">No deterministic header, link, or attachment flags found.</div>';
-    $("triageAction").textContent = data.recommended_action; currentEmail = {raw, name: file.name}; $("proofStatus").textContent = "No message content or addresses are written to the proof."; $("proofActions").style.display = "flex"; $("triageResult").style.display = "block";
+    $("triageAction").textContent = data.recommended_action; currentEmail = {raw, name: file.name}; $("proofStatus").textContent = standalone ? "Strict LureProof generation and verification require the full local API." : "No message content or addresses are written to the proof."; $("proofActions").style.display = "flex"; $("triageResult").style.display = "block";
   } catch (error) { $("triageErr").textContent = error.message; }
 }
 
 async function downloadProof() {
   if (!currentEmail) return;
+  if (standalone) {
+    window.open("https://github.com/immu4989/lurescope#quickstart", "_blank", "noopener");
+    return;
+  }
   $("proofBtn").disabled = true; $("proofBtn").textContent = "Building resilience evidence…"; $("proofStatus").textContent = "Running four local attack and defense checks.";
   try {
-    const response = await fetch("proof/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: currentEmail.raw, detector: $("detector").value, privacy_profile: "salted-commitment"})});
-    const proof = await response.json(); if (!response.ok) throw new Error(proof.detail || response.statusText);
+    const proof = await responseData(await fetch("proof/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: currentEmail.raw, detector: $("detector").value, privacy_profile: "salted-commitment"})}));
     const signed = Boolean(proof.payloadType); const blob = new Blob([JSON.stringify(proof, null, 2) + "\n"], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a");
     link.href = url; link.download = currentEmail.name.replace(/\.eml$/i, "") + (signed ? ".lureproof.dsse.json" : ".lureproof.json"); document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
     $("proofStatus").textContent = signed ? "Signed DSSE envelope downloaded." : "Unsigned statement downloaded. It is schema-valid evidence, not authenticated issuer evidence.";
@@ -328,7 +378,7 @@ document.querySelectorAll("[data-sample]").forEach(button => button.addEventList
 $("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack); $("detector").addEventListener("change", analyze);
 $("emailFile").addEventListener("change", event => triageFile(event.target.files[0]));
 $("proofBtn").addEventListener("click", downloadProof);
-loadCapabilities().then(analyze).catch(error => { $("scoreErr").textContent = error.message; });
+loadCapabilities().then(analyze).catch(error => { $("engineStatus").textContent = "Engine unavailable"; $("scoreErr").textContent = error.message; });
 </script>
 </body>
 </html>

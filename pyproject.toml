@@ -51,6 +51,7 @@ viz = ["matplotlib>=3.6"]
 [project.urls]
 Homepage = "https://github.com/immu4989/lurescope"
 Demo = "https://huggingface.co/spaces/immu4989/lurescope"
+"GitHub Pages lab" = "https://immu4989.github.io/lurescope/"
 Benchmark = "https://github.com/immu4989/lurebench"
 Changelog = "https://github.com/immu4989/lurescope/blob/main/CHANGELOG.md"
 Issues = "https://github.com/immu4989/lurescope/issues"
@@ -64,7 +65,15 @@ lurescope = "lurescope.cli:main"
 packages = ["lurescope", "lurescope.models", "lurescope.static"]
 
 [tool.setuptools.package-data]
-lurescope = ["static/*.html", "models/*.joblib"]
+lurescope = [
+  "static/*.html",
+  "static/*.js",
+  "static/*.json",
+  "static/*.txt",
+  "static/*.webmanifest",
+  "static/*.xml",
+  "models/*.joblib",
+]
 
 [tool.setuptools.data-files]
 "share/lurescope/spec" = ["spec/*.json"]

@@ -16,6 +16,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v6
+        if: matrix.python-version == '3.12'
+        with:
+          node-version: 24
       - name: Install
         run: |
           python -m pip install --upgrade pip
@@ -24,6 +28,9 @@ jobs:
         run: ruff check lurescope tests scripts
       - name: Test
         run: pytest -q
+      - name: Test browser engine
+        if: matrix.python-version == '3.12'
+        run: node --test tests/browser_engine.test.cjs
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: python -m build

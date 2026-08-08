@@ -1,0 +1,50 @@
+name: Deploy GitHub Pages lab
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pages.yml"
+      - "lurescope/static/**"
+      - "space/model.json"
+      - "docs/assets/lurescope-live.png"
+      - "docs/assets/lurescope-social-card.png"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Assemble static site
+        run: |
+          mkdir -p _site/static
+          cp lurescope/static/index.html _site/index.html
+          cp lurescope/static/index.html _site/404.html
+          cp lurescope/static/browser-engine.js _site/static/browser-engine.js
+          cp lurescope/static/site.webmanifest _site/static/site.webmanifest
+          cp lurescope/static/robots.txt _site/robots.txt
+          cp lurescope/static/sitemap.xml _site/sitemap.xml
+          cp space/model.json _site/static/model.json
+          cp docs/assets/lurescope-social-card.png _site/lurescope-social-card.png
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

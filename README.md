@@ -1,12 +1,13 @@
 <div align="center">
 
-<img src="docs/assets/brand-hero.svg" width="100%" alt="LureScope — score, attack, defend. An adversarial workbench for fraud detectors.">
+<a href="https://immu4989.github.io/lurescope/"><img src="docs/assets/lurescope-live.gif" width="100%" alt="Animated LureScope radar: score a fraud lure, watch an attack evade the detector, and verify the defense recovery."></a>
 
 ### Break your fraud detector before an attacker does
 
 Paste a message. Measure the score. Apply an evasion. Verify whether the defense recovers.
 
-[![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
+[![Browser lab](https://img.shields.io/badge/▶_browser_lab-GitHub_Pages-57f2c1)](https://immu4989.github.io/lurescope/)
+[![Lightweight demo](https://img.shields.io/badge/🔬_lightweight_demo-Hugging_Face-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
 ![Version](https://img.shields.io/badge/version-0.5.1-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
@@ -15,8 +16,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
-**[Launch public demo →](https://huggingface.co/spaces/immu4989/lurescope)** ·
-**[Run full local lab →](#quickstart)** ·
+**[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
+**[Run full local API →](#quickstart)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>

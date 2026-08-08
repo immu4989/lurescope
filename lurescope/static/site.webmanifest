@@ -1,0 +1,9 @@
+{
+  "name": "LureScope adversarial fraud-detection lab",
+  "short_name": "LureScope",
+  "description": "Score fraud lures, measure adversarial evasion, and test normalization defenses privately in your browser.",
+  "start_url": "/lurescope/",
+  "display": "standalone",
+  "background_color": "#071218",
+  "theme_color": "#071218"
+}
