@@ -33,6 +33,9 @@ otherwise.
 - Anything in the browser demo that lets one visitor affect another, or that
   sends page content off the page. The Hugging Face Space is a static build and
   is meant to run entirely client-side.
+- LureProof signature bypasses, DSSE type-confusion issues, acceptance of an
+  internally contradictory statement, accidental inclusion of message content,
+  private-key permission failures, or proof-verification denial of service.
 
 ## What is not a vulnerability
 
@@ -55,6 +58,12 @@ message as sensitive: `/score` and `/attack` echo the submitted text back in the
 response, and the LLM-backed attacks send it to whichever provider you configure.
 
 The container runs as a normal user and needs no privileged capabilities.
+
+`POST /proof/email` deliberately creates unsigned statements only and never
+loads or accepts a private key. Sign reviewed evidence offline or through your
+access-controlled KMS/HSM workflow. `lurescope keygen` is a local development
+helper, not a PKI: protect the private PEM, distribute the public key through a
+trusted channel, and rotate it according to your organization's policy.
 
 ## Acceptable use
 

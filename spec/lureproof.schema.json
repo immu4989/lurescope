@@ -1,40 +1,174 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/immu4989/lurescope/blob/main/spec/lureproof.schema.json",
-  "title": "LureProof 0.1",
-  "description": "Privacy-minimized evidence of a fraud-control assessment and deterministic adversarial checks.",
+  "$id": "https://raw.githubusercontent.com/immu4989/lurescope/main/spec/lureproof.schema.json",
+  "title": "LureProof 0.2 in-toto Statement",
+  "description": "Strict privacy-minimized evidence of a fraud-control assessment and deterministic adversarial checks.",
   "type": "object",
-  "required": ["spec", "spec_version", "created_at", "privacy_profile", "subject", "assessment", "resilience", "implementation", "integrity"],
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
   "properties": {
-    "spec": {"const": "lureproof"},
-    "spec_version": {"const": "0.1"},
-    "created_at": {"type": "string", "format": "date-time"},
-    "privacy_profile": {"const": "shareable-minimized"},
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
     "subject": {
-      "type": "object",
-      "required": ["media_type", "sha256", "byte_length"],
+      "type": "array", "minItems": 1, "maxItems": 1,
+      "items": {"$ref": "#/$defs/subject"}
+    },
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/lureproof/v0.2"},
+    "predicate": {"$ref": "#/$defs/predicate"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "digest"],
+      "properties": {
+        "name": {"const": "email-message"},
+        "digest": {
+          "oneOf": [
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["sha256"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}}
+            },
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["lureproof-salted-sha256"],
+              "properties": {"lureproof-salted-sha256": {"$ref": "#/$defs/sha256"}}
+            }
+          ]
+        }
+      }
+    },
+    "predicate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["spec", "spec_version", "generated_at", "issuer", "nonce", "privacy", "input", "assessment", "resilience", "implementation", "framework_mappings", "limitations"],
+      "properties": {
+        "spec": {"const": "lureproof"},
+        "spec_version": {"const": "0.2"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "issuer": {"type": ["string", "null"], "maxLength": 200},
+        "nonce": {"type": ["string", "null"], "minLength": 8, "maxLength": 256},
+        "privacy": {"$ref": "#/$defs/privacy"},
+        "input": {"$ref": "#/$defs/input"},
+        "assessment": {"$ref": "#/$defs/assessment"},
+        "resilience": {"$ref": "#/$defs/resilience"},
+        "implementation": {"$ref": "#/$defs/implementation"},
+        "framework_mappings": {"$ref": "#/$defs/frameworkMappings"},
+        "limitations": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "privacy": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["profile", "commitment_salt"],
+          "properties": {
+            "profile": {"const": "salted-commitment"},
+            "commitment_salt": {"type": "string", "contentEncoding": "base64"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["profile", "commitment_salt"],
+          "properties": {
+            "profile": {"const": "correlatable"},
+            "commitment_salt": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "input": {
+      "type": "object", "additionalProperties": false,
+      "required": ["media_type", "byte_length", "parser", "scored_character_count", "truncated"],
       "properties": {
         "media_type": {"const": "message/rfc822"},
-        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "byte_length": {"type": "integer", "minimum": 1}
-      },
-      "additionalProperties": false
+        "byte_length": {"type": "integer", "minimum": 1, "maximum": 5242880},
+        "parser": {"const": "python-email-policy-default"},
+        "scored_character_count": {"type": "integer", "minimum": 1, "maximum": 20000},
+        "truncated": {"type": "boolean"}
+      }
     },
-    "assessment": {"type": "object"},
-    "resilience": {"type": "object"},
-    "implementation": {"type": "object"},
-    "framework_mappings": {"type": "object"},
-    "limitations": {"type": "array", "items": {"type": "string"}},
-    "integrity": {
-      "type": "object",
-      "required": ["algorithm", "canonicalization", "digest"],
+    "assessment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["detector", "detector_model", "detector_artifact_sha256", "fraud_probability", "label", "risk_tier", "threshold", "threshold_source", "policy_id", "evidence_codes", "url_count", "attachment_count"],
       "properties": {
-        "algorithm": {"const": "sha256"},
-        "canonicalization": {"const": "lureproof-json-0.1"},
-        "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
-      },
-      "additionalProperties": false
+        "detector": {"type": "string", "minLength": 1, "maxLength": 100},
+        "detector_model": {"type": "string", "minLength": 1, "maxLength": 500},
+        "detector_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "fraud_probability": {"$ref": "#/$defs/probability"},
+        "label": {"enum": ["fraud", "benign"]},
+        "risk_tier": {"enum": ["high", "review", "low"]},
+        "threshold": {"$ref": "#/$defs/probability"},
+        "threshold_source": {"type": "string", "minLength": 1, "maxLength": 100},
+        "policy_id": {"type": ["string", "null"], "maxLength": 500},
+        "evidence_codes": {
+          "type": "array", "maxItems": 32, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 100}
+        },
+        "url_count": {"type": "integer", "minimum": 0},
+        "attachment_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resilience": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clean_flagged", "attack_count", "eligible_attack_count", "evasion_count", "defense_recovery_count", "outcomes"],
+      "properties": {
+        "clean_flagged": {"type": "boolean"},
+        "attack_count": {"const": 4},
+        "eligible_attack_count": {"type": "integer", "minimum": 0, "maximum": 4},
+        "evasion_count": {"type": "integer", "minimum": 0, "maximum": 4},
+        "defense_recovery_count": {"type": "integer", "minimum": 0, "maximum": 4},
+        "outcomes": {
+          "type": "array", "minItems": 4, "maxItems": 4,
+          "prefixItems": [
+            {"$ref": "#/$defs/homoglyphOutcome"},
+            {"$ref": "#/$defs/leetOutcome"},
+            {"$ref": "#/$defs/zeroWidthOutcome"},
+            {"$ref": "#/$defs/whitespaceOutcome"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "outcome": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attack", "attacked_probability", "attacked_flagged", "evaded", "defense", "defended_probability", "defended_flagged", "defense_recovered", "defended_evaded"],
+      "properties": {
+        "attack": {"enum": ["homoglyph", "leet", "zero-width", "whitespace"]},
+        "attacked_probability": {"$ref": "#/$defs/probability"},
+        "attacked_flagged": {"type": "boolean"},
+        "evaded": {"type": "boolean"},
+        "defense": {"const": "normalize"},
+        "defended_probability": {"$ref": "#/$defs/probability"},
+        "defended_flagged": {"type": "boolean"},
+        "defense_recovered": {"type": "boolean"},
+        "defended_evaded": {"type": "boolean"}
+      }
+    },
+    "homoglyphOutcome": {"allOf": [{"$ref": "#/$defs/outcome"}, {"properties": {"attack": {"const": "homoglyph"}}}]},
+    "leetOutcome": {"allOf": [{"$ref": "#/$defs/outcome"}, {"properties": {"attack": {"const": "leet"}}}]},
+    "zeroWidthOutcome": {"allOf": [{"$ref": "#/$defs/outcome"}, {"properties": {"attack": {"const": "zero-width"}}}]},
+    "whitespaceOutcome": {"allOf": [{"$ref": "#/$defs/outcome"}, {"properties": {"attack": {"const": "whitespace"}}}]},
+    "implementation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version", "attack_source", "attack_source_version", "python_version", "sklearn_version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 100},
+        "attack_source": {"const": "lurebench"},
+        "attack_source_version": {"type": "string", "minLength": 1, "maxLength": 100},
+        "python_version": {"type": "string", "minLength": 1, "maxLength": 100},
+        "sklearn_version": {"type": "string", "minLength": 1, "maxLength": 100}
+      }
+    },
+    "frameworkMappings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["nist_ai_rmf_functions", "mitre_attack_techniques"],
+      "properties": {
+        "nist_ai_rmf_functions": {"const": ["MEASURE", "MANAGE"]},
+        "mitre_attack_techniques": {"const": ["T1566"]}
+      }
     }
-  },
-  "additionalProperties": false
+  }
 }

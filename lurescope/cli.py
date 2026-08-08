@@ -113,36 +113,79 @@ def _proof(argv: Sequence[str]) -> int:
     parser.add_argument("--out", "-o", required=True, help="output .lureproof.json path")
     parser.add_argument("--detector", default="tfidf-logreg")
     parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument(
+        "--privacy", choices=("salted-commitment", "correlatable"),
+        default="salted-commitment",
+        help="salted-commitment blocks direct hash matching; correlatable exposes raw SHA-256",
+    )
+    parser.add_argument("--nonce", help="verifier challenge (8-256 characters) for freshness")
+    parser.add_argument(
+        "--issuer", help="issuer label; authenticated only when the proof is signed"
+    )
+    parser.add_argument("--signing-key", help="unencrypted ECDSA P-256 private PEM key")
     args = parser.parse_args(argv)
     try:
         raw = sys.stdin.buffer.read() if args.input == "-" else Path(args.input).read_bytes()
-        from .proof import create_email_proof, dumps_proof
+        from .proof import create_email_proof, dumps_proof, verify_proof
 
-        proof = create_email_proof(raw, args.detector, args.threshold)
+        signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+        proof = create_email_proof(
+            raw, args.detector, args.threshold, privacy_profile=args.privacy,
+            nonce=args.nonce, issuer=args.issuer, signing_key_pem=signing_key,
+        )
         Path(args.out).write_text(dumps_proof(proof), encoding="utf-8")
     except (OSError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
-    print(f"created {args.out} ({proof['integrity']['algorithm']}:{proof['integrity']['digest']})")
+    result = verify_proof(proof)
+    kind = "signed DSSE" if result["artifact_type"] == "dsse" else "unsigned statement"
+    print(f"created {args.out} ({kind}; sha256:{result['statement_sha256']})")
     return 0
 
 
 def _verify(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
-        prog="lurescope verify", description="Verify a LureProof structure and digest."
+        prog="lurescope verify", description="Validate LureProof and authenticate DSSE signatures."
     )
     parser.add_argument("proof", help=".lureproof.json path")
+    parser.add_argument("--public-key", help="trusted ECDSA P-256 public PEM key")
+    parser.add_argument(
+        "--require-signature", action="store_true",
+        help="fail unless a signature authenticates against --public-key",
+    )
     args = parser.parse_args(argv)
     try:
         from .proof import verify_proof
 
-        proof = json.loads(Path(args.proof).read_text(encoding="utf-8"))
-        result = verify_proof(proof)
-    except (OSError, json.JSONDecodeError) as exc:
+        proof_path = Path(args.proof)
+        if proof_path.stat().st_size > 2 * 1024 * 1024:
+            raise ValueError("proof exceeds the 2 MB safety limit")
+        proof = json.loads(proof_path.read_text(encoding="utf-8"))
+        public_key = Path(args.public_key).read_bytes() if args.public_key else None
+        result = verify_proof(proof, public_key, args.require_signature)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True))
     return 0 if result["valid"] else 1
+
+
+def _keygen(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope keygen", description="Generate a local ECDSA P-256 LureProof keypair."
+    )
+    parser.add_argument("--private-out", required=True, help="new private PEM path (mode 0600)")
+    parser.add_argument("--public-out", required=True, help="new public PEM path")
+    args = parser.parse_args(argv)
+    try:
+        from .proof import generate_keypair
+
+        key_id = generate_keypair(Path(args.private_out), Path(args.public_out))
+    except OSError as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    print(f"created P-256 keypair (keyid:{key_id})")
+    return 0
 
 
 def main(argv=None) -> int:
@@ -153,6 +196,8 @@ def main(argv=None) -> int:
         return _proof(args[1:])
     if args and args[0] == "verify":
         return _verify(args[1:])
+    if args and args[0] == "keygen":
+        return _keygen(args[1:])
     return _serve(args)
 
 

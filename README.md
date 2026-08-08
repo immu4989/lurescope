@@ -8,7 +8,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 [![Live demo](https://img.shields.io/badge/🔬_live_demo-Hugging_Face_Space-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.5.0-57f2c1)
+![Version](https://img.shields.io/badge/version-0.5.1-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -25,18 +25,30 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 
 ## LureProof: a portable resilience passport
 
-Screenshots cannot be verified, vendor reports are difficult to compare, and
+Screenshots are difficult to authenticate, vendor reports are difficult to compare, and
 forwarding a suspicious email exposes its content. LureProof packages the useful
 middle: **what a named control decided at a named threshold, whether four
 adversarial edits evaded it, and whether normalization recovered the catch**—with
 no raw body, subject, addresses, URLs, attachment names, or transformed lure text.
 
 ```bash
+# Unsigned evidence: strict and portable, but explicitly unauthenticated
 lurescope proof examples/suspicious-invoice.eml -o suspicious.lureproof.json
 lurescope verify suspicious.lureproof.json
+
+# Authenticated evidence: in-toto Statement + standard DSSE envelope
+lurescope keygen --private-out issuer.pem --public-out issuer.pub.pem
+lurescope proof examples/suspicious-invoice.eml --signing-key issuer.pem \
+  --issuer "Example SOC" --nonce "verifier-challenge-123" \
+  -o suspicious.lureproof.dsse.json
+lurescope verify suspicious.lureproof.dsse.json \
+  --public-key issuer.pub.pem --require-signature
 ```
 
-The JSON artifact has a recomputable integrity digest and an open schema. It can
+The default uses a fresh salted subject commitment, preventing direct hash-based
+matching between proofs; raw SHA-256 correlation is opt-in. Other fields can still
+act as a fingerprint, so this is not an anonymity claim. Signed proofs bind
+the exact payload and media type to an externally trusted P-256 key. They can
 travel with a SOC ticket, control-validation report, procurement exercise, or
 cross-organization drill without carrying live lure content. Read the
 [format, privacy boundary, standards landscape, and public-interest use cases](docs/LUREPROOF.md).
@@ -183,8 +195,8 @@ docker build -t lurescope . && docker run -p 8000:8000 lurescope
 | `POST` | `/score` | Fraud-lure probability + the words the detector keys on |
 | `POST` | `/attack` | Apply an attack, re-score, and (optionally) apply a defense and re-score again |
 | `POST` | `/triage/email` | Safely parse and triage a raw RFC 5322 email |
-| `POST` | `/proof/email` | Create a privacy-minimized, verifiable resilience passport |
-| `POST` | `/proof/verify` | Validate a LureProof structure and recompute its digest |
+| `POST` | `/proof/email` | Create a strict, privacy-minimized unsigned statement |
+| `POST` | `/proof/verify` | Validate a statement or authenticate a signed DSSE envelope |
 | `GET` | `/` | Interactive demo (single self-contained page) |
 
 Interactive OpenAPI docs are served at `/docs`.

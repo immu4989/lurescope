@@ -120,12 +120,25 @@ class EmailTriageResponse(BaseModel):
 class LureProofRequest(EmailTriageRequest):
     """The same bounded raw-email input, producing minimized evidence."""
 
+    privacy_profile: str = Field(
+        "salted-commitment", pattern="^(salted-commitment|correlatable)$"
+    )
+    nonce: Optional[str] = Field(None, min_length=8, max_length=256)
+
 
 class LureProofVerifyRequest(BaseModel):
     proof: Dict[str, Any]
+    public_key_pem: Optional[str] = Field(None, max_length=16_384)
+    require_signature: bool = False
 
 
 class LureProofVerifyResponse(BaseModel):
     valid: bool
-    digest: str
+    schema_valid: bool
+    authenticated: bool
+    artifact_type: str
+    statement_sha256: str
+    signature_count: int
+    key_ids: List[str]
     errors: List[str]
+    warnings: List[str]

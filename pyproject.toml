@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lurescope"
-version = "0.5.0"
+version = "0.5.1"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Imran Ahamed" }]
 keywords = ["fraud", "phishing", "detection", "adversarial", "api", "security"]
 classifiers = [
@@ -16,7 +17,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Information Technology",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -31,6 +31,11 @@ dependencies = [
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
   "pydantic>=2",
+  "cryptography>=42",
+  # The bundled joblib model was trained with scikit-learn 1.6.1. Keep the
+  # deserializer on the compatible minor line instead of silently loading it in
+  # an arbitrary future release.
+  "scikit-learn>=1.6,<1.7",
   # Detection + attack logic is reused from LureBench so the service and the
   # benchmark can never drift. [train] pulls scikit-learn/joblib for the bundled model.
   "lurebench[train] @ git+https://github.com/immu4989/lurebench.git",
@@ -39,7 +44,7 @@ dependencies = [
 [project.optional-dependencies]
 # ruff is pinned: an unpinned linter installs a newer default rule set in CI than
 # the one used locally, which is how LureBench's CI went red on a green commit.
-dev = ["pytest", "httpx", "ruff>=0.15,<0.17"]
+dev = ["build>=1.2", "pytest", "httpx", "jsonschema>=4.23", "ruff>=0.15,<0.17"]
 # Only needed to render the scorecard heatmap PNG; the markdown/JSON need nothing extra.
 viz = ["matplotlib>=3.6"]
 
@@ -54,10 +59,15 @@ Issues = "https://github.com/immu4989/lurescope/issues"
 lurescope = "lurescope.cli:main"
 
 [tool.setuptools]
-packages = ["lurescope"]
+# Data-only namespace packages are explicit so setuptools does not ambiguously
+# infer the model and web-asset directories during wheel builds.
+packages = ["lurescope", "lurescope.models", "lurescope.static"]
 
 [tool.setuptools.package-data]
 lurescope = ["static/*.html", "models/*.joblib"]
+
+[tool.setuptools.data-files]
+"share/lurescope/spec" = ["spec/*.json"]
 
 [tool.pytest.ini_options]
 # Make the repo root importable so tests can reach the scripts/ helpers.

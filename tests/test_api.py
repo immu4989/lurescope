@@ -176,8 +176,10 @@ def test_lureproof_create_and_verify_endpoints():
     created = client.post("/proof/email", json={"raw_email": raw})
     assert created.status_code == 200
     proof = created.json()
-    assert proof["spec"] == "lureproof"
+    assert proof["predicate"]["spec"] == "lureproof"
+    assert proof["predicate"]["privacy"]["profile"] == "salted-commitment"
     assert "Urgent account verification" not in created.text
     verified = client.post("/proof/verify", json={"proof": proof})
     assert verified.status_code == 200
     assert verified.json()["valid"] is True
+    assert verified.json()["authenticated"] is False

@@ -30,6 +30,10 @@ project. See [SECURITY.md](SECURITY.md) for where that line sits.
   change scoring or defense logic in one, port it to the other and verify parity
   against Python (see below).
 - **Docs and results.** Corrections to published numbers are especially welcome.
+- **LureProof interoperability.** Independent validators, KMS/HSM adapters, and
+  mappings to established security event formats are welcome. A predicate change
+  requires a spec-version decision, synchronized JSON Schema updates, negative
+  validation tests, privacy review, and signed cross-implementation test vectors.
 
 ## Keeping the browser build honest
 
@@ -68,6 +72,8 @@ costs nothing.
   body, and update the affected doc in the same PR. A result that changed silently
   is worse than one that changed loudly.
 - Keep `ruff check` and `pytest` green.
+- Run `python -m build` when changing dependencies, package data, schemas, or
+  release metadata; both schemas must be present in the wheel.
 - Line length is 100. Targeting Python 3.9, so `typing.Optional` and `List` rather
   than the 3.10+ syntax.
 

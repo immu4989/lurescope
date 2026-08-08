@@ -1,6 +1,6 @@
 {
   "title": "LureScope: Adversarial Fraud Triage and Portable Resilience Evidence",
-  "description": "<p>LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies adversarial attacks, and tests an input-normalization defense.</p><p>LureProof 0.1 adds a privacy-minimized, machine-verifiable evidence artifact containing detector and threshold provenance plus deterministic attack and defense outcomes without retaining the message body, subject, addresses, URLs, attachment names, or transformed lure text.</p><p>LureScope reuses LureBench's detectors and attacks directly and publishes reproducible corpus-level robustness scorecards.</p>",
+  "description": "<p>LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies adversarial attacks, and tests an input-normalization defense.</p><p>LureProof 0.2 expresses privacy-minimized fraud-control evidence as a strict in-toto Statement, optionally authenticated in a standard DSSE envelope with ECDSA P-256. Its default salted commitment prevents direct subject-hash matching between separately generated proofs, while preserving detector, threshold, model-artifact, attack, and defense provenance without message content.</p><p>LureScope reuses LureBench's detectors and attacks directly and publishes reproducible corpus-level robustness scorecards.</p>",
   "upload_type": "software",
   "license": "Apache-2.0",
   "access_right": "open",

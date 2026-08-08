@@ -129,7 +129,7 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
 
 @app.post("/proof/email")
 def prove_email_message(req: LureProofRequest) -> dict:
-    """Create shareable adversarial evidence without retaining message content."""
+    """Create minimized unsigned evidence; issuer signing is an offline operation."""
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
     try:
@@ -139,6 +139,8 @@ def prove_email_message(req: LureProofRequest) -> dict:
             threshold=req.threshold,
             engine=req.engine,
             model=req.model,
+            privacy_profile=req.privacy_profile,
+            nonce=req.nonce,
         )
     except service.DetectorUnavailable as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -150,7 +152,10 @@ def prove_email_message(req: LureProofRequest) -> dict:
 
 @app.post("/proof/verify", response_model=LureProofVerifyResponse)
 def verify_lureproof(req: LureProofVerifyRequest) -> LureProofVerifyResponse:
-    return LureProofVerifyResponse(**verify_proof(req.proof))
+    public_key = req.public_key_pem.encode("utf-8") if req.public_key_pem else None
+    return LureProofVerifyResponse(
+        **verify_proof(req.proof, public_key, req.require_signature)
+    )
 
 
 @app.get("/")

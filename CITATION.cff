@@ -13,9 +13,10 @@ url: "https://huggingface.co/spaces/immu4989/lurescope"
 abstract: >-
   LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies
   adversarial attacks, and tests an input-normalization defense. LureProof adds a
-  privacy-minimized, machine-verifiable evidence artifact containing detector and
-  threshold provenance plus attack and defense outcomes without message content.
-version: 0.5.0
+  strict, privacy-minimized evidence artifact containing detector and threshold
+  provenance plus attack and defense outcomes without message content. A standard
+  DSSE envelope can authenticate the statement against an external trust key.
+version: 0.5.1
 date-released: "2026-08-08"
 license: Apache-2.0
 keywords:

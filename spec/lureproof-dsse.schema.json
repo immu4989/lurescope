@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/immu4989/lurescope/main/spec/lureproof-dsse.schema.json",
+  "title": "LureProof 0.2 DSSE Envelope",
+  "description": "DSSE envelope carrying exact LureProof in-toto Statement bytes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["payloadType", "payload", "signatures"],
+  "properties": {
+    "payloadType": {"const": "application/vnd.in-toto+json"},
+    "payload": {"type": "string", "contentEncoding": "base64"},
+    "signatures": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["keyid", "sig"],
+        "properties": {
+          "keyid": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "sig": {"type": "string", "contentEncoding": "base64"}
+        }
+      }
+    }
+  }
+}

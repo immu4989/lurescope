@@ -1,12 +1,37 @@
 # Changelog
 
+## 0.5.1 — 2026-08-08
+
+### Security and design correction
+- **Corrected LureProof verification semantics.** Version 0.5.0 embedded an
+  ordinary SHA-256 digest beside its payload. That detects accidental edits only
+  when the editor does not recompute the digest; it does not resist an adversary
+  and should not have been described as tamper detection.
+- Replaced the custom artifact with a strict in-toto Statement and optional DSSE
+  envelope. Signed proofs authenticate the exact payload bytes and payload type
+  against an externally trusted ECDSA P-256 public key; unsigned statements are
+  now reported explicitly as unauthenticated.
+- Added safe key generation, verifier nonces, signed issuer claims, offline signing,
+  required-signature mode, wrong-key and payload-replacement tests, and strict
+  nested validation with cross-field invariants.
+- Made salted subject commitments the default. Raw email SHA-256 is now
+  the explicit `correlatable` profile rather than an unavoidable privacy cost.
+- Added detector artifact and LureBench version provenance, input truncation
+  disclosure, full Statement and DSSE schemas, and a browser download workflow.
+
+### Changed
+- The reference producer accepts deterministic local detectors only. This avoids
+  provider charges and prevents nondeterministic LLM outputs from being presented
+  as reproducible evidence.
+
 ## 0.5.0 — 2026-08-08
 
 ### Added
 - **LureProof 0.1**, an experimental, vendor-neutral resilience passport for a
   suspicious email: minimized message identity, detector and threshold provenance,
   deterministic attack/defense outcomes, implementation provenance, limitations,
-  and independently recomputable integrity.
+  and independently recomputable content addressing. Authentication was added and
+  the integrity claim corrected in 0.5.1.
 - `lurescope proof`, `lurescope verify`, `POST /proof/email`, and
   `POST /proof/verify` workflows.
 - A public JSON Schema, design and standards-landscape document, privacy regression

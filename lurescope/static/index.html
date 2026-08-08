@@ -117,6 +117,10 @@
   .evidence-item { padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-2); font-size: 12px; background: #09151a; }
   .evidence-item b { color: var(--ink); margin-right: 7px; }
   .triage-action { margin: 15px 0 0; color: var(--cyan); font-size: 12px; }
+  .proof-actions { display: none; align-items: center; gap: 13px; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--line); }
+  .proof-button { min-height: 40px; padding: 0 16px; border: 1px solid rgba(87,242,193,.5); border-radius: 9px; color: var(--mint); background: var(--mint-soft); font-weight: 730; cursor: pointer; }
+  .proof-button:hover { border-color: var(--mint); transform: translateY(-1px); }
+  .proof-status { color: var(--muted); font: 10px/1.5 var(--mono); }
   .attack-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
   .secondary { min-height: 44px; padding: 0 20px; border: 1px solid rgba(255,113,107,.45); border-radius: 10px; color: var(--coral); background: var(--coral-soft); font-weight: 730; cursor: pointer; }
   .secondary:hover { border-color: var(--coral); transform: translateY(-1px); }
@@ -142,7 +146,7 @@
     .shell { padding: 20px 14px 48px; } .status { display: none; } .hero { padding: 50px 2px 38px; }
     h1 { font-size: 52px; } .compose, .panel, .attack-lab { padding: 20px; }
     .controls, .attack-grid { grid-template-columns: 1fr; } .primary, .secondary { width: 100%; }
-    .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } .email-row, .triage-summary { grid-template-columns: 1fr; } .file-button { width: 100%; } footer { display: block; } footer span { display: block; margin-top: 8px; }
+    .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } .email-row, .triage-summary { grid-template-columns: 1fr; } .file-button { width: 100%; } .proof-actions { align-items: stretch; flex-direction: column; } .proof-button { width: 100%; } footer { display: block; } footer span { display: block; margin-top: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 </style>
@@ -207,6 +211,7 @@
     <div class="triage-result" id="triageResult" aria-live="polite">
       <div class="triage-summary"><span class="risk" id="riskTier">—</span><div class="triage-title"><strong id="triageSubject">—</strong><small id="triageSender">—</small></div><strong class="triage-score" id="triageScore">—</strong></div>
       <div class="evidence-list" id="triageEvidence"></div><p class="triage-action" id="triageAction"></p>
+      <div class="proof-actions" id="proofActions"><button class="proof-button" id="proofBtn" type="button">Download salted LureProof</button><span class="proof-status" id="proofStatus">No message content or addresses are written to the proof.</span></div>
     </div>
   </section>
 
@@ -240,6 +245,7 @@ const samples = {
   bec: "Hi, I am in meetings all afternoon. Please process the attached vendor payment today and reply when the wire is complete. Keep this between us until the acquisition is announced.",
   benign: "Hi team, the design review moved to Thursday at 2 PM. The agenda is in our shared project folder. Please add comments before Wednesday afternoon."
 };
+let currentEmail = null;
 
 async function loadCapabilities() {
   const response = await fetch("capabilities");
@@ -290,7 +296,7 @@ async function attack() {
 }
 
 async function triageFile(file) {
-  $("triageErr").textContent = ""; $("triageResult").style.display = "none";
+  $("triageErr").textContent = ""; $("triageResult").style.display = "none"; $("proofActions").style.display = "none"; currentEmail = null;
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { $("triageErr").textContent = "Email exceeds the 5 MB safety limit."; return; }
   try {
@@ -301,13 +307,27 @@ async function triageFile(file) {
     $("triageSubject").textContent = data.subject || "No subject"; $("triageSender").textContent = data.from_address || "Unknown sender";
     $("triageScore").textContent = pct(data.content_probability); $("triageScore").style.color = tone(data.content_probability, data.threshold);
     $("triageEvidence").innerHTML = data.evidence.length ? data.evidence.map(item => `<div class="evidence-item"><b>${safe(item.severity.toUpperCase())}</b>${safe(item.title)} — ${safe(item.detail)}</div>`).join("") : '<div class="evidence-item">No deterministic header, link, or attachment flags found.</div>';
-    $("triageAction").textContent = data.recommended_action; $("triageResult").style.display = "block";
+    $("triageAction").textContent = data.recommended_action; currentEmail = {raw, name: file.name}; $("proofStatus").textContent = "No message content or addresses are written to the proof."; $("proofActions").style.display = "flex"; $("triageResult").style.display = "block";
   } catch (error) { $("triageErr").textContent = error.message; }
+}
+
+async function downloadProof() {
+  if (!currentEmail) return;
+  $("proofBtn").disabled = true; $("proofBtn").textContent = "Building resilience evidence…"; $("proofStatus").textContent = "Running four local attack and defense checks.";
+  try {
+    const response = await fetch("proof/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: currentEmail.raw, detector: $("detector").value, privacy_profile: "salted-commitment"})});
+    const proof = await response.json(); if (!response.ok) throw new Error(proof.detail || response.statusText);
+    const signed = Boolean(proof.payloadType); const blob = new Blob([JSON.stringify(proof, null, 2) + "\n"], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a");
+    link.href = url; link.download = currentEmail.name.replace(/\.eml$/i, "") + (signed ? ".lureproof.dsse.json" : ".lureproof.json"); document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    $("proofStatus").textContent = signed ? "Signed DSSE envelope downloaded." : "Unsigned statement downloaded. It is schema-valid evidence, not authenticated issuer evidence.";
+  } catch (error) { $("proofStatus").textContent = error.message; }
+  finally { $("proofBtn").disabled = false; $("proofBtn").textContent = "Download salted LureProof"; }
 }
 
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { $("text").value = samples[button.dataset.sample]; analyze(); }));
 $("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack); $("detector").addEventListener("change", analyze);
 $("emailFile").addEventListener("change", event => triageFile(event.target.files[0]));
+$("proofBtn").addEventListener("click", downloadProof);
 loadCapabilities().then(analyze).catch(error => { $("scoreErr").textContent = error.message; });
 </script>
 </body>
