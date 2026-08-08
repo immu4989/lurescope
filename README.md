@@ -45,6 +45,12 @@ lurescope verify suspicious.lureproof.dsse.json \
   --public-key issuer.pub.pem --require-signature
 ```
 
+Prefer the browser? Run `lurescope`, open `http://127.0.0.1:8000`, choose a
+saved `.eml`, review the triage result, and select **Download salted
+LureProof**. The [API-backed web lab](lurescope/static/index.html) creates an
+unsigned, strict proof through `POST /proof/email`; signing remains an explicit
+offline CLI step.
+
 The default uses a fresh salted subject commitment, preventing direct hash-based
 matching between proofs; raw SHA-256 correlation is opt-in. Other fields can still
 act as a fingerprint, so this is not an anonymity claim. Signed proofs bind
