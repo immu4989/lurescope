@@ -1,4 +1,4 @@
-"""LureScope CLI: serve the lab or triage suspicious email locally."""
+"""LureScope CLI: serve, triage, and create verifiable resilience evidence."""
 
 from __future__ import annotations
 
@@ -105,10 +105,54 @@ def _triage(argv: Sequence[str]) -> int:
     return 1 if failures else 0
 
 
+def _proof(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope proof", description="Create a privacy-minimized LureProof from one .eml."
+    )
+    parser.add_argument("input", help=".eml file or - for stdin")
+    parser.add_argument("--out", "-o", required=True, help="output .lureproof.json path")
+    parser.add_argument("--detector", default="tfidf-logreg")
+    parser.add_argument("--threshold", type=float, default=None)
+    args = parser.parse_args(argv)
+    try:
+        raw = sys.stdin.buffer.read() if args.input == "-" else Path(args.input).read_bytes()
+        from .proof import create_email_proof, dumps_proof
+
+        proof = create_email_proof(raw, args.detector, args.threshold)
+        Path(args.out).write_text(dumps_proof(proof), encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    print(f"created {args.out} ({proof['integrity']['algorithm']}:{proof['integrity']['digest']})")
+    return 0
+
+
+def _verify(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope verify", description="Verify a LureProof structure and digest."
+    )
+    parser.add_argument("proof", help=".lureproof.json path")
+    args = parser.parse_args(argv)
+    try:
+        from .proof import verify_proof
+
+        proof = json.loads(Path(args.proof).read_text(encoding="utf-8"))
+        result = verify_proof(proof)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result, sort_keys=True))
+    return 0 if result["valid"] else 1
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
         return _triage(args[1:])
+    if args and args[0] == "proof":
+        return _proof(args[1:])
+    if args and args[0] == "verify":
+        return _verify(args[1:])
     return _serve(args)
 
 

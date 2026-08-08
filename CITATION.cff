@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "LureScope: A Deployable Fraud-Lure Scoring API with a Live Adversarial-Evasion Demo"
+title: "LureScope: Adversarial Fraud Triage and Portable Resilience Evidence"
 message: "If you use LureScope in your work, please cite it."
 type: software
 authors:
@@ -11,14 +11,12 @@ doi: "10.5281/zenodo.21631787"
 repository-code: "https://github.com/immu4989/lurescope"
 url: "https://huggingface.co/spaces/immu4989/lurescope"
 abstract: >-
-  LureScope is the serving companion to LureBench: an HTTP API and browser demo
-  that scores a message for fraud-lure likelihood, applies an adversarial attack,
-  and re-scores after an input-normalization defense, making the gap between
-  clean-data accuracy and deployment accuracy visible on a single message. It
-  reuses LureBench's detectors and attacks directly, so the served model and the
-  benchmarked model cannot drift.
-version: 0.2.1
-date-released: "2026-07-27"
+  LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies
+  adversarial attacks, and tests an input-normalization defense. LureProof adds a
+  privacy-minimized, machine-verifiable evidence artifact containing detector and
+  threshold provenance plus attack and defense outcomes without message content.
+version: 0.5.0
+date-released: "2026-08-08"
 license: Apache-2.0
 keywords:
   - fraud detection
@@ -26,6 +24,7 @@ keywords:
   - adversarial robustness
   - model serving
   - AI security
+  - security attestations
 references:
   - type: software
     title: "LureBench: A Benchmark and Evaluation Harness for Detecting AI-Generated Fraud Lures"

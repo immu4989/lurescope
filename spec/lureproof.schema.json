@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/blob/main/spec/lureproof.schema.json",
+  "title": "LureProof 0.1",
+  "description": "Privacy-minimized evidence of a fraud-control assessment and deterministic adversarial checks.",
+  "type": "object",
+  "required": ["spec", "spec_version", "created_at", "privacy_profile", "subject", "assessment", "resilience", "implementation", "integrity"],
+  "properties": {
+    "spec": {"const": "lureproof"},
+    "spec_version": {"const": "0.1"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "privacy_profile": {"const": "shareable-minimized"},
+    "subject": {
+      "type": "object",
+      "required": ["media_type", "sha256", "byte_length"],
+      "properties": {
+        "media_type": {"const": "message/rfc822"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "byte_length": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "assessment": {"type": "object"},
+    "resilience": {"type": "object"},
+    "implementation": {"type": "object"},
+    "framework_mappings": {"type": "object"},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "integrity": {
+      "type": "object",
+      "required": ["algorithm", "canonicalization", "digest"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "canonicalization": {"const": "lureproof-json-0.1"},
+        "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -23,9 +23,13 @@ from .models import (
     DetectorInfo,
     EmailTriageRequest,
     EmailTriageResponse,
+    LureProofRequest,
+    LureProofVerifyRequest,
+    LureProofVerifyResponse,
     ScoreRequest,
     ScoreResponse,
 )
+from .proof import create_email_proof, verify_proof
 from .triage import EmailTooLarge, triage_email
 
 _STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -53,7 +57,7 @@ def capabilities() -> CapabilitiesResponse:
         attacks=service.available_attacks(),
         defenses=service.available_defenses_(),
         default_detector=service.DEFAULT_DETECTOR,
-        workflows=["score", "attack", "email-triage"],
+        workflows=["score", "attack", "email-triage", "lureproof"],
     )
 
 
@@ -114,13 +118,39 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
             engine=req.engine,
             model=req.model,
         )
-    except (EmailTooLarge, ValueError) as exc:
-        raise HTTPException(400, str(exc)) from exc
     except service.DetectorUnavailable as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except (EmailTooLarge, ValueError) as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - provider failure at score time
         raise HTTPException(502, f"triage failed: {type(exc).__name__}: {exc}") from exc
     return EmailTriageResponse(**result.as_dict())
+
+
+@app.post("/proof/email")
+def prove_email_message(req: LureProofRequest) -> dict:
+    """Create shareable adversarial evidence without retaining message content."""
+    if req.detector not in service.all_detectors():
+        raise HTTPException(400, f"unknown detector {req.detector!r}")
+    try:
+        return create_email_proof(
+            req.raw_email.encode("utf-8", errors="surrogateescape"),
+            detector_name=req.detector,
+            threshold=req.threshold,
+            engine=req.engine,
+            model=req.model,
+        )
+    except service.DetectorUnavailable as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except (EmailTooLarge, ValueError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"proof creation failed: {type(exc).__name__}: {exc}") from exc
+
+
+@app.post("/proof/verify", response_model=LureProofVerifyResponse)
+def verify_lureproof(req: LureProofVerifyRequest) -> LureProofVerifyResponse:
+    return LureProofVerifyResponse(**verify_proof(req.proof))
 
 
 @app.get("/")

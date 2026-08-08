@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -115,3 +115,17 @@ class EmailTriageResponse(BaseModel):
     evidence: List[TriageEvidence]
     urls: List[str]
     attachments: List[str]
+
+
+class LureProofRequest(EmailTriageRequest):
+    """The same bounded raw-email input, producing minimized evidence."""
+
+
+class LureProofVerifyRequest(BaseModel):
+    proof: Dict[str, Any]
+
+
+class LureProofVerifyResponse(BaseModel):
+    valid: bool
+    digest: str
+    errors: List[str]

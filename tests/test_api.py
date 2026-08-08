@@ -31,6 +31,7 @@ def test_capabilities_lists_detectors_and_attacks():
     assert "homoglyph" in c["attacks"]
     assert c["default_detector"] == "tfidf-logreg"
     assert "email-triage" in c["workflows"]
+    assert "lureproof" in c["workflows"]
 
 
 def test_score_flags_a_lure_higher_than_benign():
@@ -163,3 +164,20 @@ def test_email_triage_endpoint_returns_structured_evidence():
 def test_email_triage_rejects_unreadable_message():
     response = client.post("/triage/email", json={"raw_email": "From: empty@example.org\n\n"})
     assert response.status_code == 400
+
+
+def test_lureproof_create_and_verify_endpoints():
+    raw = (
+        "From: Security <alerts@example.org>\n"
+        "Reply-To: collect@other.example\n"
+        "Subject: Urgent account verification\n\n"
+        "Verify your account at http://192.0.2.10/login within 24 hours."
+    )
+    created = client.post("/proof/email", json={"raw_email": raw})
+    assert created.status_code == 200
+    proof = created.json()
+    assert proof["spec"] == "lureproof"
+    assert "Urgent account verification" not in created.text
+    verified = client.post("/proof/verify", json={"proof": proof})
+    assert verified.status_code == 200
+    assert verified.json()["valid"] is True

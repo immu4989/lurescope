@@ -1,6 +1,6 @@
 {
-  "title": "LureScope: A Deployable Fraud-Lure Scoring API with a Live Adversarial-Evasion Demo",
-  "description": "<p>LureScope is the serving companion to LureBench. It wraps a fraud-lure detector behind a small HTTP API and a browser demo so a single message can be scored, attacked, and then re-scored after an input-normalization defense, making the gap between clean-data accuracy and deployment accuracy visible interactively.</p><p>It reuses LureBench's detectors and attacks directly, so the served model and the benchmarked model cannot drift. The bundled demo also ships as a zero-backend static build that runs both baseline detectors, all four character attacks, and the normalization defense entirely in the browser, with the JavaScript port verified against the Python implementation.</p><p>The repository additionally publishes two corpus-level robustness scorecards: detector-by-attack evasion rates before and after the defense, and a cross-model comparison of LLM-as-classifier judges.</p>",
+  "title": "LureScope: Adversarial Fraud Triage and Portable Resilience Evidence",
+  "description": "<p>LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies adversarial attacks, and tests an input-normalization defense.</p><p>LureProof 0.1 adds a privacy-minimized, machine-verifiable evidence artifact containing detector and threshold provenance plus deterministic attack and defense outcomes without retaining the message body, subject, addresses, URLs, attachment names, or transformed lure text.</p><p>LureScope reuses LureBench's detectors and attacks directly and publishes reproducible corpus-level robustness scorecards.</p>",
   "upload_type": "software",
   "license": "Apache-2.0",
   "access_right": "open",
@@ -16,7 +16,9 @@
     "adversarial robustness",
     "model serving",
     "AI security",
-    "input normalization"
+    "input normalization",
+    "security attestations",
+    "threat information sharing"
   ],
   "related_identifiers": [
     {

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 — 2026-08-08
+
+### Added
+- **LureProof 0.1**, an experimental, vendor-neutral resilience passport for a
+  suspicious email: minimized message identity, detector and threshold provenance,
+  deterministic attack/defense outcomes, implementation provenance, limitations,
+  and independently recomputable integrity.
+- `lurescope proof`, `lurescope verify`, `POST /proof/email`, and
+  `POST /proof/verify` workflows.
+- A public JSON Schema, design and standards-landscape document, privacy regression
+  tests, deterministic reproduction test, tamper test, CLI test, and API test.
+
 ## 0.4.0 — 2026-08-08
 
 ### Added
