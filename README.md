@@ -15,11 +15,9 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
-**[Launch live lab →](https://huggingface.co/spaces/immu4989/lurescope)** ·
-**[Open local web lab →](http://127.0.0.1:8000)** ·
+**[Launch public demo →](https://huggingface.co/spaces/immu4989/lurescope)** ·
+**[Run full local lab →](#quickstart)** ·
 **[View web UI source →](lurescope/static/index.html)**
-
-<sub>Run <code>lurescope</code> first to open the local web lab.</sub>
 
 </div>
 
@@ -170,11 +168,21 @@ Why this matters: in LureBench, **Llama Guard scores a 0% true-positive rate on 
 
 ```bash
 git clone https://github.com/immu4989/lurescope && cd lurescope
-pip install .
-lurescope            # serves the API + demo at http://127.0.0.1:8000
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+lurescope
 ```
 
-Open the demo in a browser, or call the API directly:
+Keep that terminal running, then open the
+**[full local web lab](http://127.0.0.1:8000)**. The local HTML page is
+API-backed, so opening `lurescope/static/index.html` directly with a `file://`
+URL will display the interface but its scoring, triage, and proof actions will
+not work. Alternatively, use the
+**[public browser-only demo](https://huggingface.co/spaces/immu4989/lurescope)**
+without installing anything.
+
+You can also call the local API directly:
 
 ```bash
 # Score a message
