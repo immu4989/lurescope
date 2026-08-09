@@ -26,6 +26,11 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
 
+> **Deployment thresholds now carry inspectable evidence.** LureScope accepts
+> LureBench schema-v2 policies with finite-sample FPR control, independently
+> recomputes their exact statistics, and exposes assurance and limitations at
+> `GET /policy`. See [risk-controlled policy deployment](docs/RISK_CONTROLLED_POLICY.md).
+
 ## LureProof: a portable resilience passport
 
 Screenshots are difficult to authenticate, vendor reports are difficult to compare, and
@@ -124,13 +129,18 @@ Three findings. First, the strong LLM judges are **essentially immune to charact
 
 > **Corrections.** Two published claims in this section have been revised; both are recorded in full in [LLM_SCORECARD.md](LLM_SCORECARD.md). In summary: **(2026-07-30)** the table's stated 120-lure sample was really 73 distinct records, because colliding record ids in the upstream corpus caused this script to overwrite records; judge recall was understated by 4–10 points and `deepseek-v4-flash` paraphrase evasion moved from 27% to 16%. **(2026-07-26).** This section originally read the judges' low clean recall as "immunity paid for in recall." Re-measured over the full 2,056-record `core/test` set with threshold-free metrics, the judges post an **AUC of 0.89–0.94** — they rank fraud above benign well, they are just badly calibrated at the 0.50 cut. Dropping `deepseek-v4-flash` to a 0.10 threshold lifts recall from 0.750 to 0.856 at a 2.5% false-positive rate. The character-attack immunity and the paraphrase weakness both stand; the recall trade-off does not. Details in [LLM_SCORECARD.md](LLM_SCORECARD.md), full leaderboard in [LureBench](https://github.com/immu4989/lurebench/blob/main/docs/leaderboard.md).
 
-### Serve a validated decision policy
+### Serve a risk-controlled decision policy
 
-LureBench 0.9 can select a threshold on a validation split and export a policy
-with its objective and validation-data digest. Point LureScope at that artifact:
+LureBench can now require finite-sample evidence—not merely an observed
+validation FPR—before exporting a threshold:
 
 ```bash
-export LURESCOPE_POLICY_PATH=/absolute/path/to/tfidf-1pct-fpr.json
+lurebench calibrate -d validation.jsonl -m tfidf-logreg \
+  --model-path models/tfidf-logreg-fraud.joblib \
+  --objective risk_controlled_fpr --target-fpr 0.01 \
+  --confidence 0.95 -o policies/tfidf-1pct-fpr-95.json
+lurescope policy policies/tfidf-1pct-fpr-95.json
+export LURESCOPE_POLICY_PATH=/absolute/path/to/policies/tfidf-1pct-fpr-95.json
 uvicorn lurescope.app:app
 ```
 
@@ -139,6 +149,9 @@ detector matches the request. The response includes `policy_id` and
 `threshold_source=validated_policy`. An explicit request threshold remains a
 supported override and is identified as `threshold_source=request`; with no
 matching policy, the backward-compatible 0.5 default remains.
+`GET /policy` reports whether the configured artifact is finite-sample
+risk-controlled, empirical-only, or absent, along with its assumptions. Details
+in the [deployment guide](docs/RISK_CONTROLLED_POLICY.md).
 
 Full table and caveats in [LLM_SCORECARD.md](LLM_SCORECARD.md); reproduce with your own key and model list:
 
@@ -211,6 +224,7 @@ docker build -t lurescope . && docker run -p 8000:8000 lurescope
 |---|---|---|
 | `GET` | `/health` | Liveness check |
 | `GET` | `/capabilities` | Detectors (with requirements), attacks, and defenses |
+| `GET` | `/policy` | Configured threshold, provenance, assurance evidence, and limitations |
 | `POST` | `/score` | Fraud-lure probability + the words the detector keys on |
 | `POST` | `/attack` | Apply an attack, re-score, and (optionally) apply a defense and re-score again |
 | `POST` | `/triage/email` | Safely parse and triage a raw RFC 5322 email |

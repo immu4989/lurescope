@@ -188,6 +188,28 @@ def _keygen(argv: Sequence[str]) -> int:
     return 0
 
 
+def _policy(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope policy",
+        description="Validate and inspect a LureBench decision policy without serving the API.",
+    )
+    parser.add_argument(
+        "path", nargs="?",
+        help="policy JSON path; omit to inspect LURESCOPE_POLICY_PATH",
+    )
+    args = parser.parse_args(argv)
+    try:
+        from .policy import configured_policy, load_policy, policy_status
+
+        policy = load_policy(str(Path(args.path).resolve())) if args.path else configured_policy()
+        status = policy_status(policy)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"! invalid policy: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(status, indent=2, sort_keys=True))
+    return 0 if status["configured"] else 1
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -198,6 +220,8 @@ def main(argv=None) -> int:
         return _verify(args[1:])
     if args and args[0] == "keygen":
         return _keygen(args[1:])
+    if args and args[0] == "policy":
+        return _policy(args[1:])
     return _serve(args)
 
 

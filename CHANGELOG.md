@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- Strict support for LureBench schema-v2 risk-controlled decision policies.
+  LureScope independently recomputes exact binomial p-values and one-sided FPR
+  bounds and rejects internally inconsistent or insufficient policy evidence.
+- `GET /policy` and `lurescope policy` for deployment-readiness inspection,
+  explicitly distinguishing finite-sample FPR control, empirical-only legacy
+  thresholds, and an unconfigured service.
+- Operator documentation for policy creation, validation, serving, monitoring,
+  assumptions, and the boundary between provenance digests and authentication.
 - A GitHub Pages edition of the adversarial lab. The exported 50,000-feature
   model, deterministic attacks, normalization defense, and bounded `.eml`
   preview run entirely in the browser without sending message content away.

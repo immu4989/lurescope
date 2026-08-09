@@ -26,9 +26,11 @@ from .models import (
     LureProofRequest,
     LureProofVerifyRequest,
     LureProofVerifyResponse,
+    PolicyStatusResponse,
     ScoreRequest,
     ScoreResponse,
 )
+from .policy import configured_policy, policy_status
 from .proof import create_email_proof, verify_proof
 from .triage import EmailTooLarge, triage_email
 
@@ -57,8 +59,14 @@ def capabilities() -> CapabilitiesResponse:
         attacks=service.available_attacks(),
         defenses=service.available_defenses_(),
         default_detector=service.DEFAULT_DETECTOR,
-        workflows=["score", "attack", "email-triage", "lureproof"],
+        workflows=["score", "attack", "email-triage", "lureproof", "risk-controlled-policy"],
     )
+
+
+@app.get("/policy", response_model=PolicyStatusResponse)
+def decision_policy() -> PolicyStatusResponse:
+    """Expose non-secret policy provenance, assurance evidence, and limitations."""
+    return PolicyStatusResponse(**policy_status(configured_policy()))
 
 
 @app.post("/score", response_model=ScoreResponse)

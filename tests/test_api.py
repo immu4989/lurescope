@@ -32,6 +32,15 @@ def test_capabilities_lists_detectors_and_attacks():
     assert c["default_detector"] == "tfidf-logreg"
     assert "email-triage" in c["workflows"]
     assert "lureproof" in c["workflows"]
+    assert "risk-controlled-policy" in c["workflows"]
+
+
+def test_policy_endpoint_is_explicit_when_unconfigured(monkeypatch):
+    monkeypatch.delenv("LURESCOPE_POLICY_PATH", raising=False)
+    result = client.get("/policy")
+    assert result.status_code == 200
+    assert result.json()["configured"] is False
+    assert result.json()["assurance_status"] == "none"
 
 
 def test_score_flags_a_lure_higher_than_benign():

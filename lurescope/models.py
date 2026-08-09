@@ -78,6 +78,38 @@ class CapabilitiesResponse(BaseModel):
     workflows: List[str] = Field(default_factory=list)
 
 
+class RiskControlInfo(BaseModel):
+    method: str
+    risk: str
+    confidence: float
+    validation_negatives: int
+    false_positives: int
+    empirical_fpr: float
+    upper_confidence_bound: float
+    hypothesis_p_value: float
+    threshold_grid_size: int
+
+
+class PolicyStatusResponse(BaseModel):
+    configured: bool
+    assurance_status: str
+    schema_version: Optional[int] = None
+    policy_id: Optional[str] = None
+    detector: Optional[str] = None
+    task: Optional[str] = None
+    threshold: Optional[float] = None
+    objective: Optional[str] = None
+    target_fpr: Optional[float] = None
+    validation_records: Optional[int] = None
+    validation_sha256: Optional[str] = None
+    evaluation_sha256: Optional[str] = None
+    validation_true_positives: Optional[int] = None
+    validation_recall: Optional[float] = None
+    created_at: Optional[str] = None
+    risk_control: Optional[RiskControlInfo] = None
+    limitations: List[str] = Field(default_factory=list)
+
+
 class EmailTriageRequest(BaseModel):
     raw_email: str = Field(
         ..., min_length=1, max_length=5 * 1024 * 1024,
