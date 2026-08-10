@@ -34,3 +34,39 @@ jobs:
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: python -m build
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build runtime image
+        run: docker build --tag lurescope:ci .
+      - name: Start hardened container
+        run: |
+          docker run --detach --name lurescope-ci \
+            --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --cap-drop ALL --security-opt no-new-privileges:true \
+            --publish 127.0.0.1:8000:8000 \
+            lurescope:ci
+      - name: Verify runtime and API
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:8000/health; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error http://127.0.0.1:8000/health \
+            | python -c 'import json, sys; assert json.load(sys.stdin)["status"] == "ok"'
+          curl --fail --silent --show-error http://127.0.0.1:8000/score \
+            --header 'content-type: application/json' \
+            --data '{"text":"Verify your account at hxxps://example[.]invalid"}' \
+            | python -c 'import json, sys; p=json.load(sys.stdin)["fraud_probability"]; assert 0 <= p <= 1'
+          test "$(docker inspect --format '{{.Config.User}}' lurescope-ci)" = "10001:10001"
+          test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' lurescope-ci)" = "true"
+          docker exec lurescope-ci sh -c '! command -v git'
+      - name: Show logs and remove container
+        if: always()
+        run: |
+          docker logs lurescope-ci 2>/dev/null || :
+          docker rm --force lurescope-ci 2>/dev/null || :

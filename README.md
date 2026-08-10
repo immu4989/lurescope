@@ -212,11 +212,23 @@ curl -s localhost:8000/attack -H 'content-type: application/json' \
 #     "defended_probability":0.69,"defense_recovered":true,"defended_evaded":false, ...}
 ```
 
-Run it in a container instead:
+Run it in a hardened local container instead:
 
 ```bash
-docker build -t lurescope . && docker run -p 8000:8000 lurescope
+docker build -t lurescope .
+docker run --name lurescope-local --restart unless-stopped \
+  --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --cap-drop ALL --security-opt no-new-privileges:true \
+  -p 127.0.0.1:8000:8000 \
+  -e LURESCOPE_LLM_ENGINE=openrouter -e OPENROUTER_API_KEY \
+  lurescope
 ```
+
+The runtime image is non-root, contains no Git or compiler toolchain, carries a
+Docker health check, and pins the exact LureBench commit used by its policy
+verifier. Keep key-backed deployments on localhost unless an authenticating,
+rate-limiting gateway is in front; otherwise public callers can spend your
+provider credits.
 
 ## API
 

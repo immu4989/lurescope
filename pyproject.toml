@@ -38,7 +38,7 @@ dependencies = [
   "scikit-learn>=1.6,<1.7",
   # Detection + attack logic is reused from LureBench so the service and the
   # benchmark can never drift. [train] pulls scikit-learn/joblib for the bundled model.
-  "lurebench[train] @ git+https://github.com/immu4989/lurebench.git",
+  "lurebench[train] @ git+https://github.com/immu4989/lurebench.git@23c5e0268e4080bd8d9e3f5c9a7b4c0a57913ec3",
 ]
 
 [project.optional-dependencies]

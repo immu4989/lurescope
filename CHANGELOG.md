@@ -18,6 +18,13 @@
   browser-engine regression tests.
 
 ### Changed
+- Hardened the Docker path with a small build context, multi-stage build,
+  non-root runtime, no Git/build toolchain in the final image, built-in health
+  check, and an exact LureBench commit pin for reproducible policy verification.
+- Added a CI smoke test that exercises the read-only, capability-dropped
+  container and verifies both its health and scoring endpoints.
+- Documented localhost-only key forwarding and the requirement for
+  authentication and rate limiting before exposing paid provider routes.
 - Replaced the static repository banner with a lightweight animated operational
   radar that shows the score → attack → defend workflow.
 - The Pages edition explicitly routes strict LureProof creation, RFC-complete
