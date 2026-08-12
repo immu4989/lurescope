@@ -9,9 +9,15 @@
   commit or image digests; restricted the CI token to read-only contents.
 - Replaced the build-time Git checkout and mutable OS package installation with
   the exact LureBench v0.9.0 release source verified by SHA-256.
+- Moved the LureBench source dependency to its immutable, version-specific
+  Zenodo record to avoid transient GitHub release-asset redirects in CI.
 - Replaced shell pipelines over HTTP responses in the container smoke test with
   a checked-in, fail-closed verifier that parses response data without executing
   it.
+- Raised the minimum Python version from 3.9 to 3.10. Python 3.9 is end-of-life,
+  and its last-compatible Starlette, Pillow, pytest, and python-dotenv branches
+  contain known vulnerabilities. The maintained Python resolution uses fixed
+  releases.
 
 ## 0.6.0 — 2026-08-12
 
