@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -29,9 +29,11 @@ from .models import (
     PolicyStatusResponse,
     ScoreRequest,
     ScoreResponse,
+    SecurityStatusResponse,
 )
 from .policy import configured_policy, policy_status
 from .proof import create_email_proof, verify_proof
+from .security import enforce_request_policy, require_api_access, security_status
 from .triage import EmailTooLarge, triage_email
 
 _STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -48,6 +50,9 @@ app = FastAPI(
 
 @app.get("/health")
 def health() -> dict:
+    posture = security_status()
+    if posture["mode"] == "misconfigured":
+        raise HTTPException(503, "deployment security is misconfigured")
     return {"status": "ok", "version": __version__}
 
 
@@ -69,10 +74,21 @@ def decision_policy() -> PolicyStatusResponse:
     return PolicyStatusResponse(**policy_status(configured_policy()))
 
 
-@app.post("/score", response_model=ScoreResponse)
+@app.get("/security", response_model=SecurityStatusResponse)
+def deployment_security() -> SecurityStatusResponse:
+    """Expose deployment posture without revealing credentials or provider keys."""
+    return SecurityStatusResponse(**security_status())
+
+
+@app.post(
+    "/score",
+    response_model=ScoreResponse,
+    dependencies=[Depends(require_api_access)],
+)
 def score(req: ScoreRequest) -> ScoreResponse:
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         r = service.score(
             req.text,
@@ -88,7 +104,11 @@ def score(req: ScoreRequest) -> ScoreResponse:
     return ScoreResponse(**r.__dict__)
 
 
-@app.post("/attack", response_model=AttackResponse)
+@app.post(
+    "/attack",
+    response_model=AttackResponse,
+    dependencies=[Depends(require_api_access)],
+)
 def attack(req: AttackRequest) -> AttackResponse:
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
@@ -96,6 +116,13 @@ def attack(req: AttackRequest) -> AttackResponse:
         raise HTTPException(400, f"unknown attack {req.attack!r}")
     if req.defense not in service.available_defenses_():
         raise HTTPException(400, f"unknown defense {req.defense!r}")
+    enforce_request_policy(
+        detector=req.detector,
+        attack=req.attack,
+        defense=req.defense,
+        engine=req.engine,
+        model=req.model,
+    )
     try:
         r = service.attack(
             req.text,
@@ -113,11 +140,16 @@ def attack(req: AttackRequest) -> AttackResponse:
     return AttackResponse(**r.__dict__)
 
 
-@app.post("/triage/email", response_model=EmailTriageResponse)
+@app.post(
+    "/triage/email",
+    response_model=EmailTriageResponse,
+    dependencies=[Depends(require_api_access)],
+)
 def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
     """Triage raw email locally without fetching links or opening attachments."""
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         result = triage_email(
             req.raw_email.encode("utf-8", errors="surrogateescape"),
@@ -135,11 +167,12 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
     return EmailTriageResponse(**result.as_dict())
 
 
-@app.post("/proof/email")
+@app.post("/proof/email", dependencies=[Depends(require_api_access)])
 def prove_email_message(req: LureProofRequest) -> dict:
     """Create minimized unsigned evidence; issuer signing is an offline operation."""
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         return create_email_proof(
             req.raw_email.encode("utf-8", errors="surrogateescape"),
@@ -158,7 +191,11 @@ def prove_email_message(req: LureProofRequest) -> dict:
         raise HTTPException(502, f"proof creation failed: {type(exc).__name__}: {exc}") from exc
 
 
-@app.post("/proof/verify", response_model=LureProofVerifyResponse)
+@app.post(
+    "/proof/verify",
+    response_model=LureProofVerifyResponse,
+    dependencies=[Depends(require_api_access)],
+)
 def verify_lureproof(req: LureProofVerifyRequest) -> LureProofVerifyResponse:
     public_key = req.public_key_pem.encode("utf-8") if req.public_key_pem else None
     return LureProofVerifyResponse(

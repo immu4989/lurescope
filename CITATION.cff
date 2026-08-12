@@ -16,8 +16,8 @@ abstract: >-
   strict, privacy-minimized evidence artifact containing detector and threshold
   provenance plus attack and defense outcomes without message content. A standard
   DSSE envelope can authenticate the statement against an external trust key.
-version: 0.5.1
-date-released: "2026-08-08"
+version: 0.6.0
+date-released: "2026-08-12"
 license: Apache-2.0
 keywords:
   - fraud detection

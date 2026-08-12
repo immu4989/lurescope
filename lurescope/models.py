@@ -78,6 +78,16 @@ class CapabilitiesResponse(BaseModel):
     workflows: List[str] = Field(default_factory=list)
 
 
+class SecurityStatusResponse(BaseModel):
+    mode: str
+    authentication_required: bool
+    rate_limit_per_minute: Optional[int] = None
+    provider_daily_limit: Optional[int] = None
+    allowed_detectors: List[str] = Field(default_factory=list)
+    provider_overrides_restricted: bool
+    limitations: List[str] = Field(default_factory=list)
+
+
 class RiskControlInfo(BaseModel):
     method: str
     risk: str

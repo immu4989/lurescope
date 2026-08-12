@@ -56,11 +56,18 @@ otherwise.
 
 ## Deployment notes
 
-The service ships with no authentication and no rate limiting. It is built for
-local use, demos, and research. If you expose it publicly, put it behind your own
-authentication, rate limiting, and request-size controls. Treat every scored
-message as sensitive: `/score` and `/attack` echo the submitted text back in the
-response, and the LLM-backed attacks send it to whichever provider you configure.
+The service is local-first. `LURESCOPE_PUBLIC_MODE=true` adds fail-closed bearer
+authentication, per-credential process-local rate limiting, detector/attack and
+provider/model allowlists, and a provider-call circuit breaker. It refuses to
+start protected requests without a configured API-key digest and exposes its
+non-secret posture at `GET /security`. See
+[public deployment guardrails](docs/PUBLIC_DEPLOYMENT.md).
+
+These controls do not replace an HTTPS gateway, a shared limiter for multiple
+workers, an identity provider, a pre-parse request-byte limit, or provider-side
+billing caps. Treat every scored message as sensitive: `/score` and `/attack`
+echo the submitted text to the authenticated caller, and enabled LLM-backed
+operations send it to the explicitly configured provider.
 
 The container runs as a normal user and needs no privileged capabilities.
 

@@ -9,7 +9,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Browser lab](https://img.shields.io/badge/▶_browser_lab-GitHub_Pages-57f2c1)](https://immu4989.github.io/lurescope/)
 [![Lightweight demo](https://img.shields.io/badge/🔬_lightweight_demo-Hugging_Face-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.5.1-57f2c1)
+![Version](https://img.shields.io/badge/version-0.6.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -230,6 +230,13 @@ verifier. Keep key-backed deployments on localhost unless an authenticating,
 rate-limiting gateway is in front; otherwise public callers can spend your
 provider credits.
 
+For an internet-facing deployment, enable LureScope's fail-closed public mode.
+It requires a bearer key, rate-limits each credential, defaults to local
+detectors, blocks arbitrary provider/model selection, and keeps provider use at
+a zero-call budget until explicitly enabled. Follow the
+[public deployment guardrails](docs/PUBLIC_DEPLOYMENT.md) and inspect the active
+posture at `GET /security`.
+
 ## API
 
 | Method | Path | Purpose |
@@ -237,6 +244,7 @@ provider credits.
 | `GET` | `/health` | Liveness check |
 | `GET` | `/capabilities` | Detectors (with requirements), attacks, and defenses |
 | `GET` | `/policy` | Configured threshold, provenance, assurance evidence, and limitations |
+| `GET` | `/security` | Non-secret authentication, rate-limit, allowlist, and provider-budget posture |
 | `POST` | `/score` | Fraud-lure probability + the words the detector keys on |
 | `POST` | `/attack` | Apply an attack, re-score, and (optionally) apply a defense and re-score again |
 | `POST` | `/triage/email` | Safely parse and triage a raw RFC 5322 email |

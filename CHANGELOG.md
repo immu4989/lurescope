@@ -2,9 +2,16 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-08-12
+
 ### Added
 - CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
   structured integration-request and Q&A forms.
+- Fail-closed public API mode with SHA-256 API-key configuration, constant-time
+  bearer authentication, per-credential sliding-window rate limiting, safe
+  detector/attack/provider/model defaults, and a provider-call circuit breaker.
+- `GET /security` and a production-boundary guide that reports deployment
+  posture without exposing credentials or provider keys.
 - Strict support for LureBench schema-v2 risk-controlled decision policies.
   LureScope independently recomputes exact binomial p-values and one-sided FPR
   bounds and rejects internally inconsistent or insufficient policy evidence.
