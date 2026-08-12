@@ -8,11 +8,28 @@ updates:
     groups:
       python-dependencies:
         patterns: ["*"]
+    # The bundled model is serialized with scikit-learn 1.6.1. Minor/major
+    # deserializer upgrades require an explicit model-compatibility validation.
+    ignore:
+      - dependency-name: scikit-learn
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: "/"
     schedule:
       interval: monthly
+    # Keep digest/patch refreshes automated. Runtime-line changes are validated
+    # deliberately against the native scientific stack and serialized model.
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
