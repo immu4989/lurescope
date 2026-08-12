@@ -49,15 +49,20 @@ matching Python exactly. Please do something equivalent and say so in the PR.
 
 ```bash
 git clone https://github.com/immu4989/lurescope && cd lurescope
-pip install -e ".[dev]"
-pytest -q
-ruff check lurescope tests scripts
+uv sync --extra dev
+uv run pytest -q
+uv run ruff check lurescope tests scripts
 ```
+
+CI uses `uv 0.12.3` and `uv sync --frozen`. If a dependency changes, run
+`uv lock`, review the package and hash changes in `uv.lock`, and commit the
+updated lockfile with the manifest change.
 
 Optional but recommended:
 
 ```bash
-pip install pre-commit && pre-commit install
+uv tool install pre-commit
+pre-commit install
 ```
 
 The scorecard scripts need no keys for the character attacks. The cross-model
@@ -72,7 +77,7 @@ costs nothing.
   body, and update the affected doc in the same PR. A result that changed silently
   is worse than one that changed loudly.
 - Keep `ruff check` and `pytest` green.
-- Run `python -m build` when changing dependencies, package data, schemas, or
+- Run `uv build` when changing dependencies, package data, schemas, or
   release metadata; both schemas must be present in the wheel.
 - Line length is 100. Targeting Python 3.9, so `typing.Optional` and `List` rather
   than the 3.10+ syntax.

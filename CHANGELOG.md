@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Security
+- Added a universal, hash-bearing `uv.lock` and changed CI and container builds
+  to frozen dependency resolution.
+- Pinned all CI, Pages, Python-base, and build-tool dependencies to immutable
+  commit or image digests; restricted the CI token to read-only contents.
+- Replaced the build-time Git checkout and mutable OS package installation with
+  the exact LureBench v0.9.0 release source verified by SHA-256.
+- Replaced shell pipelines over HTTP responses in the container smoke test with
+  a checked-in, fail-closed verifier that parses response data without executing
+  it.
+
 ## 0.6.0 — 2026-08-12
 
 ### Added
