@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
+  structured integration-request and Q&A forms.
 - Strict support for LureBench schema-v2 risk-controlled decision policies.
   LureScope independently recomputes exact binomial p-values and one-sided FPR
   bounds and rejects internally inconsistent or insufficient policy evidence.

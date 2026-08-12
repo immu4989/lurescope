@@ -1,0 +1,66 @@
+name: Use case or integration request
+description: Propose a concrete workflow where LureScope could help people safely.
+title: "[Use case]: "
+labels: [use-case]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the defensive outcome, not real victim data. Defang indicators
+        and do not include private messages, credentials, or active infrastructure.
+  - type: input
+    id: users
+    attributes:
+      label: Who would this serve?
+      placeholder: Help-desk analysts reviewing employee-reported email
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Current workflow and pain point
+      description: Explain the input, decision, downstream system, and what currently fails.
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Integration surface
+      options:
+        - REST API
+        - Email gateway or mailbox
+        - SIEM or SOAR
+        - Ticketing or help desk
+        - Browser or desktop
+        - Batch or command line
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Data, privacy, and retention constraints
+      description: State whether message content may leave the organization and what must never be stored.
+    validations:
+      required: true
+  - type: input
+    id: volume
+    attributes:
+      label: Expected volume and latency
+      placeholder: 1,000 messages/day; response needed within 5 seconds
+  - type: textarea
+    id: success
+    attributes:
+      label: Measurable success criteria
+      placeholder: Fewer than 1% false positives at 95% confidence, with analyst override retained.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: This is a defensive use case and contains no secrets or personal data.
+          required: true
+        - label: A human remains responsible for consequential decisions.
+          required: true

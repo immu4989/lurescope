@@ -1,0 +1,35 @@
+title: "[Question] "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Browser lab
+        - Local API or Docker
+        - Email triage
+        - LureProof
+        - Detector or provider configuration
+        - Risk-controlled policy
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.6.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Include the outcome you need and enough context to reproduce the situation.
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Redact API keys, message content, personal data, and live malicious infrastructure.
