@@ -35,7 +35,7 @@ dependencies = [
   # The bundled joblib model was trained with scikit-learn 1.6.1. Keep the
   # deserializer on the compatible minor line instead of silently loading it in
   # an arbitrary future release.
-  "scikit-learn>=1.6,<1.7",
+  "scikit-learn>=1.6,<1.8",
   # Detection + attack logic is reused from LureBench so the service and the
   # benchmark can never drift. [train] pulls scikit-learn/joblib for the bundled model.
   # This exact Zenodo v0.9.0 record is independently locked by SHA-256. Unlike
