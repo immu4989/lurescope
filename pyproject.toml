@@ -7,7 +7,7 @@ name = "lurescope"
 version = "0.6.0"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Imran Ahamed" }]
@@ -19,10 +19,10 @@ classifiers = [
   "Intended Audience :: Information Technology",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Security",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
@@ -85,9 +85,9 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
-# Targeting 3.9, so keep typing.Optional/List (safest for pydantic runtime eval);
-# UP (pyupgrade to 3.10+ syntax) is intentionally omitted.
+# Keep typing.Optional/List for conservative pydantic runtime evaluation; UP
+# (automatic syntax modernization) is intentionally omitted.
 select = ["E", "F", "I", "B"]

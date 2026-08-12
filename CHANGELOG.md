@@ -12,6 +12,10 @@
 - Replaced shell pipelines over HTTP responses in the container smoke test with
   a checked-in, fail-closed verifier that parses response data without executing
   it.
+- Raised the minimum Python version from 3.9 to 3.10. Python 3.9 is end-of-life,
+  and its last-compatible Starlette, Pillow, pytest, and python-dotenv branches
+  contain known vulnerabilities. The maintained Python resolution uses fixed
+  releases.
 
 ## 0.6.0 — 2026-08-12
 

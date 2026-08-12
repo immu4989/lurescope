@@ -79,8 +79,8 @@ costs nothing.
 - Keep `ruff check` and `pytest` green.
 - Run `uv build` when changing dependencies, package data, schemas, or
   release metadata; both schemas must be present in the wheel.
-- Line length is 100. Targeting Python 3.9, so `typing.Optional` and `List` rather
-  than the 3.10+ syntax.
+- Line length is 100. Keep `typing.Optional` and `List` where pydantic evaluates
+  annotations at runtime; avoid unrelated syntax churn in functional PRs.
 
 ## Reporting problems
 
