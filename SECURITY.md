@@ -59,7 +59,7 @@ otherwise.
 The service is local-first. `LURESCOPE_PUBLIC_MODE=true` adds fail-closed bearer
 authentication, per-credential process-local rate limiting, detector/attack and
 provider/model allowlists, and a provider-call circuit breaker. It refuses to
-start protected requests without a peppered API-key verifier and exposes its
+start protected requests without a salted, memory-hard API-key verifier and exposes its
 non-secret posture at `GET /security`. See
 [public deployment guardrails](docs/PUBLIC_DEPLOYMENT.md).
 

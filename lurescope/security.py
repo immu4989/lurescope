@@ -1,7 +1,7 @@
 """Fail-closed API authentication, request policy, and process-local budgets.
 
 The defaults preserve LureScope's local research workflow. Setting
-``LURESCOPE_PUBLIC_MODE=true`` changes the posture: a server-peppered API-key
+``LURESCOPE_PUBLIC_MODE=true`` changes the posture: a salted, memory-hard API-key
 verifier becomes mandatory, per-credential rate limiting is enabled, and
 provider-backed operations stay disabled until the operator explicitly allows
 and budgets them.
@@ -10,7 +10,6 @@ and budgets them.
 from __future__ import annotations
 
 import hashlib
-import hmac
 import logging
 import os
 import secrets
@@ -29,6 +28,10 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off", ""}
 _DEFAULT_PUBLIC_DETECTORS = frozenset({"tfidf-logreg", "heuristic-v0"})
 _PROVIDER_DETECTORS = frozenset({"llm-judge", "openai-moderation"})
+_SCRYPT_N = 1 << 14
+_SCRYPT_R = 8
+_SCRYPT_P = 1
+_SCRYPT_MAXMEM = 32 * 1024 * 1024
 _BEARER = HTTPBearer(
     auto_error=False,
     description="Client API key required by protected deployments.",
@@ -64,64 +67,88 @@ def _csv(name: str) -> FrozenSet[str]:
     return frozenset(item.strip() for item in os.environ.get(name, "").split(",") if item.strip())
 
 
-def _key_verifiers(public_mode: bool) -> Tuple[bytes, Tuple[bytes, ...]]:
-    pepper_hex = os.environ.get("LURESCOPE_API_KEY_PEPPER", "").strip()
-    pepper = b""
-    if pepper_hex:
-        if len(pepper_hex) < 64 or len(pepper_hex) % 2:
-            raise ValueError(
-                "LURESCOPE_API_KEY_PEPPER must contain at least 64 hexadecimal characters"
-            )
+@dataclass(frozen=True)
+class ApiKeyVerifier:
+    n: int
+    r: int
+    p: int
+    salt: bytes
+    digest: bytes
+
+    @classmethod
+    def parse(cls, value: str) -> "ApiKeyVerifier":
         try:
-            pepper = bytes.fromhex(pepper_hex)
-        except ValueError as exc:
-            raise ValueError("LURESCOPE_API_KEY_PEPPER contains a non-hexadecimal value") from exc
+            algorithm, n_text, r_text, p_text, salt_hex, digest_hex = value.split("$")
+            n, r, p = int(n_text), int(r_text), int(p_text)
+            salt, digest = bytes.fromhex(salt_hex), bytes.fromhex(digest_hex)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("LURESCOPE_API_KEY_SCRYPT contains an invalid verifier") from exc
+        if algorithm != "scrypt":
+            raise ValueError("LURESCOPE_API_KEY_SCRYPT supports only scrypt verifiers")
+        if (n, r, p) != (_SCRYPT_N, _SCRYPT_R, _SCRYPT_P):
+            raise ValueError("unsupported scrypt work factors")
+        if len(salt) < 16 or len(digest) != 32:
+            raise ValueError("scrypt verifiers require a 16-byte salt and 32-byte digest")
+        return cls(n=n, r=r, p=p, salt=salt, digest=digest)
 
-    digests = []
-    for value in _csv("LURESCOPE_API_KEY_HMAC_SHA256"):
-        if len(value) != 64:
-            raise ValueError(
-                "LURESCOPE_API_KEY_HMAC_SHA256 entries must be 64 hexadecimal characters"
-            )
-        try:
-            digests.append(bytes.fromhex(value))
-        except ValueError as exc:
-            raise ValueError(
-                "LURESCOPE_API_KEY_HMAC_SHA256 contains a non-hexadecimal entry"
-            ) from exc
-
-    if digests and not pepper:
-        raise ValueError(
-            "LURESCOPE_API_KEY_HMAC_SHA256 requires LURESCOPE_API_KEY_PEPPER"
-        )
-    if pepper and not digests:
-        raise ValueError(
-            "LURESCOPE_API_KEY_PEPPER requires LURESCOPE_API_KEY_HMAC_SHA256"
-        )
-    if public_mode and not digests:
-        raise ValueError(
-            "LURESCOPE_PUBLIC_MODE requires LURESCOPE_API_KEY_HMAC_SHA256 and "
-            "LURESCOPE_API_KEY_PEPPER"
-        )
-
-    return pepper, tuple(dict.fromkeys(digests))
+    def serialize(self) -> str:
+        return f"scrypt${self.n}${self.r}${self.p}${self.salt.hex()}${self.digest.hex()}"
 
 
-def create_api_key_material(pepper: Optional[bytes] = None) -> Tuple[str, str, str]:
-    """Generate a client key and its server-side peppered verifier."""
-    server_pepper = secrets.token_bytes(32) if pepper is None else pepper
-    if len(server_pepper) < 32:
-        raise ValueError("API-key pepper must contain at least 32 bytes")
+def _derive_api_key(token: str, verifier: ApiKeyVerifier) -> bytes:
+    return hashlib.scrypt(
+        token.encode("utf-8"),
+        salt=verifier.salt,
+        n=verifier.n,
+        r=verifier.r,
+        p=verifier.p,
+        dklen=len(verifier.digest),
+        maxmem=_SCRYPT_MAXMEM,
+    )
+
+
+def _key_verifiers(public_mode: bool) -> Tuple[ApiKeyVerifier, ...]:
+    verifiers = tuple(
+        ApiKeyVerifier.parse(value) for value in _csv("LURESCOPE_API_KEY_SCRYPT")
+    )
+    if public_mode and not verifiers:
+        raise ValueError("LURESCOPE_PUBLIC_MODE requires LURESCOPE_API_KEY_SCRYPT")
+    return verifiers
+
+
+def create_api_key_verifier(client_key: str, salt: Optional[bytes] = None) -> str:
+    """Create a salted, memory-hard verifier for a high-entropy client key."""
+    if len(client_key) < 32:
+        raise ValueError("client API key must contain at least 32 characters")
+    verifier = ApiKeyVerifier(
+        n=_SCRYPT_N,
+        r=_SCRYPT_R,
+        p=_SCRYPT_P,
+        salt=secrets.token_bytes(16) if salt is None else salt,
+        digest=b"\x00" * 32,
+    )
+    if len(verifier.salt) != 16:
+        raise ValueError("API-key salt must contain exactly 16 bytes")
+    derived = _derive_api_key(client_key, verifier)
+    return ApiKeyVerifier(
+        n=verifier.n,
+        r=verifier.r,
+        p=verifier.p,
+        salt=verifier.salt,
+        digest=derived,
+    ).serialize()
+
+
+def create_api_key_material() -> Tuple[str, str]:
+    """Generate a client key and its salted, memory-hard verifier."""
     client_key = secrets.token_urlsafe(32)
-    verifier = hmac.digest(server_pepper, client_key.encode("utf-8"), hashlib.sha256)
-    return client_key, server_pepper.hex(), verifier.hex()
+    return client_key, create_api_key_verifier(client_key)
 
 
 @dataclass(frozen=True)
 class SecuritySettings:
     public_mode: bool
-    api_key_pepper: bytes
-    api_key_verifiers: Tuple[bytes, ...]
+    api_key_verifiers: Tuple[ApiKeyVerifier, ...]
     rate_limit_per_minute: int
     provider_daily_limit: Optional[int]
     allowed_detectors: FrozenSet[str]
@@ -136,7 +163,7 @@ class SecuritySettings:
     @classmethod
     def from_env(cls) -> "SecuritySettings":
         public_mode = _boolean("LURESCOPE_PUBLIC_MODE")
-        pepper, verifiers = _key_verifiers(public_mode)
+        verifiers = _key_verifiers(public_mode)
 
         rate = _integer("LURESCOPE_RATE_LIMIT_PER_MINUTE", 60 if public_mode else 0)
         assert rate is not None
@@ -152,7 +179,6 @@ class SecuritySettings:
 
         return cls(
             public_mode=public_mode,
-            api_key_pepper=pepper,
             api_key_verifiers=verifiers,
             rate_limit_per_minute=rate,
             provider_daily_limit=provider_limit,
@@ -255,14 +281,14 @@ def _presented_key(request: Request) -> Optional[str]:
 
 def _credential_identity(
     token: str,
-    pepper: bytes,
-    expected: Tuple[bytes, ...],
+    expected: Tuple[ApiKeyVerifier, ...],
 ) -> Optional[str]:
-    digest = hmac.digest(pepper, token.encode("utf-8"), hashlib.sha256)
-    valid = False
+    identity = None
     for candidate in expected:
-        valid = secrets.compare_digest(digest, candidate) or valid
-    return digest.hex() if valid else None
+        derived = _derive_api_key(token, candidate)
+        if secrets.compare_digest(derived, candidate.digest):
+            identity = candidate.digest.hex()
+    return identity
 
 
 def require_api_access(
@@ -279,7 +305,7 @@ def require_api_access(
 
     token = _presented_key(request)
     identity = (
-        _credential_identity(token, settings.api_key_pepper, settings.api_key_verifiers)
+        _credential_identity(token, settings.api_key_verifiers)
         if token
         else None
     )

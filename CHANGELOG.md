@@ -7,10 +7,10 @@
 ### Added
 - CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
   structured integration-request and Q&A forms.
-- Fail-closed public API mode with server-peppered HMAC-SHA-256 API-key
-  verification, constant-time bearer authentication, per-credential
-  sliding-window rate limiting, safe
-  detector/attack/provider/model defaults, and a provider-call circuit breaker.
+- Fail-closed public API mode with random-salted, memory-hard scrypt API-key
+  verification, constant-time comparison, per-credential sliding-window rate
+  limiting, safe detector/attack/provider/model defaults, and a provider-call
+  circuit breaker.
 - `GET /security` and a production-boundary guide that reports deployment
   posture without exposing credentials or provider keys.
 - Strict support for LureBench schema-v2 risk-controlled decision policies.

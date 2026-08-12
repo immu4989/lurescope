@@ -1,7 +1,5 @@
 """Deterministic tests for deployment budgets and rate limiting."""
 
-import hashlib
-import hmac
 import json
 import os
 
@@ -14,6 +12,7 @@ from lurescope.security import (
     SlidingWindowLimiter,
     _provider_call_cost,
     _reset_for_tests,
+    create_api_key_verifier,
     enforce_request_policy,
 )
 
@@ -49,13 +48,8 @@ def test_provider_cost_reserves_every_expected_call():
 
 def test_allowlisted_provider_call_exhausts_explicit_budget(monkeypatch):
     key = "test-key-with-at-least-thirty-two-characters"
-    pepper = bytes.fromhex("22" * 32)
     monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
-    monkeypatch.setenv("LURESCOPE_API_KEY_PEPPER", pepper.hex())
-    monkeypatch.setenv(
-        "LURESCOPE_API_KEY_HMAC_SHA256",
-        hmac.digest(pepper, key.encode(), hashlib.sha256).hex(),
-    )
+    monkeypatch.setenv("LURESCOPE_API_KEY_SCRYPT", create_api_key_verifier(key))
     monkeypatch.setenv("LURESCOPE_ALLOWED_DETECTORS", "llm-judge")
     monkeypatch.setenv("LURESCOPE_LLM_ENGINE", "openrouter")
     monkeypatch.setenv("LURESCOPE_ALLOWED_ENGINES", "openrouter")
@@ -70,26 +64,30 @@ def test_allowlisted_provider_call_exhausts_explicit_budget(monkeypatch):
     assert caught.value.headers["X-Provider-Budget-Remaining"] == "0"
 
 
-def test_api_key_cli_creates_private_hmac_material_and_refuses_overwrite(tmp_path):
+def test_api_key_cli_creates_private_scrypt_material_and_refuses_overwrite(
+    tmp_path, monkeypatch
+):
     output = tmp_path / "api-key.json"
     assert main(["api-key", "--out", str(output)]) == 0
     assert os.stat(output).st_mode & 0o777 == 0o600
     payload = json.loads(output.read_text())
     key = payload["client_api_key"]
-    pepper = bytes.fromhex(payload["lurescope_api_key_pepper"])
-    expected = hmac.digest(pepper, key.encode(), hashlib.sha256).hex()
-    assert payload["lurescope_api_key_hmac_sha256"] == expected
+    verifier = payload["lurescope_api_key_scrypt"]
+    monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
+    monkeypatch.setenv("LURESCOPE_API_KEY_SCRYPT", verifier)
+    from lurescope.security import SecuritySettings, _credential_identity
+
+    settings = SecuritySettings.from_env()
+    assert _credential_identity(key, settings.api_key_verifiers)
     assert main(["api-key", "--out", str(output)]) == 2
 
 
-def test_api_key_cli_can_reuse_pepper_for_rotation(tmp_path):
+def test_api_key_cli_creates_independent_rotation_material(tmp_path):
     first = tmp_path / "first.json"
     second = tmp_path / "second.json"
     assert main(["api-key", "--out", str(first)]) == 0
-    assert main([
-        "api-key", "--out", str(second), "--pepper-file", str(first)
-    ]) == 0
+    assert main(["api-key", "--out", str(second)]) == 0
     old = json.loads(first.read_text())
     new = json.loads(second.read_text())
     assert old["client_api_key"] != new["client_api_key"]
-    assert old["lurescope_api_key_pepper"] == new["lurescope_api_key_pepper"]
+    assert old["lurescope_api_key_scrypt"] != new["lurescope_api_key_scrypt"]

@@ -48,8 +48,7 @@ jobs:
             --cap-drop ALL --security-opt no-new-privileges:true \
             --publish 127.0.0.1:8000:8000 \
             --env LURESCOPE_PUBLIC_MODE=true \
-            --env LURESCOPE_API_KEY_PEPPER=1111111111111111111111111111111111111111111111111111111111111111 \
-            --env LURESCOPE_API_KEY_HMAC_SHA256=6d107a5028e7db37d24f1c0e5ec35d5b914f8ed5fa3b45575af7f269954a755b \
+            --env 'LURESCOPE_API_KEY_SCRYPT=scrypt$16384$8$1$11111111111111111111111111111111$10db63aeeaa4728a7a3cafe9af0b4d8704e3736c9f74eec4595e69c075f69785' \
             --env LURESCOPE_RATE_LIMIT_PER_MINUTE=10 \
             --env LURESCOPE_PROVIDER_DAILY_LIMIT=0 \
             lurescope:ci
