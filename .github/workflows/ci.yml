@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,33 +15,36 @@ jobs:
       matrix:
         python-version: ["3.9", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/setup-node@v6
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         if: matrix.python-version == '3.12'
         with:
           node-version: 24
       - name: Install
-        run: |
-          python -m pip install --upgrade pip
-          pip install ".[dev]"
+        run: uv sync --frozen --python "${{ matrix.python-version }}" --extra dev
       - name: Lint
-        run: ruff check lurescope tests scripts
+        run: uv run --frozen ruff check lurescope tests scripts
       - name: Test
-        run: pytest -q
+        run: uv run --frozen pytest -q
       - name: Test browser engine
         if: matrix.python-version == '3.12'
         run: node --test tests/browser_engine.test.cjs
       - name: Build distributions
         if: matrix.python-version == '3.12'
-        run: python -m build
+        run: uv build
 
   container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build runtime image
         run: docker build --tag lurescope:ci .
       - name: Start hardened container
@@ -53,26 +59,12 @@ jobs:
             --env LURESCOPE_PROVIDER_DAILY_LIMIT=0 \
             lurescope:ci
       - name: Verify runtime and API
+        run: >-
+          python3 scripts/verify_container.py
+          --base-url http://127.0.0.1:8000
+          --api-key ci-only-lurescope-key-32-characters-minimum
+      - name: Verify container isolation
         run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --output /dev/null http://127.0.0.1:8000/health; then
-              break
-            fi
-            sleep 1
-          done
-          curl --fail --silent --show-error http://127.0.0.1:8000/health \
-            | python -c 'import json, sys; assert json.load(sys.stdin)["status"] == "ok"'
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
-            http://127.0.0.1:8000/score \
-            --header 'content-type: application/json' \
-            --data '{"text":"Verify your account"}')" = "401"
-          curl --fail --silent --show-error http://127.0.0.1:8000/score \
-            --header 'authorization: Bearer ci-only-lurescope-key-32-characters-minimum' \
-            --header 'content-type: application/json' \
-            --data '{"text":"Verify your account at hxxps://example[.]invalid"}' \
-            | python -c 'import json, sys; p=json.load(sys.stdin)["fraud_probability"]; assert 0 <= p <= 1'
-          curl --fail --silent --show-error http://127.0.0.1:8000/security \
-            | python -c 'import json, sys; s=json.load(sys.stdin); assert s["mode"] == "public" and s["authentication_required"] is True and s["provider_daily_limit"] == 0'
           test "$(docker inspect --format '{{.Config.User}}' lurescope-ci)" = "10001:10001"
           test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' lurescope-ci)" = "true"
           docker exec lurescope-ci sh -c '! command -v git'

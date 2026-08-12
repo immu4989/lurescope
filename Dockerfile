@@ -1,32 +1,35 @@
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc \
+    /uv /uvx /bin/
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
-
-# Git is a build-only dependency for the commit-pinned LureBench wheel.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
+    PIP_NO_CACHE_DIR=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /build
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml uv.lock README.md LICENSE ./
+RUN uv sync --frozen --no-dev --no-install-project
 COPY lurescope ./lurescope
 COPY spec ./spec
-RUN pip install --prefix=/install .
+RUN uv sync --frozen --no-dev --no-editable
 
 
-FROM python:3.11-slim AS runtime
+FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS runtime
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 RUN groupadd --gid 10001 lurescope \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin lurescope
 
 WORKDIR /app
-COPY --from=builder /install /usr/local
+COPY --from=builder /opt/venv /opt/venv
 
 USER 10001:10001
 EXPOSE 8000
