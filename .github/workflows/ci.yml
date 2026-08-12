@@ -47,6 +47,10 @@ jobs:
             --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --cap-drop ALL --security-opt no-new-privileges:true \
             --publish 127.0.0.1:8000:8000 \
+            --env LURESCOPE_PUBLIC_MODE=true \
+            --env 'LURESCOPE_API_KEY_SCRYPT=scrypt$16384$8$1$11111111111111111111111111111111$10db63aeeaa4728a7a3cafe9af0b4d8704e3736c9f74eec4595e69c075f69785' \
+            --env LURESCOPE_RATE_LIMIT_PER_MINUTE=10 \
+            --env LURESCOPE_PROVIDER_DAILY_LIMIT=0 \
             lurescope:ci
       - name: Verify runtime and API
         run: |
@@ -58,10 +62,17 @@ jobs:
           done
           curl --fail --silent --show-error http://127.0.0.1:8000/health \
             | python -c 'import json, sys; assert json.load(sys.stdin)["status"] == "ok"'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:8000/score \
+            --header 'content-type: application/json' \
+            --data '{"text":"Verify your account"}')" = "401"
           curl --fail --silent --show-error http://127.0.0.1:8000/score \
+            --header 'authorization: Bearer ci-only-lurescope-key-32-characters-minimum' \
             --header 'content-type: application/json' \
             --data '{"text":"Verify your account at hxxps://example[.]invalid"}' \
             | python -c 'import json, sys; p=json.load(sys.stdin)["fraud_probability"]; assert 0 <= p <= 1'
+          curl --fail --silent --show-error http://127.0.0.1:8000/security \
+            | python -c 'import json, sys; s=json.load(sys.stdin); assert s["mode"] == "public" and s["authentication_required"] is True and s["provider_daily_limit"] == 0'
           test "$(docker inspect --format '{{.Config.User}}' lurescope-ci)" = "10001:10001"
           test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' lurescope-ci)" = "true"
           docker exec lurescope-ci sh -c '! command -v git'

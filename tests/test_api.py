@@ -9,6 +9,7 @@ pytest.importorskip("sklearn")  # tfidf detector needs scikit-learn
 from fastapi.testclient import TestClient
 
 from lurescope.app import app
+from lurescope.security import _reset_for_tests, create_api_key_verifier
 
 client = TestClient(app)
 
@@ -18,11 +19,112 @@ LURE = (
 )
 BENIGN = "Hey, are we still on for lunch tomorrow? Let me know what time works."
 
+_SECURITY_ENV = (
+    "LURESCOPE_PUBLIC_MODE",
+    "LURESCOPE_API_KEY_SCRYPT",
+    "LURESCOPE_RATE_LIMIT_PER_MINUTE",
+    "LURESCOPE_PROVIDER_DAILY_LIMIT",
+    "LURESCOPE_ALLOWED_DETECTORS",
+    "LURESCOPE_ALLOWED_ATTACKS",
+    "LURESCOPE_ALLOWED_ENGINES",
+    "LURESCOPE_ALLOWED_MODELS",
+    "LURESCOPE_LLM_ENGINE",
+)
+_TEST_API_KEY = "test-key-with-at-least-thirty-two-characters"
+_TEST_SALT = bytes.fromhex("11" * 16)
+
+
+@pytest.fixture(autouse=True)
+def clean_deployment_security(monkeypatch):
+    for name in _SECURITY_ENV:
+        monkeypatch.delenv(name, raising=False)
+    _reset_for_tests()
+    yield
+    _reset_for_tests()
+
+
+def _public_mode(monkeypatch, *, rate: int = 60) -> dict:
+    verifier = create_api_key_verifier(_TEST_API_KEY, _TEST_SALT)
+    monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
+    monkeypatch.setenv("LURESCOPE_API_KEY_SCRYPT", verifier)
+    monkeypatch.setenv("LURESCOPE_RATE_LIMIT_PER_MINUTE", str(rate))
+    return {"Authorization": f"Bearer {_TEST_API_KEY}"}
+
 
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+
+
+def test_public_mode_fails_closed_without_a_key_configuration(monkeypatch):
+    monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
+    assert client.get("/health").status_code == 503
+    response = client.post("/score", json={"text": LURE})
+    assert response.status_code == 503
+    assert "requires LURESCOPE_API_KEY_SCRYPT" in response.json()["detail"]
+
+
+def test_public_mode_requires_valid_bearer_or_api_key_header(monkeypatch):
+    headers = _public_mode(monkeypatch)
+    missing = client.post("/score", json={"text": LURE})
+    wrong = client.post(
+        "/score", json={"text": LURE}, headers={"Authorization": "Bearer wrong"}
+    )
+    valid = client.post("/score", json={"text": LURE}, headers=headers)
+    alternate = client.post(
+        "/score", json={"text": LURE}, headers={"X-API-Key": _TEST_API_KEY}
+    )
+    assert missing.status_code == 401
+    assert missing.headers["www-authenticate"] == "Bearer"
+    assert wrong.status_code == 401
+    assert valid.status_code == 200
+    assert alternate.status_code == 200
+    assert valid.headers["x-ratelimit-limit"] == "60"
+
+
+def test_public_mode_rate_limits_each_credential(monkeypatch):
+    headers = _public_mode(monkeypatch, rate=2)
+    assert client.post("/score", json={"text": LURE}, headers=headers).status_code == 200
+    second = client.post("/score", json={"text": LURE}, headers=headers)
+    blocked = client.post("/score", json={"text": LURE}, headers=headers)
+    assert second.status_code == 200
+    assert second.headers["x-ratelimit-remaining"] == "0"
+    assert blocked.status_code == 429
+    assert int(blocked.headers["retry-after"]) >= 1
+
+
+def test_public_mode_blocks_provider_spending_until_explicitly_budgeted(monkeypatch):
+    headers = _public_mode(monkeypatch)
+    monkeypatch.setenv("LURESCOPE_ALLOWED_DETECTORS", "tfidf-logreg,llm-judge")
+    monkeypatch.setenv("LURESCOPE_LLM_ENGINE", "openrouter")
+    monkeypatch.setenv("LURESCOPE_ALLOWED_ENGINES", "openrouter")
+    monkeypatch.setenv("LURESCOPE_ALLOWED_MODELS", "openai/gpt-4o-mini")
+    response = client.post(
+        "/score", json={"text": LURE, "detector": "llm-judge"}, headers=headers
+    )
+    assert response.status_code == 403
+    assert "provider-backed operations are disabled" in response.json()["detail"]
+
+
+def test_security_status_discloses_posture_but_not_credentials(monkeypatch):
+    _public_mode(monkeypatch, rate=17)
+    response = client.get("/security")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "public"
+    assert data["authentication_required"] is True
+    assert data["rate_limit_per_minute"] == 17
+    assert data["provider_daily_limit"] == 0
+    assert _TEST_API_KEY not in response.text
+    verifier = create_api_key_verifier(_TEST_API_KEY, _TEST_SALT)
+    assert verifier not in response.text
+
+
+def test_openapi_marks_content_routes_as_bearer_protected():
+    schema = client.get("/openapi.json").json()
+    assert schema["components"]["securitySchemes"]["HTTPBearer"]["scheme"] == "bearer"
+    assert schema["paths"]["/score"]["post"]["security"] == [{"HTTPBearer": []}]
 
 
 def test_capabilities_lists_detectors_and_attacks():
