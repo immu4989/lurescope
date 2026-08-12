@@ -9,6 +9,8 @@
   commit or image digests; restricted the CI token to read-only contents.
 - Replaced the build-time Git checkout and mutable OS package installation with
   the exact LureBench v0.9.0 release source verified by SHA-256.
+- Moved the LureBench source dependency to its immutable, version-specific
+  Zenodo record to avoid transient GitHub release-asset redirects in CI.
 - Replaced shell pipelines over HTTP responses in the container smoke test with
   a checked-in, fail-closed verifier that parses response data without executing
   it.

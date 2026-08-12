@@ -793,8 +793,8 @@ wheels = [
 [[package]]
 name = "lurebench"
 version = "0.9.0"
-source = { url = "https://github.com/immu4989/lurebench/releases/download/v0.9.0/lurebench-0.9.0.tar.gz" }
-sdist = { hash = "sha256:efa70dbc44120d4424990f25655d8433968bf47d9f4d7adec9f6f1f59145fcab" }
+source = { url = "https://zenodo.org/records/21909774/files/immu4989/lurebench-v0.9.0.zip?download=1" }
+sdist = { hash = "sha256:1519f8c02cc52300b18f80ce798b2880764122f20fa455a81e13d5d912857f16" }
 
 [package.optional-dependencies]
 train = [
@@ -863,7 +863,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", marker = "extra == 'dev'" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23" },
-    { name = "lurebench", extras = ["train"], url = "https://github.com/immu4989/lurebench/releases/download/v0.9.0/lurebench-0.9.0.tar.gz" },
+    { name = "lurebench", extras = ["train"], url = "https://zenodo.org/records/21909774/files/immu4989/lurebench-v0.9.0.zip?download=1" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.6" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'dev'" },
