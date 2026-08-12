@@ -7,7 +7,7 @@ rate limiter, an identity provider, or cloud billing controls.
 ## What public mode changes
 
 Set `LURESCOPE_PUBLIC_MODE=true` to make LureScope fail closed unless at least one
-API-key digest is configured. Every content-bearing `POST` route then requires
+peppered API-key verifier is configured. Every content-bearing `POST` route then requires
 `Authorization: Bearer <key>` or `X-API-Key: <key>`.
 
 Public mode also:
@@ -26,17 +26,26 @@ a load balancer from routing traffic to an accidentally unprotected replica.
 
 ## Create a client key
 
-Generate a high-entropy key once, store the plaintext in the client secret
-manager, and give the service only its SHA-256 digest:
+Generate a high-entropy client key, a separate server pepper, and an HMAC-SHA-256
+verifier in a new mode-0600 file:
 
 ```bash
-API_KEY="$(openssl rand -hex 32)"
-API_KEY_SHA256="$(printf %s "$API_KEY" | shasum -a 256 | awk '{print $1}')"
+lurescope api-key --out api-key.json
 ```
 
-Do not commit either value. `LURESCOPE_API_KEY_SHA256` accepts comma-separated
-digests for rotation. `LURESCOPE_API_KEYS` accepts comma-separated plaintext keys
-for development, but digest-only configuration is preferred.
+Distribute `client_api_key` to the client through a secret manager. Give the
+service `lurescope_api_key_pepper` and `lurescope_api_key_hmac_sha256`; it never
+needs the plaintext client key. Do not commit the JSON file or any of its values.
+For rotation, create another file with the same pepper, configure both verifiers,
+move clients to the new key, and then remove the old verifier:
+
+```bash
+lurescope api-key --pepper-file api-key.json --out rotated-api-key.json
+```
+
+For the commands below, set `API_KEY` from `client_api_key`, `API_KEY_PEPPER`
+from `lurescope_api_key_pepper`, and `API_KEY_VERIFIER` from
+`lurescope_api_key_hmac_sha256` using your shell or deployment secret manager.
 
 ## Run the guarded container
 
@@ -47,7 +56,8 @@ docker run --name lurescope-public --restart unless-stopped \
   --cap-drop ALL --security-opt no-new-privileges:true \
   -p 127.0.0.1:8000:8000 \
   -e LURESCOPE_PUBLIC_MODE=true \
-  -e LURESCOPE_API_KEY_SHA256="$API_KEY_SHA256" \
+  -e LURESCOPE_API_KEY_PEPPER="$API_KEY_PEPPER" \
+  -e LURESCOPE_API_KEY_HMAC_SHA256="$API_KEY_VERIFIER" \
   -e LURESCOPE_RATE_LIMIT_PER_MINUTE=30 \
   -e LURESCOPE_PROVIDER_DAILY_LIMIT=0 \
   lurescope
@@ -94,8 +104,8 @@ it. Enforce the real monetary ceiling at the provider account and gateway too.
 | Variable | Local default | Public default | Purpose |
 |---|---:|---:|---|
 | `LURESCOPE_PUBLIC_MODE` | `false` | — | Enable fail-closed deployment behavior. |
-| `LURESCOPE_API_KEY_SHA256` | empty | required | Comma-separated SHA-256 client-key digests. |
-| `LURESCOPE_API_KEYS` | empty | optional | Plaintext development keys; digest configuration is preferred. |
+| `LURESCOPE_API_KEY_PEPPER` | empty | required | Server-only random pepper, at least 32 bytes encoded as hex. |
+| `LURESCOPE_API_KEY_HMAC_SHA256` | empty | required | Comma-separated HMAC-SHA-256 client-key verifiers. |
 | `LURESCOPE_RATE_LIMIT_PER_MINUTE` | `0` | `60` | Per-key, process-local sliding-window limit. |
 | `LURESCOPE_PROVIDER_DAILY_LIMIT` | unlimited | `0` | Process-local attempted-provider-call circuit breaker. |
 | `LURESCOPE_ALLOWED_DETECTORS` | unrestricted | local defaults | Comma-separated detector allowlist. |

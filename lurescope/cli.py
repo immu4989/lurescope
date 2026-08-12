@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import List, Sequence, Tuple
@@ -188,6 +189,47 @@ def _keygen(argv: Sequence[str]) -> int:
     return 0
 
 
+def _api_key(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope api-key",
+        description="Generate a client API key and a server-side peppered verifier.",
+    )
+    parser.add_argument(
+        "--out",
+        required=True,
+        help="new JSON path containing the client key and deployment values (mode 0600)",
+    )
+    parser.add_argument(
+        "--pepper-file",
+        help="existing JSON output whose pepper should be reused during key rotation",
+    )
+    args = parser.parse_args(argv)
+    try:
+        pepper = None
+        if args.pepper_file:
+            prior = json.loads(Path(args.pepper_file).read_text(encoding="utf-8"))
+            pepper = bytes.fromhex(prior["lurescope_api_key_pepper"])
+
+        from .security import create_api_key_material
+
+        client_key, pepper_hex, verifier = create_api_key_material(pepper)
+        payload = {
+            "client_api_key": client_key,
+            "lurescope_api_key_pepper": pepper_hex,
+            "lurescope_api_key_hmac_sha256": verifier,
+        }
+        target = Path(args.out)
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, indent=2, sort_keys=True)
+            stream.write("\n")
+    except (KeyError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    print(f"created {args.out} (mode 0600); distribute client_api_key separately")
+    return 0
+
+
 def _policy(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="lurescope policy",
@@ -220,6 +262,8 @@ def main(argv=None) -> int:
         return _verify(args[1:])
     if args and args[0] == "keygen":
         return _keygen(args[1:])
+    if args and args[0] == "api-key":
+        return _api_key(args[1:])
     if args and args[0] == "policy":
         return _policy(args[1:])
     return _serve(args)

@@ -7,8 +7,9 @@
 ### Added
 - CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
   structured integration-request and Q&A forms.
-- Fail-closed public API mode with SHA-256 API-key configuration, constant-time
-  bearer authentication, per-credential sliding-window rate limiting, safe
+- Fail-closed public API mode with server-peppered HMAC-SHA-256 API-key
+  verification, constant-time bearer authentication, per-credential
+  sliding-window rate limiting, safe
   detector/attack/provider/model defaults, and a provider-call circuit breaker.
 - `GET /security` and a production-boundary guide that reports deployment
   posture without exposing credentials or provider keys.

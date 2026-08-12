@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 
 import pytest
 
@@ -23,8 +24,8 @@ BENIGN = "Hey, are we still on for lunch tomorrow? Let me know what time works."
 
 _SECURITY_ENV = (
     "LURESCOPE_PUBLIC_MODE",
-    "LURESCOPE_API_KEY_SHA256",
-    "LURESCOPE_API_KEYS",
+    "LURESCOPE_API_KEY_HMAC_SHA256",
+    "LURESCOPE_API_KEY_PEPPER",
     "LURESCOPE_RATE_LIMIT_PER_MINUTE",
     "LURESCOPE_PROVIDER_DAILY_LIMIT",
     "LURESCOPE_ALLOWED_DETECTORS",
@@ -34,6 +35,7 @@ _SECURITY_ENV = (
     "LURESCOPE_LLM_ENGINE",
 )
 _TEST_API_KEY = "test-key-with-at-least-thirty-two-characters"
+_TEST_PEPPER = bytes.fromhex("11" * 32)
 
 
 @pytest.fixture(autouse=True)
@@ -46,9 +48,10 @@ def clean_deployment_security(monkeypatch):
 
 
 def _public_mode(monkeypatch, *, rate: int = 60) -> dict:
-    digest = hashlib.sha256(_TEST_API_KEY.encode()).hexdigest()
+    digest = hmac.digest(_TEST_PEPPER, _TEST_API_KEY.encode(), hashlib.sha256).hex()
     monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
-    monkeypatch.setenv("LURESCOPE_API_KEY_SHA256", digest)
+    monkeypatch.setenv("LURESCOPE_API_KEY_PEPPER", _TEST_PEPPER.hex())
+    monkeypatch.setenv("LURESCOPE_API_KEY_HMAC_SHA256", digest)
     monkeypatch.setenv("LURESCOPE_RATE_LIMIT_PER_MINUTE", str(rate))
     return {"Authorization": f"Bearer {_TEST_API_KEY}"}
 
@@ -64,7 +67,7 @@ def test_public_mode_fails_closed_without_a_key_configuration(monkeypatch):
     assert client.get("/health").status_code == 503
     response = client.post("/score", json={"text": LURE})
     assert response.status_code == 503
-    assert "requires LURESCOPE_API_KEY" in response.json()["detail"]
+    assert "requires LURESCOPE_API_KEY_HMAC_SHA256" in response.json()["detail"]
 
 
 def test_public_mode_requires_valid_bearer_or_api_key_header(monkeypatch):
@@ -119,7 +122,9 @@ def test_security_status_discloses_posture_but_not_credentials(monkeypatch):
     assert data["rate_limit_per_minute"] == 17
     assert data["provider_daily_limit"] == 0
     assert _TEST_API_KEY not in response.text
-    assert hashlib.sha256(_TEST_API_KEY.encode()).hexdigest() not in response.text
+    verifier = hmac.digest(_TEST_PEPPER, _TEST_API_KEY.encode(), hashlib.sha256).hex()
+    assert verifier not in response.text
+    assert _TEST_PEPPER.hex() not in response.text
 
 
 def test_openapi_marks_content_routes_as_bearer_protected():

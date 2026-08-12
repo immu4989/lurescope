@@ -1,14 +1,16 @@
 """Fail-closed API authentication, request policy, and process-local budgets.
 
 The defaults preserve LureScope's local research workflow. Setting
-``LURESCOPE_PUBLIC_MODE=true`` changes the posture: a configured API-key digest
-becomes mandatory, per-credential rate limiting is enabled, and provider-backed
-operations stay disabled until the operator explicitly allows and budgets them.
+``LURESCOPE_PUBLIC_MODE=true`` changes the posture: a server-peppered API-key
+verifier becomes mandatory, per-credential rate limiting is enabled, and
+provider-backed operations stay disabled until the operator explicitly allows
+and budgets them.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import os
 import secrets
@@ -62,32 +64,64 @@ def _csv(name: str) -> FrozenSet[str]:
     return frozenset(item.strip() for item in os.environ.get(name, "").split(",") if item.strip())
 
 
-def _key_hashes(public_mode: bool) -> Tuple[bytes, ...]:
+def _key_verifiers(public_mode: bool) -> Tuple[bytes, Tuple[bytes, ...]]:
+    pepper_hex = os.environ.get("LURESCOPE_API_KEY_PEPPER", "").strip()
+    pepper = b""
+    if pepper_hex:
+        if len(pepper_hex) < 64 or len(pepper_hex) % 2:
+            raise ValueError(
+                "LURESCOPE_API_KEY_PEPPER must contain at least 64 hexadecimal characters"
+            )
+        try:
+            pepper = bytes.fromhex(pepper_hex)
+        except ValueError as exc:
+            raise ValueError("LURESCOPE_API_KEY_PEPPER contains a non-hexadecimal value") from exc
+
     digests = []
-    for value in _csv("LURESCOPE_API_KEY_SHA256"):
+    for value in _csv("LURESCOPE_API_KEY_HMAC_SHA256"):
         if len(value) != 64:
-            raise ValueError("LURESCOPE_API_KEY_SHA256 entries must be 64 hexadecimal characters")
+            raise ValueError(
+                "LURESCOPE_API_KEY_HMAC_SHA256 entries must be 64 hexadecimal characters"
+            )
         try:
             digests.append(bytes.fromhex(value))
         except ValueError as exc:
-            raise ValueError("LURESCOPE_API_KEY_SHA256 contains a non-hexadecimal entry") from exc
-
-    for key in _csv("LURESCOPE_API_KEYS"):
-        minimum = 32 if public_mode else 16
-        if len(key) < minimum:
             raise ValueError(
-                f"LURESCOPE_API_KEYS entries must contain at least {minimum} characters"
-            )
-        digests.append(hashlib.sha256(key.encode("utf-8")).digest())
+                "LURESCOPE_API_KEY_HMAC_SHA256 contains a non-hexadecimal entry"
+            ) from exc
 
-    # De-duplicate without preserving plaintext credentials.
-    return tuple(dict.fromkeys(digests))
+    if digests and not pepper:
+        raise ValueError(
+            "LURESCOPE_API_KEY_HMAC_SHA256 requires LURESCOPE_API_KEY_PEPPER"
+        )
+    if pepper and not digests:
+        raise ValueError(
+            "LURESCOPE_API_KEY_PEPPER requires LURESCOPE_API_KEY_HMAC_SHA256"
+        )
+    if public_mode and not digests:
+        raise ValueError(
+            "LURESCOPE_PUBLIC_MODE requires LURESCOPE_API_KEY_HMAC_SHA256 and "
+            "LURESCOPE_API_KEY_PEPPER"
+        )
+
+    return pepper, tuple(dict.fromkeys(digests))
+
+
+def create_api_key_material(pepper: Optional[bytes] = None) -> Tuple[str, str, str]:
+    """Generate a client key and its server-side peppered verifier."""
+    server_pepper = secrets.token_bytes(32) if pepper is None else pepper
+    if len(server_pepper) < 32:
+        raise ValueError("API-key pepper must contain at least 32 bytes")
+    client_key = secrets.token_urlsafe(32)
+    verifier = hmac.digest(server_pepper, client_key.encode("utf-8"), hashlib.sha256)
+    return client_key, server_pepper.hex(), verifier.hex()
 
 
 @dataclass(frozen=True)
 class SecuritySettings:
     public_mode: bool
-    api_key_hashes: Tuple[bytes, ...]
+    api_key_pepper: bytes
+    api_key_verifiers: Tuple[bytes, ...]
     rate_limit_per_minute: int
     provider_daily_limit: Optional[int]
     allowed_detectors: FrozenSet[str]
@@ -97,16 +131,12 @@ class SecuritySettings:
 
     @property
     def authentication_required(self) -> bool:
-        return self.public_mode or bool(self.api_key_hashes)
+        return self.public_mode or bool(self.api_key_verifiers)
 
     @classmethod
     def from_env(cls) -> "SecuritySettings":
         public_mode = _boolean("LURESCOPE_PUBLIC_MODE")
-        hashes = _key_hashes(public_mode)
-        if public_mode and not hashes:
-            raise ValueError(
-                "LURESCOPE_PUBLIC_MODE requires LURESCOPE_API_KEY_SHA256 or LURESCOPE_API_KEYS"
-            )
+        pepper, verifiers = _key_verifiers(public_mode)
 
         rate = _integer("LURESCOPE_RATE_LIMIT_PER_MINUTE", 60 if public_mode else 0)
         assert rate is not None
@@ -122,7 +152,8 @@ class SecuritySettings:
 
         return cls(
             public_mode=public_mode,
-            api_key_hashes=hashes,
+            api_key_pepper=pepper,
+            api_key_verifiers=verifiers,
             rate_limit_per_minute=rate,
             provider_daily_limit=provider_limit,
             allowed_detectors=detectors,
@@ -222,8 +253,12 @@ def _presented_key(request: Request) -> Optional[str]:
     return bearer or header_key
 
 
-def _credential_identity(token: str, expected: Tuple[bytes, ...]) -> Optional[str]:
-    digest = hashlib.sha256(token.encode("utf-8")).digest()
+def _credential_identity(
+    token: str,
+    pepper: bytes,
+    expected: Tuple[bytes, ...],
+) -> Optional[str]:
+    digest = hmac.digest(pepper, token.encode("utf-8"), hashlib.sha256)
     valid = False
     for candidate in expected:
         valid = secrets.compare_digest(digest, candidate) or valid
@@ -243,7 +278,11 @@ def require_api_access(
         return "local-unrestricted"
 
     token = _presented_key(request)
-    identity = _credential_identity(token, settings.api_key_hashes) if token else None
+    identity = (
+        _credential_identity(token, settings.api_key_pepper, settings.api_key_verifiers)
+        if token
+        else None
+    )
     if identity is None:
         raise HTTPException(
             401,
