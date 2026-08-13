@@ -18,7 +18,7 @@ abstract: >-
   DSSE envelope can authenticate the statement against an external trust key.
   The inbox workflow turns reported-email queues into minimized routing manifests,
   per-case proofs, and offline SIEM payloads.
-version: 0.7.0
+version: 0.7.1
 date-released: "2026-08-12"
 license: Apache-2.0
 keywords:
