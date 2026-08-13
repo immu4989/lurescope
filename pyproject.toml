@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lurescope"
-version = "0.7.0"
+version = "0.7.1"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,11 +36,10 @@ dependencies = [
   # deserializer on the compatible minor line instead of silently loading it in
   # an arbitrary future release.
   "scikit-learn>=1.6,<1.7",
-  # Detection + attack logic is reused from LureBench so the service and the
-  # benchmark can never drift. [train] pulls scikit-learn/joblib for the bundled model.
-  # This exact Zenodo v0.9.0 record is independently locked by SHA-256. Unlike
-  # GitHub's release-asset redirects, the DOI-backed endpoint is stable in CI.
-  "lurebench[train] @ https://zenodo.org/records/21909774/files/immu4989/lurebench-v0.9.0.zip?download=1#sha256=1519f8c02cc52300b18f80ce798b2880764122f20fa455a81e13d5d912857f16",
+  # Detection + attack logic is reused from the exact public LureBench release
+  # so the service and benchmark cannot silently drift. [train] supplies the
+  # compatible scikit-learn/joblib runtime for the bundled model.
+  "lurebench[train]==0.9.1",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +51,7 @@ viz = ["matplotlib>=3.6"]
 
 [project.urls]
 Homepage = "https://github.com/immu4989/lurescope"
+PyPI = "https://pypi.org/project/lurescope/"
 Demo = "https://huggingface.co/spaces/immu4989/lurescope"
 "GitHub Pages lab" = "https://immu4989.github.io/lurescope/"
 Benchmark = "https://github.com/immu4989/lurebench"

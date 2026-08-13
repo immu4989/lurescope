@@ -11,12 +11,12 @@ an SBOM and BuildKit provenance, and creates a GitHub registry attestation.
 GitHub documents this `GITHUB_TOKEN`-based pattern in its
 [container publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
 
-PyPI publication is deliberately deferred until LureBench has been published as
-a normal index dependency. The
-[PyPA dependency specification](https://packaging.python.org/en/latest/specifications/version-specifiers/#direct-references)
-says public index servers should not allow direct references, so LureScope's
-immutable Zenodo dependency is not its long-term public packaging contract. Do
-not replace it with an unpinned dependency merely to make publication easier.
+The [`lurescope` PyPI project](https://pypi.org/project/lurescope/) publishes
+through OpenID Connect from GitHub Actions. PyPI trusts only owner `immu4989`,
+repository `lurescope`, workflow `release.yml`, and environment `pypi`. The
+GitHub environment requires manual approval and the repository Actions variable
+`PYPI_PUBLISH` enables the publish job. No long-lived PyPI token belongs in
+GitHub secrets.
 
 ## Release procedure
 
@@ -27,5 +27,5 @@ not replace it with an unpinned dependency merely to make publication easier.
 4. Merge through protected CI.
 5. Create a GitHub release targeting the exact tested `main` commit and tag it
    `vX.Y.Z`.
-6. Confirm the attached distributions, GHCR tags, SBOM/provenance attestations,
-   and Zenodo version record.
+6. Confirm the PyPI project, attached distributions, GHCR tags,
+   SBOM/provenance attestations, and Zenodo version record.

@@ -10,9 +10,9 @@ signing all run locally.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install .
+python -m pip install lurescope
 
-lurescope inbox examples --recursive --out ./lurescope-cases
+lurescope inbox /path/to/reported-emails --recursive --out ./lurescope-cases
 ```
 
 The command prints the source-to-case mapping to the local terminal and writes:

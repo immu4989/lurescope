@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.7.1 — 2026-08-12
+
+### Changed
+- Replaced LureScope's direct Zenodo source dependency with the exact public
+  `lurebench[train]==0.9.1` PyPI release, making standard index installation
+  portable across pip, uv, build frontends, and downstream package indexes.
+- Made `python -m pip install lurescope` the primary installation path while
+  retaining editable source installation for contributors.
+
+### Security
+- Added tokenless PyPI publication through a narrowly scoped GitHub Actions OIDC
+  trusted publisher and a manually approved `pypi` deployment environment.
+
 ## 0.7.0 — 2026-08-12
 
 ### Added
