@@ -31,8 +31,7 @@ actions preserve that human review step.
 
 ## 2. Triage a help-desk queue
 
-Process a directory and emit newline-delimited JSON for a ticketing or analytics
-pipeline:
+For a quick local view, process a directory and emit newline-delimited JSON:
 
 ```bash
 lurescope triage ./reported-emails --recursive --json > triage-results.jsonl
@@ -40,8 +39,18 @@ lurescope triage ./reported-emails --recursive --json > triage-results.jsonl
 
 One malformed message does not abort the batch. It produces an error object for
 that source and a non-zero exit status, while valid messages still receive results.
-No email content is sent to a model provider unless the operator explicitly
-selects the key-gated `llm-judge`; the default bundled detector runs locally.
+For an operational evidence bundle, use the dedicated inbox workflow:
+
+```bash
+lurescope inbox ./reported-emails --recursive --out ./lurescope-cases
+```
+
+It emits random case IDs, one LureProof per successfully processed message, a
+privacy-minimized manifest, and a summary. Source filenames, subjects, addresses,
+message IDs, URL values, attachment names, and message content are not persisted
+in that bundle. One malformed message does not suppress valid cases. No email
+content is sent to a model provider; the LureProof reference producer accepts
+deterministic local detectors only. See [Inbox to LureProof](INBOX_TO_LUREPROOF.md).
 
 ## 3. Add evidence to a SOC or SOAR workflow
 
