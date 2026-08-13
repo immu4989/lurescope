@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-08-12
+
+### Added
+- Added `lurescope inbox`, a bounded local batch workflow that turns reported
+  `.eml` files into random case IDs, one privacy-minimized LureProof per valid
+  message, a JSONL routing manifest, and an aggregate summary without persisting
+  source paths, subjects, addresses, message IDs, URL values, attachment names,
+  or message content.
+- Added strict inbox event and summary JSON schemas, private no-overwrite output
+  permissions, safe partial-failure records, optional batch DSSE signing, and
+  offline `splunk-hec`, Microsoft Sentinel, and generic JSON-array transforms.
+- Added pre-read message-count and 64 MiB aggregate batch limits plus bounded
+  per-file reads, preventing large mailbox inputs from exhausting process memory.
+- Added a fail-closed release gate that verifies version metadata and protected
+  tag ancestry, attests wheel and source distributions, and publishes the
+  hardened multi-architecture container to GHCR with an SBOM and provenance
+  attestation.
+
 ### Security
 - Added a universal, hash-bearing `uv.lock` and changed CI and container builds
   to frozen dependency resolution.
@@ -18,6 +36,9 @@
   and its last-compatible Starlette, Pillow, pytest, and python-dotenv branches
   contain known vulnerabilities. The maintained Python resolution uses fixed
   releases.
+
+### Changed
+- Corrected the public Python support badge to 3.10+.
 
 ## 0.6.0 — 2026-08-12
 

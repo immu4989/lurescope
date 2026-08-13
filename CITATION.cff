@@ -16,7 +16,9 @@ abstract: >-
   strict, privacy-minimized evidence artifact containing detector and threshold
   provenance plus attack and defense outcomes without message content. A standard
   DSSE envelope can authenticate the statement against an external trust key.
-version: 0.6.0
+  The inbox workflow turns reported-email queues into minimized routing manifests,
+  per-case proofs, and offline SIEM payloads.
+version: 0.7.0
 date-released: "2026-08-12"
 license: Apache-2.0
 keywords:

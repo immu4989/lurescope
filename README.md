@@ -9,9 +9,9 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Browser lab](https://img.shields.io/badge/▶_browser_lab-GitHub_Pages-57f2c1)](https://immu4989.github.io/lurescope/)
 [![Lightweight demo](https://img.shields.io/badge/🔬_lightweight_demo-Hugging_Face-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.6.0-57f2c1)
+![Version](https://img.shields.io/badge/version-0.7.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
-![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
+![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
@@ -30,6 +30,29 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > LureBench schema-v2 policies with finite-sample FPR control, independently
 > recomputes their exact statistics, and exposes assurance and limitations at
 > `GET /policy`. See [risk-controlled policy deployment](docs/RISK_CONTROLLED_POLICY.md).
+
+## Inbox to evidence in one command
+
+Point LureScope at a folder of user-reported emails. It creates a private case
+directory with one LureProof per message, a privacy-minimized JSONL manifest, and
+an aggregate routing summary:
+
+```bash
+lurescope inbox ./reported-emails --recursive --out ./lurescope-cases
+
+# Offline transforms—these commands never contact Splunk, Microsoft, or a webhook
+lurescope export ./lurescope-cases/manifest.jsonl \
+  --format splunk-hec --out ./lurescope-cases/splunk-hec.jsonl
+lurescope export ./lurescope-cases/manifest.jsonl \
+  --format sentinel --out ./lurescope-cases/sentinel.json
+```
+
+The shareable outputs contain random case IDs, scores, routing actions, evidence
+codes, resilience counts, and proof digests. They do **not** contain source paths,
+subjects, bodies, addresses, message IDs, URL values, or attachment names. Files
+are created private and existing output directories are never overwritten. Add
+`--signing-key issuer.pem` to authenticate every case as a DSSE envelope. See the
+[complete Inbox-to-LureProof workflow and SIEM mappings](docs/INBOX_TO_LUREPROOF.md).
 
 ## LureProof: a portable resilience passport
 
@@ -80,6 +103,9 @@ lurescope triage examples/suspicious-invoice.eml
 
 # Help-desk queue → one structured JSON event per message
 lurescope triage ./reported-emails --recursive --json > triage-results.jsonl
+
+# Full case bundle → minimized manifest + one LureProof per message
+lurescope inbox ./reported-emails --recursive --out ./lurescope-cases
 ```
 
 The API-backed browser lab served by `lurescope` has a **Choose .eml file**

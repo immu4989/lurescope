@@ -7,7 +7,10 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
+
+MAX_BATCH_INPUT_BYTES = 64 * 1024 * 1024
+MAX_BATCH_MESSAGES = 1_000
 
 
 def _serve(argv: Sequence[str]) -> int:
@@ -23,22 +26,71 @@ def _serve(argv: Sequence[str]) -> int:
     return 0
 
 
-def _input_messages(inputs: Sequence[str], recursive: bool) -> List[Tuple[str, bytes]]:
-    messages: List[Tuple[str, bytes]] = []
+def _input_messages(
+    inputs: Sequence[str],
+    recursive: bool,
+    *,
+    max_messages: int = MAX_BATCH_MESSAGES,
+    max_total_bytes: int = MAX_BATCH_INPUT_BYTES,
+) -> List[Tuple[str, bytes]]:
+    """Discover and bound a batch before reading any message into memory."""
+    from .triage import MAX_EMAIL_BYTES
+
+    if max_messages < 1 or max_messages > MAX_BATCH_MESSAGES:
+        raise ValueError(f"max_messages must be between 1 and {MAX_BATCH_MESSAGES}")
+    if max_total_bytes < 1 or max_total_bytes > MAX_BATCH_INPUT_BYTES:
+        raise ValueError(
+            f"max_total_bytes must be between 1 and {MAX_BATCH_INPUT_BYTES}"
+        )
+
+    sources: List[Tuple[str, Optional[Path]]] = []
     for value in inputs:
         if value == "-":
-            messages.append(("stdin", sys.stdin.buffer.read()))
-            continue
-        path = Path(value)
-        if path.is_dir():
-            pattern = "**/*.eml" if recursive else "*.eml"
-            messages.extend((str(item), item.read_bytes()) for item in sorted(path.glob(pattern)))
-        elif path.is_file():
-            messages.append((str(path), path.read_bytes()))
+            if any(path is None for _, path in sources):
+                raise ValueError("stdin may be specified only once")
+            sources.append(("stdin", None))
         else:
-            raise FileNotFoundError(value)
-    if not messages:
+            path = Path(value)
+            if path.is_dir():
+                pattern = "**/*.eml" if recursive else "*.eml"
+                sources.extend(
+                    (str(item), item)
+                    for item in sorted(path.glob(pattern))
+                    if item.is_file()
+                )
+            elif path.is_file():
+                sources.append((str(path), path))
+            else:
+                raise FileNotFoundError(value)
+        if len(sources) > max_messages:
+            raise ValueError(
+                f"inbox contains more than {max_messages} messages; no files were read"
+            )
+    if not sources:
         raise ValueError("no .eml messages found")
+
+    # Oversized files are read only to MAX_EMAIL_BYTES + 1 so the parser can emit
+    # a per-message EmailTooLarge result without allocating the complete file.
+    bounded_sizes = [
+        MAX_EMAIL_BYTES + 1
+        if path is None
+        else min(path.stat().st_size, MAX_EMAIL_BYTES + 1)
+        for _, path in sources
+    ]
+    if sum(bounded_sizes) > max_total_bytes:
+        raise ValueError(
+            f"bounded inbox input exceeds the {max_total_bytes} byte batch limit; "
+            "no files were read"
+        )
+
+    messages: List[Tuple[str, bytes]] = []
+    for (source, path), bounded_size in zip(sources, bounded_sizes, strict=True):
+        if path is None:
+            raw = sys.stdin.buffer.read(MAX_EMAIL_BYTES + 1)
+        else:
+            with path.open("rb") as stream:
+                raw = stream.read(bounded_size)
+        messages.append((source, raw))
     return messages
 
 
@@ -106,6 +158,79 @@ def _triage(argv: Sequence[str]) -> int:
     return 1 if failures else 0
 
 
+def _inbox(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope inbox",
+        description=(
+            "Turn .eml files into private per-case LureProofs and a privacy-minimized "
+            "JSONL manifest. Links and attachments are never opened."
+        ),
+    )
+    parser.add_argument("input", nargs="+", help=".eml file, directory, or - for stdin")
+    parser.add_argument("--out", "-o", required=True, help="new private output directory")
+    parser.add_argument(
+        "--recursive", "-r", action="store_true", help="scan directories recursively"
+    )
+    parser.add_argument("--detector", default="tfidf-logreg")
+    parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument(
+        "--privacy", choices=("salted-commitment", "correlatable"),
+        default="salted-commitment",
+        help="salted-commitment blocks direct hash matching; correlatable exposes raw SHA-256",
+    )
+    parser.add_argument("--nonce", help="verifier challenge shared by this batch")
+    parser.add_argument(
+        "--issuer", help="issuer label; authenticated only when proofs are signed"
+    )
+    parser.add_argument("--signing-key", help="unencrypted ECDSA P-256 private PEM key")
+    parser.add_argument(
+        "--max-messages", type=int, default=1000,
+        help="fail before processing when the inbox exceeds this limit (maximum 1000)",
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        messages = _input_messages(
+            args.input,
+            args.recursive,
+            max_messages=args.max_messages,
+        )
+        from .inbox import process_inbox
+
+        signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+        run = process_inbox(
+            messages,
+            Path(args.out),
+            detector_name=args.detector,
+            threshold=args.threshold,
+            privacy_profile=args.privacy,
+            nonce=args.nonce,
+            issuer=args.issuer,
+            signing_key_pem=signing_key,
+            max_messages=args.max_messages,
+        )
+    except (FileExistsError, FileNotFoundError, OSError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+    for item in run.items:
+        if item.status == "processed":
+            print(
+                f"[{item.risk_tier.upper()}] {item.source} -> "
+                f"{item.case_id} ({item.proof_file})"
+            )
+        else:
+            print(
+                f"[ERROR] {item.source} -> {item.case_id}: {item.error}",
+                file=sys.stderr,
+            )
+    print(
+        f"processed {run.summary['processed_count']}/{run.summary['input_count']}; "
+        f"failed {run.failed_count}; wrote {run.output_dir}"
+    )
+    return 1 if run.failed_count else 0
+
+
 def _proof(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="lurescope proof", description="Create a privacy-minimized LureProof from one .eml."
@@ -141,6 +266,30 @@ def _proof(argv: Sequence[str]) -> int:
     result = verify_proof(proof)
     kind = "signed DSSE" if result["artifact_type"] == "dsse" else "unsigned statement"
     print(f"created {args.out} ({kind}; sha256:{result['statement_sha256']})")
+    return 0
+
+
+def _export(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope export",
+        description="Transform a minimized inbox manifest for a SIEM or generic webhook.",
+    )
+    parser.add_argument("manifest", help="inbox manifest.jsonl path")
+    parser.add_argument(
+        "--format", required=True, choices=("json-array", "splunk-hec", "sentinel")
+    )
+    parser.add_argument("--out", "-o", required=True, help="new output file")
+    args = parser.parse_args(argv)
+    try:
+        from .integrations import export_inbox_manifest
+
+        count = export_inbox_manifest(
+            Path(args.manifest), Path(args.out), args.format
+        )
+    except (FileExistsError, FileNotFoundError, OSError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    print(f"exported {count} events as {args.format} to {args.out}")
     return 0
 
 
@@ -246,8 +395,12 @@ def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
         return _triage(args[1:])
+    if args and args[0] == "inbox":
+        return _inbox(args[1:])
     if args and args[0] == "proof":
         return _proof(args[1:])
+    if args and args[0] == "export":
+        return _export(args[1:])
     if args and args[0] == "verify":
         return _verify(args[1:])
     if args and args[0] == "keygen":

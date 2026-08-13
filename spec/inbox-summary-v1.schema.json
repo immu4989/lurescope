@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/inbox-summary/v1",
+  "title": "LureScope privacy-minimized inbox summary v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "input_count", "processed_count",
+    "failed_count", "risk_counts", "detector", "requested_threshold", "privacy_profile",
+    "proofs_signed", "manifest", "manifest_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/inbox-summary/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "input_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "processed_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "failed_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "risk_counts": {
+      "type": "object",
+      "required": ["high", "review", "low"],
+      "properties": {
+        "high": {"type": "integer", "minimum": 0},
+        "review": {"type": "integer", "minimum": 0},
+        "low": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "detector": {"type": "string", "minLength": 1, "maxLength": 100},
+    "requested_threshold": {
+      "oneOf": [{"type": "null"}, {"type": "number", "minimum": 0, "maximum": 1}]
+    },
+    "privacy_profile": {"enum": ["salted-commitment", "correlatable"]},
+    "proofs_signed": {"type": "boolean"},
+    "manifest": {"const": "manifest.jsonl"},
+    "manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "additionalProperties": false
+}

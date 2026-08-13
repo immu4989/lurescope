@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/inbox-event/v1",
+  "title": "LureScope privacy-minimized inbox event v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "case_id", "input_index", "status"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/inbox-event/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "case_id": {"type": "string", "pattern": "^case-[a-f0-9]{16}$"},
+    "input_index": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "status": {"enum": ["processed", "error"]},
+    "error_type": {"type": "string", "minLength": 1, "maxLength": 200},
+    "risk_tier": {"enum": ["high", "review", "low"]},
+    "recommended_action": {
+      "enum": ["quarantine_and_review", "hold_and_verify_sender", "continue_normal_controls"]
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detector", "detector_model", "detector_artifact_sha256", "fraud_probability",
+        "label", "threshold", "threshold_source", "policy_id", "evidence_codes",
+        "url_count", "attachment_count"
+      ],
+      "properties": {
+        "detector": {"type": "string", "minLength": 1, "maxLength": 100},
+        "detector_model": {"type": "string", "minLength": 1, "maxLength": 500},
+        "detector_artifact_sha256": {
+          "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-f0-9]{64}$"}]
+        },
+        "fraud_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "label": {"enum": ["fraud", "benign"]},
+        "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "threshold_source": {"type": "string", "minLength": 1, "maxLength": 100},
+        "policy_id": {"oneOf": [{"type": "null"}, {"type": "string", "maxLength": 500}]},
+        "evidence_codes": {
+          "type": "array", "maxItems": 32, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 100}
+        },
+        "url_count": {"type": "integer", "minimum": 0},
+        "attachment_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resilience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clean_flagged", "attack_count", "eligible_attack_count", "evasion_count",
+        "defense_recovery_count"
+      ],
+      "properties": {
+        "clean_flagged": {"type": "boolean"},
+        "attack_count": {"type": "integer", "minimum": 0},
+        "eligible_attack_count": {"type": "integer", "minimum": 0},
+        "evasion_count": {"type": "integer", "minimum": 0},
+        "defense_recovery_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "artifact_type", "statement_sha256", "signature_count", "key_ids"],
+      "properties": {
+        "file": {"type": "string", "pattern": "^case-[a-f0-9]{16}\\.lureproof(\\.dsse)?\\.json$"},
+        "artifact_type": {"enum": ["statement", "dsse"]},
+        "statement_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "signature_count": {"type": "integer", "minimum": 0, "maximum": 16},
+        "key_ids": {
+          "type": "array", "maxItems": 16,
+          "items": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "processed"}}},
+      "then": {
+        "required": ["risk_tier", "recommended_action", "assessment", "resilience", "proof"],
+        "not": {"required": ["error_type"]}
+      },
+      "else": {
+        "required": ["error_type"],
+        "not": {
+          "anyOf": [
+            {"required": ["risk_tier"]}, {"required": ["recommended_action"]},
+            {"required": ["assessment"]}, {"required": ["resilience"]},
+            {"required": ["proof"]}
+          ]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}
