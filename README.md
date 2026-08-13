@@ -9,6 +9,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Browser lab](https://img.shields.io/badge/▶_browser_lab-GitHub_Pages-57f2c1)](https://immu4989.github.io/lurescope/)
 [![Lightweight demo](https://img.shields.io/badge/🔬_lightweight_demo-Hugging_Face-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
+[![GHCR](https://img.shields.io/badge/GHCR-pull_0.7.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
 ![Version](https://img.shields.io/badge/version-0.7.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
@@ -241,20 +242,22 @@ curl -s localhost:8000/attack -H 'content-type: application/json' \
 Run it in a hardened local container instead:
 
 ```bash
-docker build -t lurescope .
+docker pull ghcr.io/immu4989/lurescope:0.7.0
 docker run --name lurescope-local --restart unless-stopped \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
   --cap-drop ALL --security-opt no-new-privileges:true \
   -p 127.0.0.1:8000:8000 \
   -e LURESCOPE_LLM_ENGINE=openrouter -e OPENROUTER_API_KEY \
-  lurescope
+  ghcr.io/immu4989/lurescope:0.7.0
 ```
 
-The runtime image is non-root, contains no Git or compiler toolchain, carries a
-Docker health check, and pins the exact LureBench commit used by its policy
-verifier. Keep key-backed deployments on localhost unless an authenticating,
-rate-limiting gateway is in front; otherwise public callers can spend your
-provider credits.
+The public image supports `linux/amd64` and `linux/arm64` and carries SBOM and
+provenance attestations. Its runtime is non-root, contains no Git or compiler
+toolchain, carries a Docker health check, and pins the exact LureBench source
+used by its policy verifier. To build it yourself, replace the pull with
+`docker build -t lurescope .` and use `lurescope` as the final run argument.
+Keep key-backed deployments on localhost unless an authenticating, rate-limiting
+gateway is in front; otherwise public callers can spend your provider credits.
 
 For an internet-facing deployment, enable LureScope's fail-closed public mode.
 It requires a bearer key, rate-limits each credential, defaults to local
