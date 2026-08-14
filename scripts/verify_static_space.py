@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 import urllib.error
 import urllib.request
 
@@ -23,12 +24,28 @@ def _post_json(url: str):
     return urllib.request.urlopen(request, timeout=10)
 
 
+def _wait_for_health(base: str, timeout: float = 15.0) -> None:
+    deadline = time.monotonic() + timeout
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            with _get(f"{base}/health") as response:
+                health = json.load(response)
+                if response.status == 200 and health == {
+                    "status": "ok",
+                    "mode": "static-browser-only",
+                }:
+                    return
+                raise AssertionError("static Space health contract failed")
+        except (OSError, urllib.error.URLError) as exc:
+            last_error = exc
+            time.sleep(0.2)
+    raise TimeoutError("static Space did not become ready") from last_error
+
+
 def verify(base_url: str) -> None:
     base = base_url.rstrip("/")
-    with _get(f"{base}/health") as response:
-        health = json.load(response)
-        if response.status != 200 or health != {"status": "ok", "mode": "static-browser-only"}:
-            raise AssertionError("static Space health contract failed")
+    _wait_for_health(base)
 
     with _get(f"{base}/") as response:
         html = response.read().decode("utf-8")
