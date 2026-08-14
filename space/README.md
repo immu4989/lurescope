@@ -3,7 +3,8 @@ title: LureScope
 emoji: 🔬
 colorFrom: blue
 colorTo: green
-sdk: static
+sdk: docker
+app_port: 7860
 pinned: false
 license: apache-2.0
 short_description: Fraud-lure scoring with a live attack-and-defense demo
@@ -19,7 +20,16 @@ Deployable fraud-lure scoring with a **live attack-and-defense demo**. Paste a m
 
 Same message, opposite outcomes, and a defense that closes the typographic gap while leaving the semantic one exposed: clean-data accuracy is not deployment accuracy.
 
-This Static Space runs both detectors, all four attacks, and the normalization defense **entirely in your browser** — no server, no data leaves the page. It uses the exact trained model from the [LureBench](https://github.com/immu4989/lurebench) benchmark, exported to JSON.
+This Docker Space serves a **static, browser-only lab**: both detectors, all four
+attacks, email preview, and the normalization defense execute inside your browser.
+No scoring or message-content endpoint exists in the container, so pasted text and
+uploaded email stay in the tab.
+
+The image build installs the exact `lurescope==0.7.1` wheel from
+[PyPI](https://pypi.org/project/lurescope/0.7.1/) with its SHA-256 pinned, then
+extracts the wheel's packaged web interface. The trained LureBench model remains a
+checked-in, client-side JSON artifact. This makes the public Space a deployment
+test of the released package without weakening its privacy boundary.
 
 ## What happens with real LLM detectors
 

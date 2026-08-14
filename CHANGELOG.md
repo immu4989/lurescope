@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+- Added a weekly, source-checkout-free PyPI installation and runtime smoke test
+  across Python 3.10, 3.12, and 3.13.
+- Added a hardened Docker Compose profile with authentication, rate limiting,
+  provider spending disabled, immutable image digest, loopback binding, bounded
+  resources and logs, and the same container isolation enforced in CI.
+- Added a five-minute workflow from a saved `.eml` through local triage,
+  privacy-minimized LureProof, and offline Splunk/Sentinel transforms.
+- Ignored the local key, reported-email, and case-output paths used by the
+  operational guides to reduce accidental commits of sensitive artifacts.
+
+### Changed
+- Converted the Hugging Face demo to a static-only Docker Space whose build
+  installs the exact hash-pinned `lurescope==0.7.1` wheel from PyPI and extracts
+  its packaged browser interface without exposing message-content endpoints.
+
 ## 0.7.1 — 2026-08-12
 
 ### Changed

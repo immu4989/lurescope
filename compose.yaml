@@ -1,0 +1,34 @@
+name: lurescope
+
+services:
+  lurescope:
+    image: ghcr.io/immu4989/lurescope:0.7.1@sha256:146fb4477756af8294d8f0ef660819dcec0ad9ec3da214bc02c411fb7d76a2f4
+    pull_policy: always
+    init: true
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 2.0
+    restart: unless-stopped
+    stop_grace_period: 15s
+    ports:
+      - "127.0.0.1:${LURESCOPE_PORT:-8000}:8000"
+    environment:
+      LURESCOPE_PUBLIC_MODE: "true"
+      LURESCOPE_API_KEY_SCRYPT: "${LURESCOPE_API_KEY_SCRYPT:?Generate an API key and export its scrypt verifier}"
+      LURESCOPE_RATE_LIMIT_PER_MINUTE: "${LURESCOPE_RATE_LIMIT_PER_MINUTE:-30}"
+      LURESCOPE_PROVIDER_DAILY_LIMIT: "0"
+      LURESCOPE_ALLOWED_DETECTORS: "tfidf-logreg,heuristic-v0"
+      LURESCOPE_ALLOWED_ATTACKS: "homoglyph,leet,zero-width,whitespace"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
