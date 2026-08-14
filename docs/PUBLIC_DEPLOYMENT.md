@@ -74,6 +74,42 @@ curl --fail http://127.0.0.1:8000/score \
   -d '{"text":"Verify your account at hxxps://example[.]invalid"}'
 ```
 
+## Secure Docker Compose
+
+The checked-in [`compose.yaml`](../compose.yaml) pins the public v0.7.1 image by
+tag and digest and applies the same non-root, read-only, capability-dropped
+boundary used by CI. It also enables authentication, a per-key rate limit,
+local-only detectors and attacks, a zero provider-call budget, process and memory
+limits, bounded logs, and a loopback-only port.
+
+Generate one client key and export its verifier into the current shell. The
+plaintext key is for the client; Compose receives only the salted scrypt
+verifier:
+
+```bash
+python -m pip install lurescope
+lurescope api-key --out api-key.json
+export API_KEY="$(python -c 'import json; print(json.load(open("api-key.json"))["client_api_key"])')"
+export LURESCOPE_API_KEY_SCRYPT="$(python -c 'import json; print(json.load(open("api-key.json"))["lurescope_api_key_scrypt"])')"
+
+docker compose up --detach --wait
+```
+
+Do not commit `api-key.json`, paste the client key into `compose.yaml`, or pass it
+to the service container. Verify the deployment with the client key:
+
+```bash
+curl --fail http://127.0.0.1:8000/security
+curl --fail http://127.0.0.1:8000/score \
+  -H "Authorization: Bearer $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"text":"Verify your account at hxxps://example[.]invalid"}'
+```
+
+Stop it with `docker compose down`. Set `LURESCOPE_PORT` before `up` to select a
+different loopback port. The file deliberately has no provider-key fields; add
+provider operations only after applying the controls in the next section.
+
 ## Provider-backed operations
 
 Provider spending is disabled by default. To enable it, specify every permitted

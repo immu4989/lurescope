@@ -47,6 +47,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build runtime image
         run: docker build --tag lurescope:ci .
+      - name: Build PyPI-backed static Space image
+        run: docker build --tag lurescope-space:ci ./space
       - name: Start hardened container
         run: |
           docker run --detach --name lurescope-ci \
@@ -68,8 +70,30 @@ jobs:
           test "$(docker inspect --format '{{.Config.User}}' lurescope-ci)" = "10001:10001"
           test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' lurescope-ci)" = "true"
           docker exec lurescope-ci sh -c '! command -v git'
+      - name: Start and verify the static Space privacy boundary
+        run: |
+          docker run --detach --name lurescope-space-ci \
+            --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --cap-drop ALL --security-opt no-new-privileges:true \
+            --publish 127.0.0.1:17860:7860 \
+            lurescope-space:ci
+          python3 scripts/verify_static_space.py --base-url http://127.0.0.1:17860
+      - name: Validate secure Compose deployment
+        env:
+          LURESCOPE_API_KEY_SCRYPT: scrypt$16384$8$1$11111111111111111111111111111111$10db63aeeaa4728a7a3cafe9af0b4d8704e3736c9f74eec4595e69c075f69785
+          LURESCOPE_PORT: "18080"
+        run: |
+          docker compose config --quiet
+          docker compose up --detach --wait
+          python3 scripts/verify_container.py \
+            --base-url http://127.0.0.1:18080 \
+            --api-key ci-only-lurescope-key-32-characters-minimum
+          docker compose down
       - name: Show logs and remove container
         if: always()
         run: |
           docker logs lurescope-ci 2>/dev/null || :
           docker rm --force lurescope-ci 2>/dev/null || :
+          docker logs lurescope-space-ci 2>/dev/null || :
+          docker rm --force lurescope-space-ci 2>/dev/null || :
+          LURESCOPE_API_KEY_SCRYPT=dummy docker compose down 2>/dev/null || :

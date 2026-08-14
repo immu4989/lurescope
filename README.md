@@ -9,6 +9,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![Browser lab](https://img.shields.io/badge/▶_browser_lab-GitHub_Pages-57f2c1)](https://immu4989.github.io/lurescope/)
 [![Lightweight demo](https://img.shields.io/badge/🔬_lightweight_demo-Hugging_Face-ff9d00)](https://huggingface.co/spaces/immu4989/lurescope)
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
+[![PyPI install](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurescope?color=2a78d6)](https://pypi.org/project/lurescope/)
 [![GHCR](https://img.shields.io/badge/GHCR-pull_0.7.1-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
 ![Version](https://img.shields.io/badge/version-0.7.1-57f2c1)
@@ -25,6 +26,14 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 </div>
 
 ---
+
+```bash
+python -m pip install lurescope
+```
+
+**New to LureScope?** Follow the
+[five-minute reported-email workflow](docs/FIVE_MINUTE_WORKFLOW.md) from a saved
+`.eml` to privacy-minimized LureProof and offline Splunk/Sentinel payloads.
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
 
@@ -261,6 +270,11 @@ used by its policy verifier. To build it yourself, replace the pull with
 `docker build -t lurescope .` and use `lurescope` as the final run argument.
 Keep key-backed deployments on localhost unless an authenticating, rate-limiting
 gateway is in front; otherwise public callers can spend your provider credits.
+
+For a guarded deployment with authentication, rate limiting, provider spending
+disabled, immutable image digest, read-only filesystem, dropped capabilities,
+and bounded resources, use the checked-in [`compose.yaml`](compose.yaml) and the
+[secure Compose procedure](docs/PUBLIC_DEPLOYMENT.md#secure-docker-compose).
 
 For an internet-facing deployment, enable LureScope's fail-closed public mode.
 It requires a bearer key, rate-limits each credential, defaults to local

@@ -7,6 +7,10 @@ dist/
 .venv/
 venv/
 .env
+# Local sensitive artifacts created by the documented operational workflows.
+/api-key.json
+/lurescope-cases/
+/reported-emails/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
