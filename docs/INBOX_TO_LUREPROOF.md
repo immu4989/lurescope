@@ -126,6 +126,14 @@ Send `events.json` only to an authenticated endpoint you control. LureScope does
 not ship a generic network sender because retry, authentication, TLS trust,
 idempotency, and dead-letter behavior belong to the receiving organization.
 
+## Reviewed standards mappings
+
+For a time-bounded exported-mail evaluation with fixed-vocabulary analyst labels,
+aggregate performance metrics, and versioned OCSF 1.8, ECS 9.4, or STIX 2.1
+outputs, use [Shadow Inbox](SHADOW_INBOX.md). The standards transforms preserve
+this manifest's privacy allowlist and remain offline; they do not send data to a
+security product or claim standards certification.
+
 ## Safety boundary
 
 Routing remains decision support. A low result is not proof of safety, header

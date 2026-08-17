@@ -10,6 +10,7 @@ venv/
 # Local sensitive artifacts created by the documented operational workflows.
 /api-key.json
 /lurescope-cases/
+/shadow-pilot/
 /reported-emails/
 .pytest_cache/
 .ruff_cache/

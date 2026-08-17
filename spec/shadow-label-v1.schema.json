@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/shadow-label/v1",
+  "title": "LureScope Shadow Inbox analyst label v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "labeled_at", "case_id", "label", "reason_code"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/shadow-label/v1"},
+    "schema_version": {"const": 1},
+    "labeled_at": {"type": "string", "format": "date-time"},
+    "case_id": {"type": "string", "pattern": "^case-[a-f0-9]{16}$"},
+    "label": {"enum": ["fraud", "benign", "uncertain"]},
+    "reason_code": {
+      "enum": [
+        "confirmed_external", "known_legitimate", "insufficient_evidence",
+        "policy_exception", "other"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

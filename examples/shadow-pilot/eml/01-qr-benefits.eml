@@ -1,0 +1,13 @@
+From: Benefits Desk <benefits@example.invalid>
+To: employee@example.invalid
+Subject: Complete benefits enrollment today
+Message-ID: <synthetic-qr-001@example.invalid>
+Date: Fri, 14 Aug 2026 09:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+<html><body>
+<p>Your enrollment is incomplete. Scan this QR code to continue before 5 PM.</p>
+<img src="cid:synthetic-code" alt="Benefits enrollment QR code">
+</body></html>

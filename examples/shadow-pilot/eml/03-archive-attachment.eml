@@ -1,0 +1,21 @@
+From: Remittance Team <remittance@example.invalid>
+To: accounts.payable@example.invalid
+Subject: Overdue remittance documents
+Message-ID: <synthetic-archive-003@example.invalid>
+Date: Fri, 14 Aug 2026 09:30:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="synthetic-boundary-003"
+
+--synthetic-boundary-003
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Open the attached remittance archive and confirm the overdue payment immediately. The attachment is an inert test payload and must not be opened.
+
+--synthetic-boundary-003
+Content-Type: application/zip
+Content-Disposition: attachment; filename="synthetic-remittance.zip"
+Content-Transfer-Encoding: base64
+
+VGhpcyBpcyBub3QgYSByZWFsIFpJUCBhcmNoaXZlLg==
+--synthetic-boundary-003--

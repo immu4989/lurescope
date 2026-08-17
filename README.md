@@ -21,6 +21,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
+**[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -41,6 +42,40 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > LureBench schema-v2 policies with finite-sample FPR control, independently
 > recomputes their exact statistics, and exposes assurance and limitations at
 > `GET /policy`. See [risk-controlled policy deployment](docs/RISK_CONTROLLED_POLICY.md).
+
+## Shadow Inbox: measure before enforcement
+
+Evaluate an exported `.eml` directory, Maildir, or mbox without connecting to a
+mailbox or changing a message. Shadow Inbox deduplicates locally, creates minimized
+LureProof cases, collects fixed-vocabulary analyst labels, and produces an
+aggregate-only report of routing recall, false-positive rate, workload, and
+adversarial weaknesses:
+
+> Shadow Inbox is currently on `main` and will ship in the next tagged release.
+> Until then, use a source checkout with `python -m pip install -e .`; PyPI 0.7.1
+> does not contain the unreleased command.
+
+```bash
+lurescope shadow run examples/shadow-pilot/eml --out ./shadow-pilot
+lurescope shadow label ./shadow-pilot case-<random> fraud \
+  --reason confirmed_external
+lurescope shadow report ./shadow-pilot
+```
+
+Export reviewed, minimized records as OCSF 1.8 Detection Findings, ECS 9.4 NDJSON,
+or a STIX 2.1 bundle—all without a network call:
+
+```bash
+lurescope export ./shadow-pilot/manifest.jsonl \
+  --labels ./shadow-pilot/analyst-labels.jsonl \
+  --format ocsf-1.8 --out ./shadow-pilot/ocsf.json
+```
+
+It never decodes QR images, opens attachments, follows links, quarantines mail, or
+sends content to a model provider. Start with the
+[synthetic pilot pack](examples/shadow-pilot/README.md), then follow the
+[complete Shadow Inbox workflow, metric definitions, privacy boundary, and
+standards mappings](docs/SHADOW_INBOX.md).
 
 ## Inbox to evidence in one command
 
@@ -106,7 +141,8 @@ cross-organization drill without carrying live lure content. Read the
 LureScope now accepts raw `.eml` files—not just copied text. It safely extracts
 visible message content and reports model evidence alongside deterministic email
 context: Reply-To mismatch, explicit SPF/DKIM/DMARC failures, punycode and
-IP-address links, and risky attachment filename extensions.
+IP-address links, risky attachment filename extensions, and bounded HTML cues for
+QR/scan language or image-dominant messages. Image bytes are not decoded.
 
 ```bash
 # Human-readable result; everything runs locally by default

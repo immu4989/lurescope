@@ -29,6 +29,10 @@ _DANGEROUS_EXTENSIONS = {
     ".lnk", ".msi", ".ps1", ".scr", ".vbe", ".vbs", ".wsf",
 }
 _ARCHIVE_EXTENSIONS = {".7z", ".gz", ".img", ".rar", ".tar", ".zip"}
+_QR_LANGUAGE = re.compile(
+    r"\b(?:qr|quick response)\s*code\b|\bscan\s+(?:(?:this|the|a)\s+)?code\b",
+    re.IGNORECASE,
+)
 
 
 class EmailTooLarge(ValueError):
@@ -41,6 +45,8 @@ class _HTMLText(HTMLParser):
         self.parts: List[str] = []
         self.urls: List[str] = []
         self.hidden = 0
+        self.inline_images = 0
+        self.visible_text_length = 0
 
     def handle_starttag(self, tag: str, attrs) -> None:
         if tag in {"script", "style", "head"}:
@@ -51,6 +57,11 @@ class _HTMLText(HTMLParser):
             href = dict(attrs).get("href", "")
             if href.casefold().startswith(("http://", "https://")):
                 self.urls.append(href)
+        elif tag == "img" and not self.hidden:
+            self.inline_images += 1
+            alt = str(dict(attrs).get("alt", "")).strip()
+            if alt:
+                self.parts.append(f" {alt} ")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "head"} and self.hidden:
@@ -61,6 +72,7 @@ class _HTMLText(HTMLParser):
     def handle_data(self, data: str) -> None:
         if not self.hidden:
             self.parts.append(data)
+            self.visible_text_length += len(data.strip())
 
     def text(self) -> str:
         return re.sub(r"\n{3,}", "\n\n", "".join(self.parts)).strip()
@@ -85,6 +97,8 @@ class ParsedEmail:
     urls: List[str]
     attachments: List[str]
     authentication_results: List[str]
+    inline_image_count: int
+    html_visible_text_length: int
 
 
 @dataclass
@@ -133,10 +147,12 @@ def _part_text(part: Message) -> str:
     return content if isinstance(content, str) else ""
 
 
-def _extract_body(message: EmailMessage) -> tuple[str, List[str]]:
+def _extract_body(message: EmailMessage) -> tuple[str, List[str], int, int]:
     plain: List[str] = []
     html: List[str] = []
     html_urls: List[str] = []
+    inline_images = 0
+    html_visible_text_length = 0
     parts = message.walk() if message.is_multipart() else [message]
     for part in parts:
         if part.is_multipart() or part.get_content_disposition() == "attachment":
@@ -149,9 +165,11 @@ def _extract_body(message: EmailMessage) -> tuple[str, List[str]]:
             parser.feed(_part_text(part))
             html.append(parser.text())
             html_urls.extend(parser.urls)
+            inline_images += parser.inline_images
+            html_visible_text_length += parser.visible_text_length
     chosen = plain if any(item.strip() for item in plain) else html
     body = "\n\n".join(item.strip() for item in chosen if item.strip()).strip()
-    return body, html_urls
+    return body, html_urls, inline_images, html_visible_text_length
 
 
 def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
@@ -168,7 +186,7 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
             filename = part.get_filename()
             if filename:
                 attachments.append(str(filename))
-    body, html_urls = _extract_body(message)
+    body, html_urls, inline_images, html_visible_text_length = _extract_body(message)
     urls = sorted({
         item.rstrip(".,);]") for item in [*_URL.findall(body), *html_urls]
     })
@@ -184,6 +202,8 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
         authentication_results=[
             str(value) for value in message.get_all("Authentication-Results", [])
         ],
+        inline_image_count=inline_images,
+        html_visible_text_length=html_visible_text_length,
     )
 
 
@@ -223,6 +243,19 @@ def _context_evidence(email: ParsedEmail) -> List[Evidence]:
             "Header reports email authentication failure",
             f"Authentication-Results reports failure for {', '.join(failed)}; "
             "verify that the header came from a trusted gateway.",
+        ))
+    visual_language = "\n".join((email.subject, email.body))
+    if email.inline_image_count and _QR_LANGUAGE.search(visual_language):
+        evidence.append(Evidence(
+            "qr_lure_cue", "medium", "QR-code lure cue",
+            "The HTML combines an inline image with instructions to scan a code; "
+            "image bytes were not decoded.",
+        ))
+    elif email.inline_image_count and email.html_visible_text_length < 8:
+        evidence.append(Evidence(
+            "image_dominant_html", "medium", "Image-dominant HTML body",
+            "The HTML has an inline image but almost no visible text; image bytes "
+            "were not decoded.",
         ))
     for filename in email.attachments:
         suffix = Path(filename.casefold()).suffix
