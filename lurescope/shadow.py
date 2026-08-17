@@ -551,6 +551,13 @@ def append_analyst_label(
     finally:
         os.close(descriptor)
     write_shadow_reports(bundle, overwrite=True)
+    registered_plan = bundle / "pilot-plan.json"
+    if registered_plan.exists() or registered_plan.is_symlink():
+        # The registered plan copy lets label revisions refresh the decision and
+        # prevents a stale gate from appearing current after the evidence changes.
+        from .pilot import write_pilot_gate
+
+        write_pilot_gate(bundle, registered_plan)
     return event
 
 

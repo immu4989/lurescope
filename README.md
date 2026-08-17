@@ -22,6 +22,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
+**[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -49,18 +50,35 @@ Evaluate an exported `.eml` directory, Maildir, or mbox without connecting to a
 mailbox or changing a message. Shadow Inbox deduplicates locally, creates minimized
 LureProof cases, collects fixed-vocabulary analyst labels, and produces an
 aggregate-only report of routing recall, false-positive rate, workload, and
-adversarial weaknesses:
+adversarial weaknesses. Pilot Gate adds a pre-run statistical contract that cannot
+pass with incomplete labels or inadequate evidence:
 
 > Shadow Inbox is currently on `main` and will ship in the next tagged release.
 > Until then, use a source checkout with `python -m pip install -e .`; PyPI 0.7.1
 > does not contain the unreleased command.
 
 ```bash
-lurescope shadow run examples/shadow-pilot/eml --out ./shadow-pilot
+lurescope shadow plan --out ./pilot-plan.json --plan-id synthetic-pilot \
+  --min-processed 5 --min-fraud-labels 1 --min-benign-labels 1 \
+  --max-uncertain-rate 0 --max-failure-rate 0 \
+  --min-recall-lower 0.05 --max-fpr-upper 0.99 \
+  --max-routed-rate 1 --max-routed-count 5
+lurescope shadow run examples/shadow-pilot/eml --threshold 0.5 --out ./shadow-pilot
+# Repeat the fixed-vocabulary label command for every processed case.
 lurescope shadow label ./shadow-pilot case-<random> fraud \
   --reason confirmed_external
 lurescope shadow report ./shadow-pilot
+lurescope shadow gate ./shadow-pilot --plan ./pilot-plan.json
 ```
+
+The tiny criteria above only exercise the synthetic workflow, and the gate will
+correctly report `insufficient_evidence` until all five unique cases are labeled.
+For a real pilot, pre-register organization-approved sample sizes and risk limits.
+Pilot Gate binds the plan, minimized manifest, and label log; computes exact
+one-sided recall/FPR bounds;
+checks review capacity; and returns `insufficient_evidence`, `fail`, or `pass` with a
+non-zero exit unless every registered criterion passes. See the
+[statistical definitions, protocol, and interpretation limits](docs/PILOT_GATE.md).
 
 Export reviewed, minimized records as OCSF 1.8 Detection Findings, ECS 9.4 NDJSON,
 or a STIX 2.1 bundle—all without a network call:

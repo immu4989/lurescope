@@ -13,7 +13,13 @@ This is decision support, not an autonomous mail control.
 ```bash
 python -m pip install -e '.[dev]'
 
-lurescope shadow run examples/shadow-pilot/eml \
+lurescope shadow plan --out ./pilot-plan.json --plan-id synthetic-pilot \
+  --min-processed 5 --min-fraud-labels 1 --min-benign-labels 1 \
+  --max-uncertain-rate 0 --max-failure-rate 0 \
+  --min-recall-lower 0.05 --max-fpr-upper 0.99 \
+  --max-routed-rate 1 --max-routed-count 5
+
+lurescope shadow run examples/shadow-pilot/eml --threshold 0.5 \
   --format eml --out ./shadow-pilot
 ```
 
@@ -45,6 +51,9 @@ shadow-pilot/
 ├── analyst-labels.jsonl
 ├── case-<random>.lureproof.json
 ├── manifest.jsonl
+├── pilot-gate.json          # after `shadow gate`
+├── pilot-gate.md            # after `shadow gate`
+├── pilot-plan.json          # registered copy after `shadow gate`
 ├── shadow-report.json
 ├── shadow-report.md
 ├── shadow-run.json
@@ -125,6 +134,20 @@ with low label coverage or few fraud/benign decisions cannot support a deploymen
 claim. Define acceptance criteria, sampling, review protocol, and confidence
 intervals before seeing the final result; use LureBench for corpus-level statistical
 evaluation.
+
+For a machine-enforced version of that discipline, create a plan before the run and
+evaluate it after complete review:
+
+```bash
+lurescope shadow gate ./shadow-pilot --plan ./pilot-plan.json
+```
+
+Pilot Gate verifies the registered detector, model-artifact digest, threshold, and
+policy ID; requires complete latest-label coverage; computes exact one-sided
+Clopper–Pearson recall and FPR bounds; enforces absolute and relative analyst
+workload; and cannot return `pass` when evidence is incomplete. Read the full
+[pre-registration procedure, exit-code contract, statistical definitions, and
+limitations](PILOT_GATE.md) before using the result in change control.
 
 ## Export minimized events
 

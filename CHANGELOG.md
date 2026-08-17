@@ -3,6 +3,16 @@
 ## Unreleased
 
 ### Added
+- Added Pilot Gate, a pre-run, no-overwrite statistical contract for Shadow Inbox
+  pilots that binds the registered control, minimized manifest, and analyst-label
+  log; requires complete review and minimum class evidence; computes exact one-sided
+  Clopper–Pearson recall/FPR bounds; enforces analyst-workload limits; and returns
+  distinct `insufficient_evidence`, `fail`, and `pass` verdicts with automation-safe
+  exit codes. The registered plan is retained in the bundle so later label revisions
+  refresh the gate instead of leaving a stale decision behind.
+- Added strict Pilot Gate plan/result JSON Schemas, private aggregate-only JSON and
+  Markdown decision artifacts, causal ordering and control-mismatch checks, known-
+  bound statistical tests, and an operator protocol with explicit assumptions.
 - Added `lurescope shadow` for no-enforcement pilots over exported `.eml`, Maildir,
   and mbox data, with conservative deduplication, fixed-vocabulary append-only
   analyst labels, and aggregate-only workload, routing, validation, and resilience

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/pilot-plan/v1",
+  "title": "LureScope pre-registered Pilot Gate plan v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "plan_id", "created_at", "labeling_protocol",
+    "confidence", "confidence_scope", "control", "requirements", "acceptance"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/pilot-plan/v1"},
+    "schema_version": {"const": 1},
+    "plan_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "labeling_protocol": {"enum": ["full_blinded_review", "full_review"]},
+    "confidence": {"type": "number", "minimum": 0.8, "maximum": 0.999},
+    "confidence_scope": {"const": "per_metric_one_sided"},
+    "control": {
+      "type": "object",
+      "required": ["detector", "detector_artifact_sha256", "threshold", "policy_id"],
+      "properties": {
+        "detector": {
+          "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$"
+        },
+        "detector_artifact_sha256": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+          ]
+        },
+        "threshold": {"$ref": "#/$defs/ratio"},
+        "policy_id": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,255}$"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "requirements": {
+      "type": "object",
+      "required": [
+        "min_processed_count", "min_fraud_labels", "min_benign_labels",
+        "required_label_coverage", "max_uncertain_rate",
+        "max_processing_failure_rate"
+      ],
+      "properties": {
+        "min_processed_count": {"type": "integer", "minimum": 2, "maximum": 1000},
+        "min_fraud_labels": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "min_benign_labels": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "required_label_coverage": {"const": 1.0},
+        "max_uncertain_rate": {"$ref": "#/$defs/ratio"},
+        "max_processing_failure_rate": {"$ref": "#/$defs/ratio"}
+      },
+      "additionalProperties": false
+    },
+    "acceptance": {
+      "type": "object",
+      "required": [
+        "min_routing_recall_lower_bound",
+        "max_routing_false_positive_rate_upper_bound", "max_routed_rate",
+        "max_routed_count"
+      ],
+      "properties": {
+        "min_routing_recall_lower_bound": {
+          "type": "number", "exclusiveMinimum": 0, "maximum": 1
+        },
+        "max_routing_false_positive_rate_upper_bound": {
+          "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1
+        },
+        "max_routed_rate": {"$ref": "#/$defs/ratio"},
+        "max_routed_count": {"type": "integer", "minimum": 0, "maximum": 1000}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "ratio": {"type": "number", "minimum": 0, "maximum": 1}
+  },
+  "additionalProperties": false
+}

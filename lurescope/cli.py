@@ -311,6 +311,38 @@ def _shadow(argv: Sequence[str]) -> int:
     )
     commands = parser.add_subparsers(dest="shadow_command", required=True)
 
+    plan_parser = commands.add_parser(
+        "plan", help="create a new pre-run statistical acceptance plan"
+    )
+    plan_parser.add_argument("--out", "-o", required=True, help="new private plan JSON path")
+    plan_parser.add_argument("--plan-id", required=True, help="lowercase registration slug")
+    plan_parser.add_argument("--min-processed", type=int, required=True)
+    plan_parser.add_argument("--min-fraud-labels", type=int, required=True)
+    plan_parser.add_argument("--min-benign-labels", type=int, required=True)
+    plan_parser.add_argument("--max-uncertain-rate", type=float, required=True)
+    plan_parser.add_argument("--max-failure-rate", type=float, required=True)
+    plan_parser.add_argument("--min-recall-lower", type=float, required=True)
+    plan_parser.add_argument("--max-fpr-upper", type=float, required=True)
+    plan_parser.add_argument("--max-routed-rate", type=float, required=True)
+    plan_parser.add_argument("--max-routed-count", type=int, required=True)
+    plan_parser.add_argument("--confidence", type=float, default=0.95)
+    plan_parser.add_argument("--detector", default="tfidf-logreg")
+    plan_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="exact threshold the subsequent shadow run must use (default: 0.5)",
+    )
+    plan_parser.add_argument(
+        "--policy-id",
+        help="expected validated policy ID; omit when using an explicit threshold",
+    )
+    plan_parser.add_argument(
+        "--labeling-protocol",
+        choices=("full_blinded_review", "full_review"),
+        default="full_blinded_review",
+    )
+
     run_parser = commands.add_parser(
         "run", help="create a new privacy-minimized Shadow Inbox pilot bundle"
     )
@@ -353,8 +385,41 @@ def _shadow(argv: Sequence[str]) -> int:
     )
     report_parser.add_argument("bundle", help="Shadow Inbox bundle directory")
 
+    gate_parser = commands.add_parser(
+        "gate", help="evaluate a pre-registered plan and refresh decision artifacts"
+    )
+    gate_parser.add_argument("bundle", help="Shadow Inbox bundle directory")
+    gate_parser.add_argument("--plan", required=True, help="pre-run Pilot Gate plan JSON")
+
     args = parser.parse_args(argv)
     try:
+        if args.shadow_command == "plan":
+            from .pilot import create_pilot_plan, pilot_plan_sha256
+
+            target = Path(args.out)
+            plan = create_pilot_plan(
+                target,
+                plan_id=args.plan_id,
+                min_processed_count=args.min_processed,
+                min_fraud_labels=args.min_fraud_labels,
+                min_benign_labels=args.min_benign_labels,
+                max_uncertain_rate=args.max_uncertain_rate,
+                max_processing_failure_rate=args.max_failure_rate,
+                min_routing_recall_lower_bound=args.min_recall_lower,
+                max_routing_false_positive_rate_upper_bound=args.max_fpr_upper,
+                max_routed_rate=args.max_routed_rate,
+                max_routed_count=args.max_routed_count,
+                confidence=args.confidence,
+                labeling_protocol=args.labeling_protocol,
+                detector=args.detector,
+                threshold=args.threshold,
+                policy_id=args.policy_id,
+            )
+            print(
+                f"created {target} for {plan['plan_id']}; "
+                f"sha256:{pilot_plan_sha256(target)}"
+            )
+            return 0
         if args.shadow_command == "run":
             from .shadow import run_shadow_inbox
 
@@ -388,8 +453,23 @@ def _shadow(argv: Sequence[str]) -> int:
             print(
                 f"labeled {event['case_id']} as {event['label']} "
                 f"({event['reason_code']}); refreshed aggregate reports"
+                + (
+                    " and Pilot Gate"
+                    if (Path(args.bundle) / "pilot-plan.json").exists()
+                    else ""
+                )
             )
             return 0
+
+        if args.shadow_command == "gate":
+            from .pilot import write_pilot_gate
+
+            gate = write_pilot_gate(Path(args.bundle), Path(args.plan))
+            print(
+                f"Pilot Gate: {gate['verdict']}; wrote pilot-gate.json and "
+                f"pilot-gate.md in {args.bundle}"
+            )
+            return 0 if gate["verdict"] == "pass" else 1
 
         from .shadow import write_shadow_reports
 
