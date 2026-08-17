@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/pilot-gate/v1",
+  "title": "LureScope aggregate-only Pilot Gate result v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "verdict", "failed_checks",
+    "method", "privacy", "plan_binding", "run_binding", "confidence", "metrics",
+    "checks", "interpretation_boundary", "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/pilot-gate/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "verdict": {"enum": ["insufficient_evidence", "pass", "fail"]},
+    "failed_checks": {
+      "type": "array", "maxItems": 10, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/checkId"}
+    },
+    "method": {"const": "one_sided_clopper_pearson_exact_v1"},
+    "privacy": {
+      "type": "object",
+      "required": ["aggregate_only", "contains_case_identifiers", "contains_message_content"],
+      "properties": {
+        "aggregate_only": {"const": true},
+        "contains_case_identifiers": {"const": false},
+        "contains_message_content": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "plan_binding": {
+      "type": "object",
+      "required": ["plan_id", "created_at", "labeling_protocol", "control", "sha256"],
+      "properties": {
+        "plan_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "labeling_protocol": {"enum": ["full_blinded_review", "full_review"]},
+        "control": {
+          "type": "object",
+          "required": ["detector", "detector_artifact_sha256", "threshold", "policy_id"],
+          "properties": {
+            "detector": {
+              "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$"
+            },
+            "detector_artifact_sha256": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/sha256"}
+              ]
+            },
+            "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+            "policy_id": {
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,255}$"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "run_binding": {
+      "type": "object",
+      "required": ["generated_at", "manifest_sha256", "labels_sha256"],
+      "properties": {
+        "generated_at": {"type": "string", "format": "date-time"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "labels_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "object", "required": ["level", "scope"],
+      "properties": {
+        "level": {"type": "number", "minimum": 0.8, "maximum": 0.999},
+        "scope": {"const": "per_metric_one_sided"}
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "processed_count", "failed_count", "latest_label_count", "fraud_label_count",
+        "benign_label_count", "uncertain_label_count", "label_coverage",
+        "uncertain_rate", "processing_failure_rate", "routed_count", "routed_rate",
+        "confusion", "routing_recall_estimate", "routing_recall_lower_bound",
+        "routing_false_positive_rate_estimate",
+        "routing_false_positive_rate_upper_bound"
+      ],
+      "properties": {
+        "processed_count": {"$ref": "#/$defs/count"},
+        "failed_count": {"$ref": "#/$defs/count"},
+        "latest_label_count": {"$ref": "#/$defs/count"},
+        "fraud_label_count": {"$ref": "#/$defs/count"},
+        "benign_label_count": {"$ref": "#/$defs/count"},
+        "uncertain_label_count": {"$ref": "#/$defs/count"},
+        "label_coverage": {"$ref": "#/$defs/nullableRatio"},
+        "uncertain_rate": {"$ref": "#/$defs/nullableRatio"},
+        "processing_failure_rate": {"$ref": "#/$defs/nullableRatio"},
+        "routed_count": {"$ref": "#/$defs/count"},
+        "routed_rate": {"$ref": "#/$defs/nullableRatio"},
+        "confusion": {
+          "type": "object",
+          "required": ["true_positive", "false_positive", "true_negative", "false_negative"],
+          "properties": {
+            "true_positive": {"$ref": "#/$defs/count"},
+            "false_positive": {"$ref": "#/$defs/count"},
+            "true_negative": {"$ref": "#/$defs/count"},
+            "false_negative": {"$ref": "#/$defs/count"}
+          },
+          "additionalProperties": false
+        },
+        "routing_recall_estimate": {"$ref": "#/$defs/nullableRatio"},
+        "routing_recall_lower_bound": {"$ref": "#/$defs/nullableRatio"},
+        "routing_false_positive_rate_estimate": {"$ref": "#/$defs/nullableRatio"},
+        "routing_false_positive_rate_upper_bound": {"$ref": "#/$defs/nullableRatio"}
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array", "minItems": 10, "maxItems": 10,
+      "items": {"$ref": "#/$defs/check"}
+    },
+    "interpretation_boundary": {"type": "string", "minLength": 1, "maxLength": 500},
+    "limitations": {
+      "type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true,
+      "prefixItems": [
+        {"const": "representative_iid_sample_required"},
+        {"const": "label_quality_not_verified"},
+        {"const": "labeling_protocol_not_verified"},
+        {"const": "distribution_shift_not_covered"},
+        {"const": "per_metric_confidence_not_simultaneous_confidence"},
+        {"const": "sha256_bindings_are_not_authentication"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "nullableRatio": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "number", "minimum": 0, "maximum": 1}
+      ]
+    },
+    "checkId": {
+      "enum": [
+        "processed_count", "fraud_label_count", "benign_label_count",
+        "label_coverage", "uncertain_rate", "processing_failure_rate",
+        "routing_recall_lower_bound", "routing_false_positive_rate_upper_bound",
+        "routed_rate", "routed_count"
+      ]
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "group", "status", "observed", "operator", "threshold"],
+      "properties": {
+        "id": {"$ref": "#/$defs/checkId"},
+        "group": {"enum": ["evidence", "acceptance"]},
+        "status": {"enum": ["pass", "fail", "not_evaluable"]},
+        "observed": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "number", "minimum": 0, "maximum": 1000}
+          ]
+        },
+        "operator": {"enum": [">=", "<="]},
+        "threshold": {"type": "number", "minimum": 0, "maximum": 1000}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -59,13 +59,21 @@ Use Shadow Inbox to evaluate approved `.eml`, Maildir, or mbox exports without a
 live mailbox connection:
 
 ```bash
-lurescope shadow run /approved/export --recursive --out ./shadow-pilot
+lurescope shadow plan --out ./pilot-plan.json --plan-id approved-pilot \
+  --min-processed 400 --min-fraud-labels 100 --min-benign-labels 300 \
+  --max-uncertain-rate 0.02 --max-failure-rate 0.01 \
+  --min-recall-lower 0.90 --max-fpr-upper 0.01 \
+  --max-routed-rate 0.25 --max-routed-count 100
+lurescope shadow run /approved/export --recursive --threshold 0.5 \
+  --out ./shadow-pilot
 ```
 
 The pilot deduplicates conservatively, creates minimized case evidence, records
 fixed-vocabulary analyst labels, and generates aggregate routing, false-positive,
-workload, and resilience metrics. See [Shadow Inbox](SHADOW_INBOX.md) for the
-review protocol, privacy boundary, and OCSF/ECS/STIX mappings.
+workload, and resilience metrics. After complete independent review, `lurescope
+shadow gate` emits a fail-closed decision with exact one-sided confidence bounds.
+See [Pilot Gate](PILOT_GATE.md) for pre-registration and interpretation, and
+[Shadow Inbox](SHADOW_INBOX.md) for the privacy boundary and OCSF/ECS/STIX mappings.
 
 ## 4. Add evidence to a SOC or SOAR workflow
 
