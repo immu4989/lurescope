@@ -270,27 +270,135 @@ def _proof(argv: Sequence[str]) -> int:
 
 
 def _export(argv: Sequence[str]) -> int:
+    from .integrations import EXPORT_FORMATS
+
     parser = argparse.ArgumentParser(
         prog="lurescope export",
         description="Transform a minimized inbox manifest for a SIEM or generic webhook.",
     )
     parser.add_argument("manifest", help="inbox manifest.jsonl path")
-    parser.add_argument(
-        "--format", required=True, choices=("json-array", "splunk-hec", "sentinel")
-    )
+    parser.add_argument("--format", required=True, choices=EXPORT_FORMATS)
     parser.add_argument("--out", "-o", required=True, help="new output file")
+    parser.add_argument(
+        "--labels",
+        help="optional Shadow Inbox analyst-labels.jsonl for reviewed export state",
+    )
     args = parser.parse_args(argv)
     try:
         from .integrations import export_inbox_manifest
 
         count = export_inbox_manifest(
-            Path(args.manifest), Path(args.out), args.format
+            Path(args.manifest),
+            Path(args.out),
+            args.format,
+            labels_path=Path(args.labels) if args.labels else None,
         )
     except (FileExistsError, FileNotFoundError, OSError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
     print(f"exported {count} events as {args.format} to {args.out}")
     return 0
+
+
+def _shadow(argv: Sequence[str]) -> int:
+    from .shadow import ANALYST_LABELS, INPUT_FORMATS, LABEL_REASONS
+
+    parser = argparse.ArgumentParser(
+        prog="lurescope shadow",
+        description=(
+            "Run an offline, no-enforcement pilot over exported .eml, Maildir, or mbox data."
+        ),
+    )
+    commands = parser.add_subparsers(dest="shadow_command", required=True)
+
+    run_parser = commands.add_parser(
+        "run", help="create a new privacy-minimized Shadow Inbox pilot bundle"
+    )
+    run_parser.add_argument("input", nargs="+", help="exported mailbox file or directory")
+    run_parser.add_argument("--out", "-o", required=True, help="new private output directory")
+    run_parser.add_argument("--format", choices=INPUT_FORMATS, default="auto")
+    run_parser.add_argument(
+        "--recursive", "-r", action="store_true", help="scan .eml directories recursively"
+    )
+    run_parser.add_argument("--detector", default="tfidf-logreg")
+    run_parser.add_argument("--threshold", type=float, default=None)
+    run_parser.add_argument(
+        "--privacy",
+        choices=("salted-commitment", "correlatable"),
+        default="salted-commitment",
+        help="salted-commitment prevents direct raw-message hash matching",
+    )
+    run_parser.add_argument("--nonce", help="verifier challenge shared by this batch")
+    run_parser.add_argument(
+        "--issuer", help="issuer label; authenticated only when proofs are signed"
+    )
+    run_parser.add_argument("--signing-key", help="unencrypted ECDSA P-256 private PEM key")
+    run_parser.add_argument(
+        "--max-messages",
+        type=int,
+        default=MAX_BATCH_MESSAGES,
+        help="fail before body reads above this limit (maximum 1000)",
+    )
+
+    label_parser = commands.add_parser(
+        "label", help="append a fixed-vocabulary analyst decision and refresh reports"
+    )
+    label_parser.add_argument("bundle", help="Shadow Inbox bundle directory")
+    label_parser.add_argument("case_id")
+    label_parser.add_argument("label", choices=ANALYST_LABELS)
+    label_parser.add_argument("--reason", required=True, choices=LABEL_REASONS)
+
+    report_parser = commands.add_parser(
+        "report", help="rebuild aggregate JSON and Markdown pilot reports"
+    )
+    report_parser.add_argument("bundle", help="Shadow Inbox bundle directory")
+
+    args = parser.parse_args(argv)
+    try:
+        if args.shadow_command == "run":
+            from .shadow import run_shadow_inbox
+
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            run = run_shadow_inbox(
+                [Path(value) for value in args.input],
+                Path(args.out),
+                input_format=args.format,
+                recursive=args.recursive,
+                detector_name=args.detector,
+                threshold=args.threshold,
+                privacy_profile=args.privacy,
+                nonce=args.nonce,
+                issuer=args.issuer,
+                signing_key_pem=signing_key,
+                max_messages=args.max_messages,
+            )
+            print(
+                f"processed {run.inbox.summary['processed_count']}/"
+                f"{run.discovery.candidate_count} candidates; removed "
+                f"{run.discovery.duplicate_count} duplicate(s); failed "
+                f"{run.failed_count}; wrote {run.output_dir}"
+            )
+            return 1 if run.failed_count else 0
+        if args.shadow_command == "label":
+            from .shadow import append_analyst_label
+
+            event = append_analyst_label(
+                Path(args.bundle), args.case_id, args.label, args.reason
+            )
+            print(
+                f"labeled {event['case_id']} as {event['label']} "
+                f"({event['reason_code']}); refreshed aggregate reports"
+            )
+            return 0
+
+        from .shadow import write_shadow_reports
+
+        write_shadow_reports(Path(args.bundle), overwrite=True)
+        print(f"refreshed aggregate reports in {args.bundle}")
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
 
 
 def _verify(argv: Sequence[str]) -> int:
@@ -401,6 +509,8 @@ def main(argv=None) -> int:
         return _proof(args[1:])
     if args and args[0] == "export":
         return _export(args[1:])
+    if args and args[0] == "shadow":
+        return _shadow(args[1:])
     if args and args[0] == "verify":
         return _verify(args[1:])
     if args and args[0] == "keygen":

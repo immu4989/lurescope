@@ -1,8 +1,8 @@
 # Real-world workflows
 
 LureScope is useful when it helps someone make a safer decision, not when it only
-produces another model score. Version 0.4 adds a privacy-first email-triage path
-for individuals, help desks, and security teams.
+produces another model score. Its privacy-first email workflows support individuals,
+help desks, and security teams without making autonomous enforcement claims.
 
 ## 1. Inspect a suspicious email without opening its contents
 
@@ -22,7 +22,8 @@ LureScope reports two evidence channels separately:
 
 It does not visit links, resolve domains, extract archives, save attachments, or
 execute active content. HTML is converted to visible text with script, style, and
-head content ignored.
+head content ignored. Inline-image plus QR/scan language and image-dominant HTML
+can trigger a review cue, but LureScope does not decode image pixels.
 
 The output routes messages to `low`, `review`, or `high`. It intentionally does
 not claim that a low result proves safety. CISA advises users to report suspicious
@@ -52,7 +53,21 @@ in that bundle. One malformed message does not suppress valid cases. No email
 content is sent to a model provider; the LureProof reference producer accepts
 deterministic local detectors only. See [Inbox to LureProof](INBOX_TO_LUREPROOF.md).
 
-## 3. Add evidence to a SOC or SOAR workflow
+## 3. Measure a mailbox export before enforcement
+
+Use Shadow Inbox to evaluate approved `.eml`, Maildir, or mbox exports without a
+live mailbox connection:
+
+```bash
+lurescope shadow run /approved/export --recursive --out ./shadow-pilot
+```
+
+The pilot deduplicates conservatively, creates minimized case evidence, records
+fixed-vocabulary analyst labels, and generates aggregate routing, false-positive,
+workload, and resilience metrics. See [Shadow Inbox](SHADOW_INBOX.md) for the
+review protocol, privacy boundary, and OCSF/ECS/STIX mappings.
+
+## 4. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:
 
@@ -63,12 +78,13 @@ curl -s http://127.0.0.1:8000/triage/email \
 ```
 
 The stable `schema_version`, evidence codes, risk tier, threshold provenance, URL
-names, and attachment names are machine-readable. This makes the result suitable
-for enrichment and routing. It is not advertised as OCSF-conformant yet: OCSF has
-an Email Activity class and is appropriate for security-lake interoperability,
-but claiming conformance requires a versioned mapping and schema validation.
+values, and attachment names are machine-readable in the direct triage response.
+The privacy-minimized inbox manifest excludes URL values and attachment names.
+Offline export mappings are available for OCSF 1.8 Detection Finding, ECS 9.4,
+STIX 2.1, Splunk HEC, and Microsoft Sentinel. These documented application
+mappings are not standards certification.
 
-## 4. Evaluate a proposed email control before deployment
+## 5. Evaluate a proposed email control before deployment
 
 Use LureScope for a single-message failure investigation, then LureBench for the
 corpus-level claim:

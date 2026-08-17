@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/shadow-report/v1",
+  "title": "LureScope aggregate-only Shadow Inbox report v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "privacy", "volume", "routing",
+    "evidence", "resilience", "analyst_review", "decision_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/shadow-report/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "privacy": {
+      "type": "object",
+      "required": ["aggregate_only", "excluded_fields"],
+      "properties": {
+        "aggregate_only": {"const": true},
+        "excluded_fields": {
+          "type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true,
+          "items": {
+            "enum": [
+              "source_paths", "subjects", "addresses", "message_ids", "url_values",
+              "attachment_names", "message_content", "raw_message_hashes"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "volume": {
+      "type": "object",
+      "required": [
+        "candidate_count", "unique_count", "duplicate_count", "processed_count",
+        "failed_count", "source_type_counts"
+      ],
+      "properties": {
+        "candidate_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "unique_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "duplicate_count": {"type": "integer", "minimum": 0, "maximum": 999},
+        "processed_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "failed_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "source_type_counts": {"$ref": "#/$defs/sourceCounts"}
+      },
+      "additionalProperties": false
+    },
+    "routing": {
+      "type": "object",
+      "required": [
+        "risk_counts", "action_counts", "routed_count", "routed_rate",
+        "mean_fraud_probability"
+      ],
+      "properties": {
+        "risk_counts": {
+          "type": "object", "required": ["high", "review", "low"],
+          "properties": {
+            "high": {"type": "integer", "minimum": 0},
+            "review": {"type": "integer", "minimum": 0},
+            "low": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "action_counts": {
+          "type": "object",
+          "properties": {
+            "quarantine_and_review": {"type": "integer", "minimum": 0},
+            "hold_and_verify_sender": {"type": "integer", "minimum": 0},
+            "continue_normal_controls": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "routed_count": {"type": "integer", "minimum": 0},
+        "routed_rate": {"$ref": "#/$defs/ratio"},
+        "mean_fraud_probability": {"$ref": "#/$defs/ratio"}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object", "required": ["code_counts", "top_codes"],
+      "properties": {
+        "code_counts": {
+          "type": "object",
+          "propertyNames": {"pattern": "^[a-z0-9_]{1,100}$"},
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "top_codes": {
+          "type": "array", "maxItems": 10,
+          "items": {
+            "type": "object", "required": ["code", "count"],
+            "properties": {
+              "code": {"type": "string", "pattern": "^[a-z0-9_]{1,100}$"},
+              "count": {"type": "integer", "minimum": 1}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resilience": {
+      "type": "object",
+      "required": [
+        "eligible_attack_count", "evasion_count", "evasion_rate",
+        "defense_recovery_count", "recovery_rate_among_evasions", "cases_with_evasion"
+      ],
+      "properties": {
+        "eligible_attack_count": {"type": "integer", "minimum": 0},
+        "evasion_count": {"type": "integer", "minimum": 0},
+        "evasion_rate": {"$ref": "#/$defs/ratio"},
+        "defense_recovery_count": {"type": "integer", "minimum": 0},
+        "recovery_rate_among_evasions": {"$ref": "#/$defs/ratio"},
+        "cases_with_evasion": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "analyst_review": {
+      "type": "object",
+      "required": [
+        "latest_label_count", "label_revision_count", "coverage", "label_counts",
+        "evaluated_count", "confusion", "routing_recall", "routing_false_positive_rate",
+        "routing_precision"
+      ],
+      "properties": {
+        "latest_label_count": {"type": "integer", "minimum": 0},
+        "label_revision_count": {"type": "integer", "minimum": 0},
+        "coverage": {"$ref": "#/$defs/ratio"},
+        "label_counts": {
+          "type": "object", "required": ["fraud", "benign", "uncertain"],
+          "properties": {
+            "fraud": {"type": "integer", "minimum": 0},
+            "benign": {"type": "integer", "minimum": 0},
+            "uncertain": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "evaluated_count": {"type": "integer", "minimum": 0},
+        "confusion": {
+          "type": "object",
+          "required": ["true_positive", "false_positive", "true_negative", "false_negative"],
+          "properties": {
+            "true_positive": {"type": "integer", "minimum": 0},
+            "false_positive": {"type": "integer", "minimum": 0},
+            "true_negative": {"type": "integer", "minimum": 0},
+            "false_negative": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "routing_recall": {"$ref": "#/$defs/ratio"},
+        "routing_false_positive_rate": {"$ref": "#/$defs/ratio"},
+        "routing_precision": {"$ref": "#/$defs/ratio"}
+      },
+      "additionalProperties": false
+    },
+    "decision_boundary": {"type": "string", "minLength": 1, "maxLength": 500}
+  },
+  "$defs": {
+    "ratio": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "number", "minimum": 0, "maximum": 1}
+      ]
+    },
+    "sourceCounts": {
+      "type": "object",
+      "properties": {
+        "eml": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "maildir": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "mbox": {"type": "integer", "minimum": 0, "maximum": 1000}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

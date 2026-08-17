@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Added
+- Added `lurescope shadow` for no-enforcement pilots over exported `.eml`, Maildir,
+  and mbox data, with conservative deduplication, fixed-vocabulary append-only
+  analyst labels, and aggregate-only workload, routing, validation, and resilience
+  reports.
+- Added offline OCSF 1.8 Detection Finding, ECS 9.4 NDJSON, and STIX 2.1 Incident
+  mappings that preserve the inbox manifest's privacy allowlist and can incorporate
+  the latest reviewed label.
+- Added deterministic QR/scan-language and image-dominant HTML review cues without
+  decoding image payloads, plus a fully synthetic six-message pilot pack.
+- Added strict Shadow Inbox run, label, and report JSON Schemas and end-to-end
+  ingestion, privacy, metrics, CLI, and standards-export tests.
 - Added a weekly, source-checkout-free PyPI installation and runtime smoke test
   across Python 3.10, 3.12, and 3.13.
 - Added a hardened Docker Compose profile with authentication, rate limiting,
@@ -14,9 +25,16 @@
   operational guides to reduce accidental commits of sensitive artifacts.
 
 ### Changed
+- Documented the Shadow Inbox review protocol, metric denominators, standards
+  mapping boundaries, privacy limitations, and non-enforcement safety boundary.
 - Converted the Hugging Face demo to a static-only Docker Space whose build
   installs the exact hash-pinned `lurescope==0.7.1` wheel from PyPI and extracts
   its packaged browser interface without exposing message-content endpoints.
+
+### Security
+- Bound Shadow Inbox labels and reports to the original manifest digest and
+  summary counts; rejected symlinked inputs and metadata, unsafe bundle paths,
+  malformed manifest values, and ambiguous oversized-prefix deduplication.
 
 ## 0.7.1 — 2026-08-12
 
