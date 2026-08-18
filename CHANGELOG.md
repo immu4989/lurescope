@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-08-18
+
 ### Added
 - Added a private, no-overwrite Federal Email Assurance Profile that composes a
   pre-registered Pilot Gate with NIST OSCAL 1.2.2 Assessment Plan and Assessment
@@ -53,8 +55,8 @@
 - Documented the Shadow Inbox review protocol, metric denominators, standards
   mapping boundaries, privacy limitations, and non-enforcement safety boundary.
 - Converted the Hugging Face demo to a static-only Docker Space whose build
-  installs the exact hash-pinned `lurescope==0.7.1` wheel from PyPI and extracts
-  its packaged browser interface without exposing message-content endpoints.
+  installs an exact hash-pinned LureScope wheel from PyPI and extracts its packaged
+  browser interface without exposing message-content endpoints.
 
 ### Security
 - Bound Shadow Inbox labels and reports to the original manifest digest and

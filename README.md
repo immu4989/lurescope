@@ -11,8 +11,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
 [![PyPI install](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurescope?color=2a78d6)](https://pypi.org/project/lurescope/)
-[![GHCR](https://img.shields.io/badge/GHCR-pull_0.7.1-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
-![Version](https://img.shields.io/badge/version-0.7.1-57f2c1)
+[![GHCR](https://img.shields.io/badge/GHCR-pull_0.8.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
+![Version](https://img.shields.io/badge/version-0.8.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -55,9 +55,8 @@ aggregate-only report of routing recall, false-positive rate, workload, and
 adversarial weaknesses. Pilot Gate adds a pre-run statistical contract that cannot
 pass with incomplete labels or inadequate evidence:
 
-> Shadow Inbox and Federal Email Assurance are currently on `main` and will ship in
-> the next tagged release. Until then, use a source checkout with
-> `python -m pip install -e .`; PyPI 0.7.1 does not contain these unreleased commands.
+> Shadow Inbox, Pilot Gate, the Golden Pilot, and Federal Email Assurance ship in
+> v0.8.0. Install the tagged package with `python -m pip install lurescope==0.8.0`.
 
 Verify the complete synthetic workflow first—fixture integrity, ingestion,
 deduplication, known ground truth, exact statistical gate, schemas, privacy scan,
@@ -348,13 +347,13 @@ curl -s localhost:8000/attack -H 'content-type: application/json' \
 Run it in a hardened local container instead:
 
 ```bash
-docker pull ghcr.io/immu4989/lurescope:0.7.1
+docker pull ghcr.io/immu4989/lurescope:0.8.0
 docker run --name lurescope-local --restart unless-stopped \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
   --cap-drop ALL --security-opt no-new-privileges:true \
   -p 127.0.0.1:8000:8000 \
   -e LURESCOPE_LLM_ENGINE=openrouter -e OPENROUTER_API_KEY \
-  ghcr.io/immu4989/lurescope:0.7.1
+  ghcr.io/immu4989/lurescope:0.8.0
 ```
 
 The public image supports `linux/amd64` and `linux/arm64` and carries SBOM and
