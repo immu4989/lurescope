@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/assurance-profile/v1",
+  "title": "LureScope Federal Email Assurance Profile v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "profile_id", "profile_version", "created_at",
+    "oscal_version", "controls", "artifacts", "privacy",
+    "interpretation_boundary", "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/assurance-profile/v1"
+    },
+    "schema_version": {"const": 1},
+    "profile_id": {"const": "federal-email-assurance-v1"},
+    "profile_version": {"const": "1.0.0"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "oscal_version": {"const": "1.2.2"},
+    "controls": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/control",
+          "properties": {
+            "control_id": {"const": "ca-7"},
+            "title": {"const": "Continuous Monitoring"},
+            "measurement": {
+              "const": "Pre-registered routing, error, workload, and resilience measurements over an operator-approved email sample."
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/control",
+          "properties": {
+            "control_id": {"const": "si-4"},
+            "title": {"const": "System Monitoring"},
+            "measurement": {
+              "const": "Aggregate detection, analyst-review, failure, and adversarial-resilience observations from a no-enforcement shadow run."
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/control",
+          "properties": {
+            "control_id": {"const": "si-8"},
+            "title": {"const": "Spam Protection"},
+            "measurement": {
+              "const": "Observed routing behavior for suspicious email under a registered detector and threshold; LureScope does not block, quarantine, or deliver messages."
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["pilot_plan", "oscal_assessment_plan"],
+      "properties": {
+        "pilot_plan": {
+          "type": "object",
+          "required": ["file", "sha256"],
+          "properties": {
+            "file": {"const": "pilot-plan.json"},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        },
+        "oscal_assessment_plan": {
+          "type": "object",
+          "required": ["file", "sha256", "uuid"],
+          "properties": {
+            "file": {"const": "oscal-assessment-plan.json"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "uuid": {"$ref": "#/$defs/uuid"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "aggregate_only_results", "contains_case_identifiers",
+        "contains_message_content", "network_required"
+      ],
+      "properties": {
+        "aggregate_only_results": {"const": true},
+        "contains_case_identifiers": {"const": false},
+        "contains_message_content": {"const": false},
+        "network_required": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "interpretation_boundary": {
+      "const": "This profile records evidence relevant to selected controls. It does not determine control satisfaction, certify a product, grant an authorization to operate, or authorize autonomous email or payment enforcement."
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "prefixItems": [
+        {"const": "control_mapping_is_not_compliance_determination"},
+        {"const": "oscal_output_is_not_authorization_package"},
+        {"const": "representative_sample_and_trustworthy_labels_required"},
+        {"const": "scuba_configuration_not_assessed"},
+        {"const": "message_content_and_case_identifiers_excluded"},
+        {"const": "human_authorizing_official_decision_required"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "control": {
+      "type": "object",
+      "required": ["control_id", "title", "relationship", "measurement"],
+      "properties": {
+        "control_id": {"type": "string"},
+        "title": {"type": "string"},
+        "relationship": {"const": "evidence_relevant"},
+        "measurement": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  },
+  "additionalProperties": false
+}

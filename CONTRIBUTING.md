@@ -34,6 +34,11 @@ project. See [SECURITY.md](SECURITY.md) for where that line sits.
   mappings to established security event formats are welcome. A predicate change
   requires a spec-version decision, synchronized JSON Schema updates, negative
   validation tests, privacy review, and signed cross-implementation test vectors.
+- **Federal assurance interoperability.** OSCAL consumers, additional official-schema
+  conformance tests, and narrowly justified evidence mappings are welcome. Never turn
+  an observation into a compliance finding or ATO claim. A profile change requires a
+  version decision, exact NIST control citation, synchronized schema and adversarial
+  tests, aggregate-only review, and updated limitations.
 
 ## Keeping the browser build honest
 
@@ -84,6 +89,9 @@ costs nothing.
 - If fixtures, routing, labels, or the bundled model change, run the Golden Pilot
   and explain the contract change. Do not update a locked digest merely to make CI
   green.
+- If assurance output changes, validate both the AP and AR against the byte-locked
+  official NIST OSCAL schemas. Keep those vendored files unmodified and update a
+  checksum only for a reviewed upstream OSCAL release.
 - Line length is 100. Keep `typing.Optional` and `List` where pydantic evaluates
   annotations at runtime; avoid unrelated syntax churn in functional PRs.
 

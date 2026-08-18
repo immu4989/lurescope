@@ -1,0 +1,2 @@
+# Preserve byte-identical official release assets while keeping whitespace checks strict elsewhere.
+tests/vendor/oscal-1.2.2/*.json whitespace=-trailing-space
