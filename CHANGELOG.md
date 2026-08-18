@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- Added a private, no-overwrite Federal Email Assurance Profile that composes a
+  pre-registered Pilot Gate with NIST OSCAL 1.2.2 Assessment Plan and Assessment
+  Results artifacts. It imports an operator-controlled SSP by portable identifier,
+  binds every plan and result by SHA-256, emits aggregate observations for CA-7,
+  SI-4, and SI-8 without findings or compliance claims, and fails closed on tampering
+  or bundle rebinding. The offline path is tested with network sockets disabled and
+  both OSCAL documents are validated against byte-locked official NIST schemas.
 - Added a one-command, network-free synthetic Golden Pilot that locks every fixture
   and the bundled detector by SHA-256, applies predeclared ground truth, exercises
   the complete Shadow Inbox and Pilot Gate path, requires a real `pass`, validates

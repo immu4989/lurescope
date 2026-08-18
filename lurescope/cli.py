@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -481,6 +482,108 @@ def _shadow(argv: Sequence[str]) -> int:
         return 2
 
 
+def _assurance(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope assurance",
+        description=(
+            "Create and export a privacy-minimized Federal Email Assurance Profile."
+        ),
+    )
+    commands = parser.add_subparsers(dest="assurance_command", required=True)
+
+    init_parser = commands.add_parser(
+        "init", help="pre-register Pilot Gate and OSCAL assessment plans"
+    )
+    init_parser.add_argument("--out", "-o", required=True, help="new private plan directory")
+    init_parser.add_argument("--plan-id", required=True, help="lowercase registration slug")
+    init_parser.add_argument(
+        "--ssp-href",
+        required=True,
+        help="portable urn: or https: identifier for the operator-controlled OSCAL SSP",
+    )
+    init_parser.add_argument("--min-processed", type=int, required=True)
+    init_parser.add_argument("--min-fraud-labels", type=int, required=True)
+    init_parser.add_argument("--min-benign-labels", type=int, required=True)
+    init_parser.add_argument("--max-uncertain-rate", type=float, required=True)
+    init_parser.add_argument("--max-failure-rate", type=float, required=True)
+    init_parser.add_argument("--min-recall-lower", type=float, required=True)
+    init_parser.add_argument("--max-fpr-upper", type=float, required=True)
+    init_parser.add_argument("--max-routed-rate", type=float, required=True)
+    init_parser.add_argument("--max-routed-count", type=int, required=True)
+    init_parser.add_argument("--confidence", type=float, default=0.95)
+    init_parser.add_argument("--detector", default="tfidf-logreg")
+    init_parser.add_argument("--threshold", type=float, default=0.5)
+    init_parser.add_argument("--policy-id")
+    init_parser.add_argument(
+        "--labeling-protocol",
+        choices=("full_blinded_review", "full_review"),
+        default="full_blinded_review",
+    )
+
+    export_parser = commands.add_parser(
+        "export", help="refresh Pilot Gate and write OSCAL Assessment Results"
+    )
+    export_parser.add_argument("bundle", help="reviewed Shadow Inbox bundle")
+    export_parser.add_argument(
+        "--plan", required=True, help="pre-registered assurance plan directory"
+    )
+
+    args = parser.parse_args(argv)
+    try:
+        if args.assurance_command == "init":
+            from .assurance import create_assurance_plan
+
+            profile = create_assurance_plan(
+                Path(args.out),
+                ssp_href=args.ssp_href,
+                plan_id=args.plan_id,
+                min_processed_count=args.min_processed,
+                min_fraud_labels=args.min_fraud_labels,
+                min_benign_labels=args.min_benign_labels,
+                max_uncertain_rate=args.max_uncertain_rate,
+                max_processing_failure_rate=args.max_failure_rate,
+                min_routing_recall_lower_bound=args.min_recall_lower,
+                max_routing_false_positive_rate_upper_bound=args.max_fpr_upper,
+                max_routed_rate=args.max_routed_rate,
+                max_routed_count=args.max_routed_count,
+                confidence=args.confidence,
+                labeling_protocol=args.labeling_protocol,
+                detector=args.detector,
+                threshold=args.threshold,
+                policy_id=args.policy_id,
+            )
+            print(
+                f"created {args.out} with {profile['profile_id']}; "
+                f"OSCAL AP {profile['artifacts']['oscal_assessment_plan']['uuid']}"
+            )
+            profile_digest = hashlib.sha256(
+                (Path(args.out) / "assurance-profile.json").read_bytes()
+            ).hexdigest()
+            print(f"register assurance-profile.json sha256:{profile_digest}")
+            print(
+                "register pilot-plan.json sha256:"
+                f"{profile['artifacts']['pilot_plan']['sha256']}"
+            )
+            print(
+                "register oscal-assessment-plan.json sha256:"
+                f"{profile['artifacts']['oscal_assessment_plan']['sha256']}"
+            )
+            return 0
+
+        from .assurance import export_assurance_results
+
+        result = export_assurance_results(Path(args.bundle), Path(args.plan))
+        verdict = result["gate"]["verdict"]
+        print(
+            f"Federal Email Assurance: {verdict}; wrote registered plan, Pilot Gate, "
+            f"and oscal-assessment-results.json in {args.bundle}"
+        )
+        return 0 if verdict == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _verify(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="lurescope verify", description="Validate LureProof and authenticate DSSE signatures."
@@ -591,6 +694,8 @@ def main(argv=None) -> int:
         return _export(args[1:])
     if args and args[0] == "shadow":
         return _shadow(args[1:])
+    if args and args[0] == "assurance":
+        return _assurance(args[1:])
     if args and args[0] == "verify":
         return _verify(args[1:])
     if args and args[0] == "keygen":

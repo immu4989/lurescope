@@ -84,7 +84,31 @@ shadow gate` emits a fail-closed decision with exact one-sided confidence bounds
 See [Pilot Gate](PILOT_GATE.md) for pre-registration and interpretation, and
 [Shadow Inbox](SHADOW_INBOX.md) for the privacy boundary and OCSF/ECS/STIX mappings.
 
-## 4. Add evidence to a SOC or SOAR workflow
+## 4. Produce reviewable federal assessment evidence
+
+An agency, integrator, or email-security supplier can bind the approved Pilot Gate
+criteria to an operator-controlled OSCAL System Security Plan and export aggregate
+OSCAL 1.2.2 Assessment Results:
+
+```bash
+lurescope assurance init --out ./federal-email-plan \
+  --plan-id agency-email-pilot \
+  --ssp-href urn:uuid:11111111-1111-4111-8111-111111111111 \
+  --min-processed 400 --min-fraud-labels 100 --min-benign-labels 300 \
+  --max-uncertain-rate 0.02 --max-failure-rate 0.01 \
+  --min-recall-lower 0.90 --max-fpr-upper 0.01 \
+  --max-routed-rate 0.25 --max-routed-count 100
+lurescope assurance export ./shadow-pilot --plan ./federal-email-plan
+```
+
+This gives system owners and assessors portable observations about evidence sufficiency,
+routing performance, processing failures, adversarial resilience, and analyst workload.
+It can reduce manual evidence translation and vendor lock-in without exposing mailbox
+content. It does not decide control satisfaction, produce a complete authorization
+package, or replace qualified assessors and authorizing officials. See
+[Federal Email Assurance Profile](FEDERAL_EMAIL_ASSURANCE.md).
+
+## 5. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:
 
@@ -101,7 +125,7 @@ Offline export mappings are available for OCSF 1.8 Detection Finding, ECS 9.4,
 STIX 2.1, Splunk HEC, and Microsoft Sentinel. These documented application
 mappings are not standards certification.
 
-## 5. Evaluate a proposed email control before deployment
+## 6. Evaluate a proposed email control before deployment
 
 Use LureScope for a single-message failure investigation, then LureBench for the
 corpus-level claim:

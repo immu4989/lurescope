@@ -24,6 +24,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[Verify the Golden Pilot →](examples/shadow-pilot/README.md)** ·
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
+**[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -54,9 +55,9 @@ aggregate-only report of routing recall, false-positive rate, workload, and
 adversarial weaknesses. Pilot Gate adds a pre-run statistical contract that cannot
 pass with incomplete labels or inadequate evidence:
 
-> Shadow Inbox is currently on `main` and will ship in the next tagged release.
-> Until then, use a source checkout with `python -m pip install -e .`; PyPI 0.7.1
-> does not contain the unreleased command.
+> Shadow Inbox and Federal Email Assurance are currently on `main` and will ship in
+> the next tagged release. Until then, use a source checkout with
+> `python -m pip install -e .`; PyPI 0.7.1 does not contain these unreleased commands.
 
 Verify the complete synthetic workflow first—fixture integrity, ingestion,
 deduplication, known ground truth, exact statistical gate, schemas, privacy scan,
@@ -82,7 +83,8 @@ lurescope shadow plan --out ./pilot-plan.json --plan-id synthetic-pilot \
   --max-routed-rate 1 --max-routed-count 5
 lurescope shadow run examples/shadow-pilot/eml --threshold 0.5 --out ./shadow-pilot
 # Repeat the fixed-vocabulary label command for every processed case.
-lurescope shadow label ./shadow-pilot case-<random> fraud \
+# Replace this example with a case_id from manifest.jsonl.
+lurescope shadow label ./shadow-pilot case-0123456789abcdef fraud \
   --reason confirmed_external
 lurescope shadow report ./shadow-pilot
 lurescope shadow gate ./shadow-pilot --plan ./pilot-plan.json
@@ -96,6 +98,27 @@ one-sided recall/FPR bounds; checks review capacity; and returns
 `insufficient_evidence`, `fail`, or `pass` with a
 non-zero exit unless every registered criterion passes. See the
 [statistical definitions, protocol, and interpretation limits](docs/PILOT_GATE.md).
+
+For an agency or supplier pilot, pre-register the same criteria together with a
+portable identifier for the operator-controlled OSCAL System Security Plan, then
+export aggregate NIST OSCAL 1.2.2 observations:
+
+```bash
+lurescope assurance init --out ./federal-email-plan \
+  --plan-id agency-email-pilot \
+  --ssp-href urn:uuid:11111111-1111-4111-8111-111111111111 \
+  --min-processed 400 --min-fraud-labels 100 --min-benign-labels 300 \
+  --max-uncertain-rate 0.02 --max-failure-rate 0.01 \
+  --min-recall-lower 0.90 --max-fpr-upper 0.01 \
+  --max-routed-rate 0.25 --max-routed-count 100
+lurescope assurance export ./shadow-pilot --plan ./federal-email-plan
+```
+
+The export is network-free, aggregate-only, validated against official NIST OSCAL
+schemas, and explicitly contains observations rather than compliance findings. It
+does not create or validate an SSP, satisfy a control, grant an ATO, assess CISA SCuBA
+configuration, or authorize enforcement. See the
+[Federal Email Assurance Profile operator guide](docs/FEDERAL_EMAIL_ASSURANCE.md).
 
 Export reviewed, minimized records as OCSF 1.8 Detection Findings, ECS 9.4 NDJSON,
 or a STIX 2.1 bundle—all without a network call:

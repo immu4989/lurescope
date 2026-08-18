@@ -173,3 +173,9 @@ A pass is evidence about one registered control and one reviewed sample. It is n
 Use a pass as one input to a human change-control decision. Continue secure email
 gateway, authentication, sandboxing, reporting, monitoring, rollback, and periodic
 revalidation controls.
+
+When an agency or supplier needs machine-readable assessment artifacts, use the
+[Federal Email Assurance Profile](FEDERAL_EMAIL_ASSURANCE.md) to create the Pilot
+Gate plan together with an OSCAL Assessment Plan and export the aggregate checks as
+OSCAL Assessment Results. That profile preserves this interpretation boundary and
+does not convert a Pilot Gate pass into a compliance finding or authorization.
