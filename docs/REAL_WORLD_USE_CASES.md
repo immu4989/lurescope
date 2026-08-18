@@ -59,6 +59,15 @@ Use Shadow Inbox to evaluate approved `.eml`, Maildir, or mbox exports without a
 live mailbox connection:
 
 ```bash
+# Verify the complete software path with locked synthetic data first.
+uv run --frozen --extra dev python scripts/run_golden_pilot.py \
+  --out ./golden-shadow-pilot
+```
+
+Then create separately approved criteria for the representative organizational
+sample:
+
+```bash
 lurescope shadow plan --out ./pilot-plan.json --plan-id approved-pilot \
   --min-processed 400 --min-fraud-labels 100 --min-benign-labels 300 \
   --max-uncertain-rate 0.02 --max-failure-rate 0.01 \

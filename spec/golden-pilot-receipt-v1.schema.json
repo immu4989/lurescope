@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/golden-pilot-receipt/v1",
+  "title": "LureScope synthetic Golden Pilot verification receipt v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "status", "privacy",
+    "fixture_contract", "control", "bindings", "outcome", "verification",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/golden-pilot-receipt/v1"
+    },
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "status": {"const": "verified"},
+    "privacy": {
+      "type": "object",
+      "required": ["aggregate_only", "contains_case_identifiers", "contains_message_content"],
+      "properties": {
+        "aggregate_only": {"const": true},
+        "contains_case_identifiers": {"const": false},
+        "contains_message_content": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "fixture_contract": {
+      "type": "object",
+      "required": [
+        "version", "fixture_set_sha256", "candidate_count", "unique_count",
+        "duplicate_count"
+      ],
+      "properties": {
+        "version": {"const": 1},
+        "fixture_set_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_count": {"const": 6},
+        "unique_count": {"const": 5},
+        "duplicate_count": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "control": {
+      "type": "object",
+      "required": ["detector", "detector_artifact_sha256", "threshold"],
+      "properties": {
+        "detector": {"const": "tfidf-logreg"},
+        "detector_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "threshold": {"const": 0.5}
+      },
+      "additionalProperties": false
+    },
+    "bindings": {
+      "type": "object",
+      "required": ["plan_sha256", "manifest_sha256", "labels_sha256", "gate_sha256"],
+      "properties": {
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "labels_sha256": {"$ref": "#/$defs/sha256"},
+        "gate_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "verdict", "processed_count", "fraud_label_count", "benign_label_count",
+        "routed_count", "routed_rate", "routing_recall_lower_bound",
+        "routing_false_positive_rate_upper_bound"
+      ],
+      "properties": {
+        "verdict": {"const": "pass"},
+        "processed_count": {"const": 5},
+        "fraud_label_count": {"const": 4},
+        "benign_label_count": {"const": 1},
+        "routed_count": {"const": 4},
+        "routed_rate": {"const": 0.8},
+        "routing_recall_lower_bound": {"$ref": "#/$defs/ratio"},
+        "routing_false_positive_rate_upper_bound": {"$ref": "#/$defs/ratio"}
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "fixture_integrity", "ingestion_shape", "ground_truth_applied",
+        "schemas_valid", "privacy_scan_passed", "registered_gate_passed"
+      ],
+      "properties": {
+        "fixture_integrity": {"const": true},
+        "ingestion_shape": {"const": true},
+        "ground_truth_applied": {"const": true},
+        "schemas_valid": {"const": true},
+        "privacy_scan_passed": {"const": true},
+        "registered_gate_passed": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true,
+      "prefixItems": [
+        {"const": "synthetic_fixture_not_representative"},
+        {"const": "demo_thresholds_not_for_deployment"},
+        {"const": "no_external_plan_registration"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "ratio": {"type": "number", "minimum": 0, "maximum": 1}
+  },
+  "additionalProperties": false
+}

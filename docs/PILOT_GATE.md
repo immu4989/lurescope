@@ -11,6 +11,22 @@ narrower question:
 The workflow is offline. The gate reads only a privacy-minimized Shadow Inbox bundle
 and writes aggregate JSON and Markdown. It never connects to a mailbox or provider.
 
+## Verify the machinery before designing a real pilot
+
+From a source checkout, run the locked synthetic Golden Pilot:
+
+```bash
+uv run --frozen --extra dev python scripts/run_golden_pilot.py \
+  --out ./golden-shadow-pilot
+```
+
+It verifies reviewed fixture and model digests, conservative deduplication, fixed
+ground truth, all three strict schemas, privacy exclusions, private permissions, and
+a real end-to-end `pass`. Read the resulting `golden-pilot-receipt.json` and
+`pilot-gate.md`, then discard its thresholds. Five synthetic cases can verify the
+software path but cannot support a production claim. See the
+[Golden Pilot contract](../examples/shadow-pilot/README.md).
+
 ## 1. Approve the protocol first
 
 Before creating the machine-readable plan, record these decisions in the pilot's

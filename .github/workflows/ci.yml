@@ -34,6 +34,11 @@ jobs:
         run: uv run --frozen ruff check lurescope tests scripts
       - name: Test
         run: uv run --frozen pytest -q
+      - name: Run locked synthetic Golden Pilot
+        if: matrix.python-version == '3.12'
+        run: >-
+          uv run --frozen python scripts/run_golden_pilot.py
+          --out "${RUNNER_TEMP}/lurescope-golden-pilot"
       - name: Test browser engine
         if: matrix.python-version == '3.12'
         run: node --test tests/browser_engine.test.cjs
