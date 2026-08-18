@@ -17,9 +17,11 @@ abstract: >-
   provenance plus attack and defense outcomes without message content. A standard
   DSSE envelope can authenticate the statement against an external trust key.
   The inbox workflow turns reported-email queues into minimized routing manifests,
-  per-case proofs, and offline SIEM payloads.
-version: 0.7.1
-date-released: "2026-08-12"
+  per-case proofs, and offline SIEM payloads. Shadow Inbox and Pilot Gate measure a
+  registered email control before enforcement, while the Federal Email Assurance
+  Profile exports aggregate NIST OSCAL 1.2.2 assessment observations.
+version: 0.8.0
+date-released: "2026-08-18"
 license: Apache-2.0
 keywords:
   - fraud detection

@@ -27,5 +27,11 @@ GitHub secrets.
 4. Merge through protected CI.
 5. Create a GitHub release targeting the exact tested `main` commit and tag it
    `vX.Y.Z`.
-6. Confirm the PyPI project, attached distributions, GHCR tags,
+6. Approve the waiting `pypi` environment deployment only after the build and
+   release-source verification jobs pass.
+7. Confirm the PyPI project, attached distributions, GHCR tags,
    SBOM/provenance attestations, and Zenodo version record.
+8. In a follow-up protected PR, update `space/requirements-space.txt` with the
+   published wheel's exact PyPI SHA-256 and `compose.yaml` with the published
+   multi-architecture GHCR digest. Never predict either value in the release
+   commit or weaken the existing verified pins while waiting for new artifacts.
