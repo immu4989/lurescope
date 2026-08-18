@@ -11,6 +11,7 @@ venv/
 /api-key.json
 /lurescope-cases/
 /shadow-pilot/
+/golden-shadow-pilot/
 /reported-emails/
 .pytest_cache/
 .ruff_cache/

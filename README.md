@@ -22,6 +22,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
+**[Verify the Golden Pilot →](examples/shadow-pilot/README.md)** ·
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -57,6 +58,22 @@ pass with incomplete labels or inadequate evidence:
 > Until then, use a source checkout with `python -m pip install -e .`; PyPI 0.7.1
 > does not contain the unreleased command.
 
+Verify the complete synthetic workflow first—fixture integrity, ingestion,
+deduplication, known ground truth, exact statistical gate, schemas, privacy scan,
+and private output permissions—in one offline command:
+
+```bash
+uv run --frozen --extra dev python scripts/run_golden_pilot.py \
+  --out ./golden-shadow-pilot
+```
+
+Success ends with `GOLDEN PILOT VERIFIED: PASS` and writes an aggregate
+`golden-pilot-receipt.json`. The tiny locked sample proves that the software path
+works; it is explicitly not representative data or deployment evidence. See the
+[reviewed fixture contract and expected outputs](examples/shadow-pilot/README.md).
+
+For a manually reviewed synthetic exercise:
+
 ```bash
 lurescope shadow plan --out ./pilot-plan.json --plan-id synthetic-pilot \
   --min-processed 5 --min-fraud-labels 1 --min-benign-labels 1 \
@@ -75,8 +92,8 @@ The tiny criteria above only exercise the synthetic workflow, and the gate will
 correctly report `insufficient_evidence` until all five unique cases are labeled.
 For a real pilot, pre-register organization-approved sample sizes and risk limits.
 Pilot Gate binds the plan, minimized manifest, and label log; computes exact
-one-sided recall/FPR bounds;
-checks review capacity; and returns `insufficient_evidence`, `fail`, or `pass` with a
+one-sided recall/FPR bounds; checks review capacity; and returns
+`insufficient_evidence`, `fail`, or `pass` with a
 non-zero exit unless every registered criterion passes. See the
 [statistical definitions, protocol, and interpretation limits](docs/PILOT_GATE.md).
 

@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- Added a one-command, network-free synthetic Golden Pilot that locks every fixture
+  and the bundled detector by SHA-256, applies predeclared ground truth, exercises
+  the complete Shadow Inbox and Pilot Gate path, requires a real `pass`, validates
+  all public schemas, scans privacy exclusions, verifies private permissions, and
+  emits a strict aggregate verification receipt. Fixture tampering, network access,
+  stale output, and schema relaxation fail tests, and the command runs explicitly in
+  CI. The source distribution now carries the frozen lock, runner, fixtures, schemas,
+  and linked operator guides needed to reproduce the same pass outside the checkout.
 - Added Pilot Gate, a pre-run, no-overwrite statistical contract for Shadow Inbox
   pilots that binds the registered control, minimized manifest, and analyst-label
   log; requires complete review and minimum class evidence; computes exact one-sided

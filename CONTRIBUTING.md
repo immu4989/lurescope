@@ -52,6 +52,8 @@ git clone https://github.com/immu4989/lurescope && cd lurescope
 uv sync --extra dev
 uv run pytest -q
 uv run ruff check lurescope tests scripts
+uv run --frozen --extra dev python scripts/run_golden_pilot.py \
+  --out ./golden-shadow-pilot
 ```
 
 CI uses `uv 0.12.3` and `uv sync --frozen`. If a dependency changes, run
@@ -78,7 +80,10 @@ costs nothing.
   is worse than one that changed loudly.
 - Keep `ruff check` and `pytest` green.
 - Run `uv build` when changing dependencies, package data, schemas, or
-  release metadata; both schemas must be present in the wheel.
+  release metadata; every changed public schema must be present in the wheel.
+- If fixtures, routing, labels, or the bundled model change, run the Golden Pilot
+  and explain the contract change. Do not update a locked digest merely to make CI
+  green.
 - Line length is 100. Keep `typing.Optional` and `List` where pydantic evaluates
   annotations at runtime; avoid unrelated syntax churn in functional PRs.
 
