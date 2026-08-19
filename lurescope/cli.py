@@ -528,6 +528,42 @@ def _assurance(argv: Sequence[str]) -> int:
         "--plan", required=True, help="pre-registered assurance plan directory"
     )
 
+    ingest_parser = commands.add_parser(
+        "ingest-scuba",
+        help="combine a CISA ScubaGear report with registered pilot evidence",
+    )
+    ingest_parser.add_argument("report", help="ScubaGear 1.8.x consolidated JSON report")
+    ingest_parser.add_argument(
+        "--bundle",
+        "--pilot",
+        dest="bundle",
+        required=True,
+        help="reviewed Shadow Inbox bundle",
+    )
+    ingest_parser.add_argument(
+        "--plan", required=True, help="pre-registered assurance plan directory"
+    )
+    ingest_parser.add_argument(
+        "--out", "-o", required=True, help="new private combined-evidence directory"
+    )
+    ingest_parser.add_argument(
+        "--signing-key", help="optional unencrypted ECDSA P-256 private PEM key"
+    )
+
+    verify_scuba_parser = commands.add_parser(
+        "verify-scuba",
+        help="verify a combined SCuBA and Shadow Inbox assurance bundle",
+    )
+    verify_scuba_parser.add_argument("bundle", help="combined assurance directory")
+    verify_scuba_parser.add_argument(
+        "--public-key", help="trusted ECDSA P-256 public PEM key"
+    )
+    verify_scuba_parser.add_argument(
+        "--require-signature",
+        action="store_true",
+        help="fail unless the DSSE signature authenticates against --public-key",
+    )
+
     args = parser.parse_args(argv)
     try:
         if args.assurance_command == "init":
@@ -568,6 +604,41 @@ def _assurance(argv: Sequence[str]) -> int:
                 "register oscal-assessment-plan.json sha256:"
                 f"{profile['artifacts']['oscal_assessment_plan']['sha256']}"
             )
+            return 0
+
+        if args.assurance_command == "ingest-scuba":
+            from .scuba import create_scuba_assurance_bundle
+
+            result = create_scuba_assurance_bundle(
+                Path(args.report),
+                Path(args.bundle),
+                Path(args.plan),
+                Path(args.out),
+                signing_key=Path(args.signing_key) if args.signing_key else None,
+            )
+            gate_verdict = result["gate"]["verdict"]
+            evidence = result["evidence"]
+            print(
+                f"Combined Email Assurance: {gate_verdict}; imported "
+                f"{evidence['integrity']['control_count']} minimized SCuBA controls and "
+                f"wrote {evidence['integrity']['candidate_poam_count']} candidate POA&M "
+                f"items in {args.out}"
+            )
+            print(
+                "source ScubaGear report sha256:"
+                f"{evidence['source']['report_sha256']}"
+            )
+            return 0 if gate_verdict == "pass" else 1
+
+        if args.assurance_command == "verify-scuba":
+            from .scuba import verify_scuba_assurance_bundle
+
+            verification = verify_scuba_assurance_bundle(
+                Path(args.bundle),
+                public_key=Path(args.public_key) if args.public_key else None,
+                require_signature=args.require_signature,
+            )
+            print(json.dumps(verification, sort_keys=True))
             return 0
 
         from .assurance import export_assurance_results

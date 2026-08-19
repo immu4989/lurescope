@@ -108,6 +108,22 @@ content. It does not decide control satisfaction, produce a complete authorizati
 package, or replace qualified assessors and authorizing officials. See
 [Federal Email Assurance Profile](FEDERAL_EMAIL_ASSURANCE.md).
 
+If the organization already uses CISA ScubaGear, it can add a validated Microsoft 365
+configuration report without copying raw provider settings or tenant identity into the
+derived package:
+
+```bash
+lurescope assurance ingest-scuba ./ScubaResults_<UUID>.json \
+  --bundle ./shadow-pilot --plan ./federal-email-plan \
+  --out ./combined-email-assurance
+lurescope assurance verify-scuba ./combined-email-assurance
+```
+
+This gives assessors one cryptographically bound package with separately identified
+configuration and observed-outcome evidence. Failing `Shall` results become candidate
+POA&M records only; the bridge does not create findings, accept risk, set deadlines, or
+replace ScubaGear execution. See [CISA SCuBA Evidence Bridge](SCUBA_BRIDGE.md).
+
 ## 5. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:

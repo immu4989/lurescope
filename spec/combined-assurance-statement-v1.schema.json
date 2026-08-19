@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/combined-email-assurance/v1",
+  "title": "LureScope Combined Email Assurance in-toto Statement v1",
+  "description": "Strict binding of registered Shadow Inbox evidence, minimized CISA ScubaGear observations, combined OSCAL results, and optional candidate POA&M output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "oneOf": [
+        {"$ref": "#/$defs/subjectsWithoutPoam"},
+        {"$ref": "#/$defs/subjectsWithPoam"}
+      ]
+    },
+    "predicateType": {
+      "const": "https://github.com/immu4989/lurescope/spec/combined-email-assurance/v1"
+    },
+    "predicate": {"$ref": "#/$defs/predicate"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest"],
+      "properties": {
+        "name": {
+          "enum": [
+            "pilot-plan.json",
+            "assurance-profile.json",
+            "oscal-assessment-plan.json",
+            "pilot-gate.json",
+            "scuba-evidence.json",
+            "oscal-assessment-results.json",
+            "oscal-poam-candidates.json"
+          ]
+        },
+        "digest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256"],
+          "properties": {"sha256": {"$ref": "#/$defs/sha256"}}
+        }
+      }
+    },
+    "subjectsWithoutPoam": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "pilot-plan.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "assurance-profile.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "oscal-assessment-plan.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "pilot-gate.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "scuba-evidence.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "oscal-assessment-results.json"}}}
+      ],
+      "items": false
+    },
+    "subjectsWithPoam": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "pilot-plan.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "assurance-profile.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "oscal-assessment-plan.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "pilot-gate.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "scuba-evidence.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "oscal-assessment-results.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "oscal-poam-candidates.json"}}}
+      ],
+      "items": false
+    },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec",
+        "spec_version",
+        "generated_at",
+        "source",
+        "outcome",
+        "privacy",
+        "interpretation_boundary",
+        "limitations"
+      ],
+      "properties": {
+        "spec": {"const": "combined-email-assurance"},
+        "spec_version": {"const": "1.0"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scubagear_report_sha256",
+            "scubagear_version",
+            "scubagear_contract"
+          ],
+          "properties": {
+            "scubagear_report_sha256": {"$ref": "#/$defs/sha256"},
+            "scubagear_version": {
+              "type": "string",
+              "pattern": "^1\\.8\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+            },
+            "scubagear_contract": {
+              "const": "cisagov-scubagear-consolidated-json-1.8"
+            }
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pilot_gate_verdict",
+            "scuba_control_count",
+            "candidate_poam_count"
+          ],
+          "properties": {
+            "pilot_gate_verdict": {"enum": ["pass", "fail", "insufficient_evidence"]},
+            "scuba_control_count": {"type": "integer", "minimum": 1, "maximum": 15000},
+            "candidate_poam_count": {"type": "integer", "minimum": 0, "maximum": 15000}
+          }
+        },
+        "privacy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minimized_scuba_evidence",
+            "contains_tenant_identifiers",
+            "contains_message_content",
+            "shareable_by_default"
+          ],
+          "properties": {
+            "minimized_scuba_evidence": {"const": true},
+            "contains_tenant_identifiers": {"const": false},
+            "contains_message_content": {"const": false},
+            "shareable_by_default": {"const": false}
+          }
+        },
+        "interpretation_boundary": {
+          "const": "This bundle imports configuration observations reported by CISA ScubaGear and outcome observations measured by LureScope. LureScope does not query Microsoft 365, rerun SCuBA policies, determine control satisfaction, establish compliance, accept risk, or grant an authorization to operate."
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "prefixItems": [
+            {"const": "scubagear_source_report_must_be_independently_trusted"},
+            {"const": "configuration_results_are_imported_not_reperformed"},
+            {"const": "selected_email_products_only"},
+            {"const": "poam_items_are_candidates_not_approved_remediation_records"},
+            {"const": "control_mapping_is_not_compliance_determination"},
+            {"const": "scuba_control_ids_are_not_mapped_to_nist_controls"},
+            {"const": "representative_sample_and_trustworthy_labels_required"},
+            {"const": "security_posture_evidence_requires_access_control"},
+            {"const": "human_assessor_and_authorizing_official_decisions_required"}
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}

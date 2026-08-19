@@ -114,6 +114,29 @@ Re-running after an approved label correction refreshes the gate and results. Th
 content-bound UUIDs and SHA-256 properties change with the evidence. Exporting against
 a bundle already bound to a different plan or profile fails closed.
 
+## 5. Optionally bridge CISA SCuBA configuration evidence
+
+The base profile assesses only the registered Shadow Inbox pilot; it does not inspect
+Microsoft 365 settings. If an organization already runs CISA ScubaGear through its
+approved process, LureScope can import a validated ScubaGear 1.8.x consolidated JSON
+report and combine two clearly separated evidence sources:
+
+```bash
+lurescope assurance ingest-scuba ./ScubaResults_<UUID>.json \
+  --bundle ./agency-email-pilot --plan ./federal-email-plan \
+  --out ./combined-email-assurance
+lurescope assurance verify-scuba ./combined-email-assurance
+```
+
+The bridge adds privacy-minimized technical `EXAMINE` observations for AAD, Defender, and
+Exchange Online alongside the pilot's `TEST` observations. It creates no findings.
+Failing `Shall` results become candidate-only OSCAL POA&M items without owners, dates,
+risks, milestones, acceptance decisions, or remediation commitments. The source report
+is not copied, and tenant identity, raw provider data, requirements, details, comments,
+and remediation annotations are excluded from output. See the complete
+[SCuBA Evidence Bridge guide](SCUBA_BRIDGE.md) before using this sensitive evidence.
+No SCuBA source control is crosswalked to a NIST control by this workflow.
+
 ## NIST SP 800-53 relationship
 
 The profile selects three NIST SP 800-53 Rev. 5 controls only as evidence-relevant:
@@ -156,8 +179,10 @@ VPAT or Accessibility Conformance Report.
 - Local files are private on POSIX systems and existing plan directories are never
   overwritten.
 - SHA-256 detects changed bytes but does not authenticate who created or approved them.
-  Use the existing DSSE signing workflow for per-message LureProof authentication and an
-  organization-approved signing or registration service for the aggregate package.
+  Use the existing DSSE signing workflow for per-message LureProof authentication; the
+  optional SCuBA bridge DSSE envelope can authenticate its exact aggregate statement
+  against an externally trusted P-256 key. An organization-approved key and registration
+  process remain necessary.
 - LureScope never quarantines, deletes, forwards, or delivers email and never initiates
   or approves a payment.
 
@@ -166,13 +191,16 @@ VPAT or Accessibility Conformance Report.
 This profile is not FedRAMP authorization, FISMA compliance, a Security Assessment
 Report, an Authority to Operate, CISA or NIST endorsement, a Section 508 conformance
 statement, or approval for autonomous enforcement. It does not inspect tenant settings
-against CISA SCuBA baselines. A representative sample, trustworthy labels, qualified
-assessors, and a human authorizing official remain necessary.
+against CISA SCuBA baselines by itself. Its optional bridge imports—not reperforms—an
+existing ScubaGear report. A representative sample, trustworthy labels, trusted source
+evidence, qualified assessors, and a human authorizing official remain necessary.
 
 ## Authoritative references
 
 - [NIST OSCAL 1.2.2 model reference](https://pages.nist.gov/OSCAL-Reference/models/v1.2.2/)
 - [NIST OSCAL Assessment Results model](https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/assessment-results/)
+- [NIST OSCAL Plan of Action and Milestones model](https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/poam/)
+- [CISA ScubaGear repository](https://github.com/cisagov/ScubaGear)
 - [NIST SP 800-53 Rev. 5.1 OSCAL-derived publication](https://csrc.nist.gov/CSRC/media/Projects/risk-management/800-53%20Downloads/800-53r5/SP_800-53_v5_1-derived-OSCAL.pdf)
 - [CISA, NSA, FBI, and MS-ISAC phishing guidance](https://www.cisa.gov/sites/default/files/2023-10/Phishing%20Guidance%20-%20Stopping%20the%20Attack%20Cycle%20at%20Phase%20One_508c.pdf)
 - [OMB M-25-21](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)

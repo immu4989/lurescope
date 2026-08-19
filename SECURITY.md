@@ -41,6 +41,9 @@ otherwise.
 - LureProof signature bypasses, DSSE type-confusion issues, acceptance of an
   internally contradictory statement, accidental inclusion of message content,
   private-key permission failures, or proof-verification denial of service.
+- SCuBA bridge acceptance of a contradictory or unsupported report, cross-artifact
+  rebinding, DSSE bypass, or leakage of tenant identity, raw provider settings,
+  requirements, details, comments, or remediation annotations into minimized output.
 
 ## What is not a vulnerability
 
@@ -76,6 +79,13 @@ loads or accepts a private key. Sign reviewed evidence offline or through your
 access-controlled KMS/HSM workflow. `lurescope keygen` is a local development
 helper, not a PKI: protect the private PEM, distribute the public key through a
 trusted channel, and rotate it according to your organization's policy.
+
+SCuBA-derived output excludes direct tenant identifiers and raw settings, but it
+still reveals security posture and carries a source-report digest that can correlate
+copies of the same report. The bridge therefore marks the bundle as not shareable by
+default, creates private files, and should run only inside the system authorized to
+hold the source report. A SHA-256-bound unsigned statement proves self-consistency,
+not authorship; require a trusted DSSE signature when provenance must be authenticated.
 
 ## Acceptable use
 

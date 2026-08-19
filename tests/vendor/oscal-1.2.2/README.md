@@ -1,6 +1,6 @@
 # Vendored NIST OSCAL schemas
 
-These two files are unmodified release assets from NIST's OSCAL `v1.2.2`
+These three files are unmodified release assets from NIST's OSCAL `v1.2.2`
 release, downloaded on 2026-08-18 solely for network-free conformance tests:
 
 - `oscal_assessment-plan_schema.json`
@@ -9,6 +9,9 @@ release, downloaded on 2026-08-18 solely for network-free conformance tests:
 - `oscal_assessment-results_schema.json`
   - source: https://github.com/usnistgov/OSCAL/releases/download/v1.2.2/oscal_assessment-results_schema.json
   - SHA-256: `d4e1e7e17c6662814882810ad64075266964ee1a575759ce3955302fd74edcd9`
+- `oscal_poam_schema.json`
+  - source: https://github.com/usnistgov/OSCAL/releases/download/v1.2.2/oscal_poam_schema.json
+  - SHA-256: `c8f2ce52b3c71299bb0c9e1cd950d48dc79d9f52920c543ac30b3c3f08c2e152`
 
 The upstream project and licensing information are at
 https://github.com/usnistgov/OSCAL. These files are test references; they are not

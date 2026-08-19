@@ -1,0 +1,167 @@
+{
+  "MetaData": {
+    "DisplayName": "Synthetic Agency Tenant — Not Operational Data",
+    "DomainName": "synthetic-tenant.example.invalid",
+    "ProductAbbreviationMapping": {
+      "Azure Active Directory": "AAD",
+      "Microsoft 365 Defender": "Defender",
+      "Exchange Online": "EXO",
+      "Microsoft Power Platform": "PowerPlatform",
+      "SharePoint Online": "SharePoint",
+      "Microsoft Teams": "Teams"
+    },
+    "ProductSuite": "Microsoft 365",
+    "ProductsAssessed": [
+      "Azure Active Directory",
+      "Microsoft 365 Defender",
+      "Exchange Online"
+    ],
+    "ReportUUID": "22222222-2222-4222-8222-222222222222",
+    "TenantId": "33333333-3333-4333-8333-333333333333",
+    "TimestampZulu": "2026-08-19T12:00:00Z",
+    "Tool": "ScubaGear",
+    "ToolVersion": "1.8.0"
+  },
+  "Summary": {
+    "AAD": {
+      "Manual": 0,
+      "Failures": 1,
+      "Warnings": 0,
+      "Errors": 0,
+      "Passes": 1,
+      "Omits": 0,
+      "IncorrectResults": 0
+    },
+    "Defender": {
+      "Manual": 0,
+      "Failures": 0,
+      "Warnings": 1,
+      "Errors": 0,
+      "Passes": 0,
+      "Omits": 0,
+      "IncorrectResults": 0
+    },
+    "EXO": {
+      "Manual": 0,
+      "Failures": 1,
+      "Warnings": 0,
+      "Errors": 0,
+      "Passes": 1,
+      "Omits": 0,
+      "IncorrectResults": 0
+    }
+  },
+  "AnnotatedFailedPolicies": {
+    "MS.AAD.2.1v1": {
+      "Comment": "synthetic remediation annotation that must not be exported"
+    }
+  },
+  "Results": {
+    "AAD": [
+      {
+        "GroupName": "Synthetic Identity Controls",
+        "GroupNumber": "1",
+        "GroupReferenceURL": "https://github.com/cisagov/ScubaGear/blob/v1.8.0/PowerShell/ScubaGear/baselines/aad.md",
+        "Controls": [
+          {
+            "Control ID": "MS.AAD.1.1v1",
+            "Requirement": "Synthetic SHALL requirement for importer testing.",
+            "Result": "Pass",
+            "Criticality": "Shall",
+            "Details": "Synthetic pass details that must not be exported.",
+            "OmittedEvaluationResult": "N/A",
+            "OmittedEvaluationDetails": "N/A",
+            "IncorrectResult": "N/A",
+            "IncorrectResultDetails": "N/A",
+            "OriginalResult": "Pass",
+            "OriginalDetails": "Synthetic original details that must not be exported.",
+            "Comments": [],
+            "ResolutionDate": null
+          },
+          {
+            "Control ID": "MS.AAD.2.1v1",
+            "Requirement": "Synthetic SHALL requirement for importer testing.",
+            "Result": "Fail",
+            "Criticality": "Shall",
+            "Details": "Sensitive synthetic failure context that must not be exported.",
+            "OmittedEvaluationResult": "N/A",
+            "OmittedEvaluationDetails": "N/A",
+            "IncorrectResult": "N/A",
+            "IncorrectResultDetails": "N/A",
+            "OriginalResult": "Fail",
+            "OriginalDetails": "Synthetic original details that must not be exported.",
+            "Comments": ["synthetic analyst comment that must not be exported"],
+            "ResolutionDate": "2026-12-31"
+          }
+        ]
+      }
+    ],
+    "Defender": [
+      {
+        "GroupName": "Synthetic Defender Controls",
+        "GroupNumber": "1",
+        "GroupReferenceURL": "https://github.com/cisagov/ScubaGear/blob/v1.8.0/PowerShell/ScubaGear/baselines/defender.md",
+        "Controls": [
+          {
+            "Control ID": "MS.DEFENDER.1.1v1",
+            "Requirement": "Synthetic SHOULD requirement for importer testing.",
+            "Result": "Warning",
+            "Criticality": "Should",
+            "Details": "Synthetic warning details that must not be exported.",
+            "OmittedEvaluationResult": "N/A",
+            "OmittedEvaluationDetails": "N/A",
+            "IncorrectResult": "N/A",
+            "IncorrectResultDetails": "N/A",
+            "OriginalResult": "Warning",
+            "OriginalDetails": "Synthetic original details that must not be exported.",
+            "Comments": [],
+            "ResolutionDate": null
+          }
+        ]
+      }
+    ],
+    "EXO": [
+      {
+        "GroupName": "Synthetic Exchange Online Controls",
+        "GroupNumber": "1",
+        "GroupReferenceURL": "https://github.com/cisagov/ScubaGear/blob/v1.8.0/PowerShell/ScubaGear/baselines/exo.md",
+        "Controls": [
+          {
+            "Control ID": "MS.EXO.1.1v2",
+            "Requirement": "Synthetic SHALL requirement for importer testing.",
+            "Result": "Pass",
+            "Criticality": "Shall",
+            "Details": "Synthetic pass details that must not be exported.",
+            "OmittedEvaluationResult": "N/A",
+            "OmittedEvaluationDetails": "N/A",
+            "IncorrectResult": "N/A",
+            "IncorrectResultDetails": "N/A",
+            "OriginalResult": "Pass",
+            "OriginalDetails": "Synthetic original details that must not be exported.",
+            "Comments": [],
+            "ResolutionDate": null
+          },
+          {
+            "Control ID": "MS.EXO.2.1v1",
+            "Requirement": "Synthetic SHALL requirement for importer testing.",
+            "Result": "Fail",
+            "Criticality": "Shall",
+            "Details": "Synthetic failure details that must not be exported.",
+            "OmittedEvaluationResult": "N/A",
+            "OmittedEvaluationDetails": "N/A",
+            "IncorrectResult": "N/A",
+            "IncorrectResultDetails": "N/A",
+            "OriginalResult": "Fail",
+            "OriginalDetails": "Synthetic original details that must not be exported.",
+            "Comments": [],
+            "ResolutionDate": null
+          }
+        ]
+      }
+    ]
+  },
+  "Raw": {
+    "SyntheticProviderSecret": "raw-provider-setting-that-must-never-be-exported",
+    "SyntheticUser": "synthetic.user@synthetic-tenant.example.invalid"
+  }
+}
