@@ -76,7 +76,7 @@ curl --fail http://127.0.0.1:8000/score \
 
 ## Secure Docker Compose
 
-The checked-in [`compose.yaml`](../compose.yaml) pins the public v0.7.1 image by
+The checked-in [`compose.yaml`](../compose.yaml) pins the public v0.8.0 image by
 tag and digest and applies the same non-root, read-only, capability-dropped
 boundary used by CI. It also enables authentication, a per-key rate limit,
 local-only detectors and attacks, a zero provider-call budget, process and memory
