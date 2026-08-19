@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Added
+- Added an offline CISA SCuBA Evidence Bridge for ScubaGear 1.8.x consolidated
+  reports. It validates a strict allowlisted contract, reconciles every summary
+  count to the underlying results, selects AAD, Defender, and Exchange Online,
+  and exports only product, control ID, result, and criticality as explicitly
+  sensitive, privacy-minimized evidence.
+- Added combined NIST OSCAL 1.2.2 Assessment Results, candidate-only POA&M items
+  for failing `Shall` controls, an in-toto statement binding every artifact by
+  SHA-256, optional exact-payload ECDSA P-256 DSSE signing, and an offline
+  verifier for package structure, cross-file bindings, semantics, and signatures.
+- Added strict SCuBA evidence, combined in-toto Statement, and DSSE envelope JSON
+  Schemas; a synthetic no-real-data fixture; adversarial privacy and tamper tests;
+  and byte-locked official NIST POA&M schema validation alongside the existing
+  Assessment Plan and Results checks.
+
+### Security
+- The bridge fails closed on unknown source fields, unsupported ScubaGear
+  versions, inconsistent summaries, duplicate or cross-product control IDs,
+  symlinks, unsafe permissions, unexpected output files, overwrite attempts,
+  artifact rebinding, and signature mismatch. Tenant identity, raw settings,
+  free-text details, comments, requirements, and remediation annotations never
+  enter the derived bundle.
+
 ## 0.8.0 — 2026-08-18
 
 ### Added

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/scuba-evidence/v1",
+  "title": "LureScope privacy-minimized CISA ScubaGear evidence v1",
+  "description": "Strict minimized configuration observations imported from a reconciled ScubaGear 1.8.x consolidated report.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "generated_at", "source", "scope", "privacy",
+    "summary", "controls", "integrity", "interpretation_boundary", "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/scuba-evidence/v1"
+    },
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool", "tool_version", "contract", "product_suite", "report_timestamp",
+        "report_sha256"
+      ],
+      "properties": {
+        "tool": {"const": "ScubaGear"},
+        "tool_version": {
+          "type": "string",
+          "pattern": "^1\\.8\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+        },
+        "contract": {"const": "cisagov-scubagear-consolidated-json-1.8"},
+        "product_suite": {"const": "Microsoft 365"},
+        "report_timestamp": {"type": "string", "format": "date-time"},
+        "report_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["products", "selection"],
+      "properties": {
+        "products": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"enum": ["AAD", "Defender", "EXO"]}
+        },
+        "selection": {"const": "email-relevant-products-v1"}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimized", "shareable_by_default", "security_posture_sensitive",
+        "contains_tenant_identifiers", "contains_raw_provider_settings",
+        "contains_free_text_details", "excluded_source_fields"
+      ],
+      "properties": {
+        "minimized": {"const": true},
+        "shareable_by_default": {"const": false},
+        "security_posture_sensitive": {"const": true},
+        "contains_tenant_identifiers": {"const": false},
+        "contains_raw_provider_settings": {"const": false},
+        "contains_free_text_details": {"const": false},
+        "excluded_source_fields": {
+          "type": "array",
+          "minItems": 11,
+          "maxItems": 11,
+          "prefixItems": [
+            {"const": "MetaData.DisplayName"},
+            {"const": "MetaData.DomainName"},
+            {"const": "MetaData.TenantId"},
+            {"const": "MetaData.ReportUUID"},
+            {"const": "Raw"},
+            {"const": "AnnotatedFailedPolicies"},
+            {"const": "Results.Requirement"},
+            {"const": "Results.Details"},
+            {"const": "Results.OriginalDetails"},
+            {"const": "Results.Comments"},
+            {"const": "Results.ResolutionDate"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["products", "totals"],
+      "properties": {
+        "products": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["product", "control_count", "counts"],
+            "properties": {
+              "product": {"enum": ["AAD", "Defender", "EXO"]},
+              "control_count": {"type": "integer", "minimum": 1, "maximum": 5000},
+              "counts": {"$ref": "#/$defs/counts"}
+            }
+          }
+        },
+        "totals": {"$ref": "#/$defs/counts"}
+      }
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 15000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product", "control_id", "result", "criticality"],
+        "properties": {
+          "product": {"enum": ["AAD", "Defender", "EXO"]},
+          "control_id": {
+            "type": "string",
+            "pattern": "^MS\\.(AAD|DEFENDER|EXO)\\.[0-9]+\\.[0-9]+v[0-9]+$"
+          },
+          "result": {
+            "enum": [
+              "Pass", "Fail", "Warning", "N/A", "Omitted", "Incorrect result",
+              "Error", "Error - Test results missing"
+            ]
+          },
+          "criticality": {
+            "enum": [
+              "Shall", "Should", "Shall/Not-Implemented",
+              "Should/Not-Implemented", "Shall/3rd Party", "Should/3rd Party", "-"
+            ]
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_summary_reconciled", "unique_control_ids", "control_count",
+        "candidate_poam_count"
+      ],
+      "properties": {
+        "source_summary_reconciled": {"const": true},
+        "unique_control_ids": {"const": true},
+        "control_count": {"type": "integer", "minimum": 1, "maximum": 15000},
+        "candidate_poam_count": {"type": "integer", "minimum": 0, "maximum": 15000}
+      }
+    },
+    "interpretation_boundary": {
+      "const": "This bundle imports configuration observations reported by CISA ScubaGear and outcome observations measured by LureScope. LureScope does not query Microsoft 365, rerun SCuBA policies, determine control satisfaction, establish compliance, accept risk, or grant an authorization to operate."
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "prefixItems": [
+        {"const": "scubagear_source_report_must_be_independently_trusted"},
+        {"const": "configuration_results_are_imported_not_reperformed"},
+        {"const": "selected_email_products_only"},
+        {"const": "poam_items_are_candidates_not_approved_remediation_records"},
+        {"const": "control_mapping_is_not_compliance_determination"},
+        {"const": "scuba_control_ids_are_not_mapped_to_nist_controls"},
+        {"const": "representative_sample_and_trustworthy_labels_required"},
+        {"const": "security_posture_evidence_requires_access_control"},
+        {"const": "human_assessor_and_authorizing_official_decisions_required"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Manual", "Failures", "Warnings", "Errors", "Passes", "Omits",
+        "IncorrectResults"
+      ],
+      "properties": {
+        "Manual": {"type": "integer", "minimum": 0},
+        "Failures": {"type": "integer", "minimum": 0},
+        "Warnings": {"type": "integer", "minimum": 0},
+        "Errors": {"type": "integer", "minimum": 0},
+        "Passes": {"type": "integer", "minimum": 0},
+        "Omits": {"type": "integer", "minimum": 0},
+        "IncorrectResults": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

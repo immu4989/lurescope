@@ -39,6 +39,13 @@ project. See [SECURITY.md](SECURITY.md) for where that line sits.
   an observation into a compliance finding or ATO claim. A profile change requires a
   version decision, exact NIST control citation, synchronized schema and adversarial
   tests, aggregate-only review, and updated limitations.
+- **CISA SCuBA interoperability.** Treat a ScubaGear report as sensitive imported
+  evidence, not as LureScope's own assessment. Contract changes must be checked against
+  an official CISA sample and source implementation, retain exact summary reconciliation
+  and field allowlists, update the minimized evidence schema, and add a fixture that
+  proves excluded tenant, raw-setting, requirement, detail, comment, and remediation
+  fields cannot escape. Candidate POA&M items must remain candidates—not findings,
+  accepted risks, assigned deadlines, or authorization decisions.
 
 ## Keeping the browser build honest
 
@@ -89,9 +96,9 @@ costs nothing.
 - If fixtures, routing, labels, or the bundled model change, run the Golden Pilot
   and explain the contract change. Do not update a locked digest merely to make CI
   green.
-- If assurance output changes, validate both the AP and AR against the byte-locked
-  official NIST OSCAL schemas. Keep those vendored files unmodified and update a
-  checksum only for a reviewed upstream OSCAL release.
+- If assurance output changes, validate the AP, AR, and any POA&M against the
+  byte-locked official NIST OSCAL schemas. Keep those vendored files unmodified and
+  update a checksum only for a reviewed upstream OSCAL release.
 - Line length is 100. Keep `typing.Optional` and `List` where pydantic evaluates
   annotations at runtime; avoid unrelated syntax churn in functional PRs.
 

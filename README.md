@@ -25,6 +25,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Verify the Golden Pilot →](examples/shadow-pilot/README.md)** ·
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
 **[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
+**[Bridge CISA SCuBA evidence →](docs/SCUBA_BRIDGE.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -115,9 +116,28 @@ lurescope assurance export ./shadow-pilot --plan ./federal-email-plan
 
 The export is network-free, aggregate-only, validated against official NIST OSCAL
 schemas, and explicitly contains observations rather than compliance findings. It
-does not create or validate an SSP, satisfy a control, grant an ATO, assess CISA SCuBA
-configuration, or authorize enforcement. See the
+does not create or validate an SSP, satisfy a control, grant an ATO, or authorize
+enforcement. See the
 [Federal Email Assurance Profile operator guide](docs/FEDERAL_EMAIL_ASSURANCE.md).
+
+> **On `main`, targeted for the next release:** the CISA SCuBA Evidence Bridge can
+> combine that registered outcome evidence with a validated ScubaGear 1.8.x
+> consolidated report. It emits minimized configuration observations, a combined
+> OSCAL Assessment Results document, candidate-only OSCAL POA&M items for failing
+> `Shall` controls, and an in-toto statement that binds every artifact. Raw provider
+> settings, tenant identifiers, requirements, details, comments, and remediation
+> annotations are excluded—but the remaining posture evidence is still sensitive.
+
+```bash
+lurescope assurance ingest-scuba ./ScubaResults_<UUID>.json \
+  --bundle ./shadow-pilot --plan ./federal-email-plan \
+  --out ./combined-email-assurance
+lurescope assurance verify-scuba ./combined-email-assurance
+```
+
+The importer does not connect to Microsoft 365 or rerun SCuBA, and its candidate
+POA&M records are not findings, accepted risks, deadlines, or authorization
+decisions. Follow the [SCuBA Evidence Bridge operator guide](docs/SCUBA_BRIDGE.md).
 
 Export reviewed, minimized records as OCSF 1.8 Detection Findings, ECS 9.4 NDJSON,
 or a STIX 2.1 bundle—all without a network call:
