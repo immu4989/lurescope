@@ -3,6 +3,23 @@
 ## Unreleased
 
 ### Added
+- Added a private, offline SCuBA Assurance Drift Ledger that compares two
+  semantically verified Combined Email Assurance bundles only when their
+  ScubaGear contract, exact release, selected products, assurance profile, and
+  assessment plan match and report time increases. It deterministically records
+  regressions, improvements, newly failing, added, removed, unchanged, and
+  deliberately non-comparable transitions without making causal or compliance
+  claims.
+- Added candidate POA&M lifecycle observations (`new_candidate`,
+  `persistent_candidate`, `no_longer_observed`, and `not_candidate`), separate
+  Pilot Gate verdict change, minimized before/after snapshots, human-readable
+  Markdown and standalone HTML, NIST OSCAL 1.2.2 observations without findings,
+  an in-toto statement, optional P-256 DSSE authentication, and predecessor
+  statement chaining with source-continuity verification.
+- Added `lurescope assurance drift` and `verify-drift`, including optional
+  authenticated reverification of both original source bundles, strict public
+  JSON Schemas, official OSCAL validation, offline execution tests, conservative
+  transition semantics, tamper tests, chain tests, and an operator guide.
 - Added an offline CISA SCuBA Evidence Bridge for ScubaGear 1.8.x consolidated
   reports. It validates a strict allowlisted contract, reconciles every summary
   count to the underlying results, selects AAD, Defender, and Exchange Online,
@@ -18,6 +35,15 @@
   Assessment Plan and Results checks.
 
 ### Security
+- Bound every imported result group to the official versioned CISA baseline URL
+  matching the report's declared ScubaGear release. Configured supplemental
+  organizational fields remain confined to the discarded raw provider payload;
+  tests cover official UTF-8 BOM input and verify those values cannot enter
+  minimized evidence.
+- Drift packages fail closed on release, contract, scope, profile, plan, or time
+  mismatch; non-canonical JSON; unsafe permissions; symlinks; unexpected files;
+  report, OSCAL, statement, snapshot, or signature tampering; broken predecessor
+  continuity; and mismatched externally supplied source bundles.
 - The bridge fails closed on unknown source fields, unsupported ScubaGear
   versions, inconsistent summaries, duplicate or cross-product control IDs,
   symlinks, unsafe permissions, unexpected output files, overwrite attempts,

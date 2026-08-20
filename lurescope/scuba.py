@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -128,6 +129,14 @@ _PRODUCT_PREFIX = {
     "PowerPlatform": "POWERPLATFORM",
     "SharePoint": "SHAREPOINT",
     "Teams": "TEAMS",
+}
+_PRODUCT_BASELINE_FILE = {
+    "AAD": "aad.md",
+    "Defender": "defender.md",
+    "EXO": "exo.md",
+    "PowerPlatform": "powerplatform.md",
+    "SharePoint": "sharepoint.md",
+    "Teams": "teams.md",
 }
 _EMAIL_PRODUCTS = ("AAD", "Defender", "EXO")
 _RESULT_CATEGORY = {
@@ -264,6 +273,34 @@ def _control_category(result: str) -> str:
     return category
 
 
+def _validate_group_reference(value: object, *, product: str, tool_version: str) -> str:
+    """Bind a result group to the official baseline shipped by the reported release."""
+    reference = _bounded_text(value, f"{product} GroupReferenceURL", 4096)
+    try:
+        parsed = urlsplit(reference)
+    except ValueError as exc:
+        raise ValueError(f"ScubaGear {product} group reference is not a valid URL") from exc
+    expected_path = (
+        f"/cisagov/ScubaGear/blob/v{tool_version}/PowerShell/ScubaGear/baselines/"
+        f"{_PRODUCT_BASELINE_FILE[product]}"
+    )
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "github.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or parsed.path != expected_path
+        or parsed.query
+        or len(parsed.fragment) > 512
+    ):
+        raise ValueError(
+            f"ScubaGear {product} group reference is not bound to the reported "
+            f"v{tool_version} CISA baseline"
+        )
+    return reference
+
+
 def _validate_control(
     value: object,
     *,
@@ -385,7 +422,9 @@ def ingest_scuba_report(report_path: Path) -> tuple[Dict[str, Any], bytes]:
                 raise ValueError(f"ScubaGear {product} result group violates the allowlist")
             _bounded_text(group["GroupName"], f"{product} GroupName", 4096)
             _bounded_text(group["GroupNumber"], f"{product} GroupNumber", 64)
-            _bounded_text(group["GroupReferenceURL"], f"{product} GroupReferenceURL", 4096)
+            _validate_group_reference(
+                group["GroupReferenceURL"], product=product, tool_version=tool_version
+            )
             group_controls = group["Controls"]
             if not isinstance(group_controls, list) or not group_controls:
                 raise ValueError(

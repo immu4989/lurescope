@@ -564,6 +564,85 @@ def _assurance(argv: Sequence[str]) -> int:
         help="fail unless the DSSE signature authenticates against --public-key",
     )
 
+    drift_parser = commands.add_parser(
+        "drift",
+        help="compare two compatible Combined Email Assurance bundles",
+    )
+    drift_parser.add_argument("before", help="earlier combined assurance directory")
+    drift_parser.add_argument("after", help="later combined assurance directory")
+    drift_parser.add_argument(
+        "--out", "-o", required=True, help="new private drift-evidence directory"
+    )
+    drift_parser.add_argument(
+        "--signing-key", help="optional unencrypted ECDSA P-256 private PEM key"
+    )
+    drift_parser.add_argument(
+        "--source-public-key",
+        help="trusted ECDSA P-256 key shared by both sources unless overridden",
+    )
+    drift_parser.add_argument(
+        "--before-source-public-key",
+        help="trusted key for the earlier source bundle; supports key rotation",
+    )
+    drift_parser.add_argument(
+        "--after-source-public-key",
+        help="trusted key for the later source bundle; supports key rotation",
+    )
+    drift_parser.add_argument(
+        "--require-source-signatures",
+        action="store_true",
+        help="require both source bundles to authenticate against --source-public-key",
+    )
+    drift_parser.add_argument(
+        "--previous-drift",
+        help="verified predecessor drift directory used to extend the ledger chain",
+    )
+
+    verify_drift_parser = commands.add_parser(
+        "verify-drift",
+        help="verify a SCuBA Assurance Drift package and optional chain/source bindings",
+    )
+    verify_drift_parser.add_argument("drift", help="drift evidence directory")
+    verify_drift_parser.add_argument(
+        "--public-key", help="trusted ECDSA P-256 public PEM key for this drift entry"
+    )
+    verify_drift_parser.add_argument(
+        "--require-signature",
+        action="store_true",
+        help="fail unless this drift entry authenticates against --public-key",
+    )
+    verify_drift_parser.add_argument(
+        "--previous-drift", help="predecessor drift directory for chain verification"
+    )
+    verify_drift_parser.add_argument(
+        "--previous-public-key", help="trusted ECDSA P-256 key for the predecessor"
+    )
+    verify_drift_parser.add_argument(
+        "--require-chain",
+        action="store_true",
+        help="fail when a bound predecessor is not supplied and verified",
+    )
+    verify_drift_parser.add_argument(
+        "--before", help="original earlier source bundle for semantic reverification"
+    )
+    verify_drift_parser.add_argument(
+        "--after", help="original later source bundle for semantic reverification"
+    )
+    verify_drift_parser.add_argument(
+        "--source-public-key", help="trusted key shared by both sources unless overridden"
+    )
+    verify_drift_parser.add_argument(
+        "--before-source-public-key", help="trusted key for the earlier source bundle"
+    )
+    verify_drift_parser.add_argument(
+        "--after-source-public-key", help="trusted key for the later source bundle"
+    )
+    verify_drift_parser.add_argument(
+        "--require-source-signatures",
+        action="store_true",
+        help="require both supplied source bundles to authenticate",
+    )
+
     args = parser.parse_args(argv)
     try:
         if args.assurance_command == "init":
@@ -637,6 +716,76 @@ def _assurance(argv: Sequence[str]) -> int:
                 Path(args.bundle),
                 public_key=Path(args.public_key) if args.public_key else None,
                 require_signature=args.require_signature,
+            )
+            print(json.dumps(verification, sort_keys=True))
+            return 0
+
+        if args.assurance_command == "drift":
+            from .drift import create_scuba_drift_package
+
+            result = create_scuba_drift_package(
+                Path(args.before),
+                Path(args.after),
+                Path(args.out),
+                signing_key=Path(args.signing_key) if args.signing_key else None,
+                source_public_key=(
+                    Path(args.source_public_key) if args.source_public_key else None
+                ),
+                before_source_public_key=(
+                    Path(args.before_source_public_key)
+                    if args.before_source_public_key
+                    else None
+                ),
+                after_source_public_key=(
+                    Path(args.after_source_public_key)
+                    if args.after_source_public_key
+                    else None
+                ),
+                require_source_signatures=args.require_source_signatures,
+                previous_drift=(
+                    Path(args.previous_drift) if args.previous_drift else None
+                ),
+            )
+            drift = result["drift"]
+            print(
+                f"SCuBA Assurance Drift: {drift['summary']['changed_control_count']} of "
+                f"{drift['summary']['total_control_count']} controls changed; "
+                f"{drift['summary']['candidate_lifecycle']['new_candidate']} new and "
+                f"{drift['summary']['candidate_lifecycle']['persistent_candidate']} "
+                f"persistent candidate POA&M observations in {args.out}"
+            )
+            return 0
+
+        if args.assurance_command == "verify-drift":
+            from .drift import verify_scuba_drift_package
+
+            verification = verify_scuba_drift_package(
+                Path(args.drift),
+                public_key=Path(args.public_key) if args.public_key else None,
+                require_signature=args.require_signature,
+                previous_drift=(
+                    Path(args.previous_drift) if args.previous_drift else None
+                ),
+                previous_public_key=(
+                    Path(args.previous_public_key) if args.previous_public_key else None
+                ),
+                require_chain=args.require_chain,
+                before_bundle=Path(args.before) if args.before else None,
+                after_bundle=Path(args.after) if args.after else None,
+                source_public_key=(
+                    Path(args.source_public_key) if args.source_public_key else None
+                ),
+                before_source_public_key=(
+                    Path(args.before_source_public_key)
+                    if args.before_source_public_key
+                    else None
+                ),
+                after_source_public_key=(
+                    Path(args.after_source_public_key)
+                    if args.after_source_public_key
+                    else None
+                ),
+                require_source_signatures=args.require_source_signatures,
             )
             print(json.dumps(verification, sort_keys=True))
             return 0

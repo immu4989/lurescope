@@ -26,6 +26,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
 **[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
 **[Bridge CISA SCuBA evidence →](docs/SCUBA_BRIDGE.md)** ·
+**[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -138,6 +139,31 @@ lurescope assurance verify-scuba ./combined-email-assurance
 The importer does not connect to Microsoft 365 or rerun SCuBA, and its candidate
 POA&M records are not findings, accepted risks, deadlines, or authorization
 decisions. Follow the [SCuBA Evidence Bridge operator guide](docs/SCUBA_BRIDGE.md).
+
+### SCuBA Assurance Drift: detect posture change without retaining tenant data
+
+Also on `main` for the next release, the offline Drift Ledger compares two
+compatible Combined Email Assurance bundles and reports exactly what changed.
+It refuses cross-release, cross-scope, cross-plan, or reverse-time comparisons;
+classifies ambiguous result changes as `non_comparable`; and never calls an item
+“remediated.” Each package includes minimized before/after snapshots, deterministic
+JSON, Markdown and standalone HTML reports, OSCAL observations without findings,
+an in-toto statement, and optional P-256 DSSE authentication.
+
+```bash
+lurescope assurance drift ./combined-before ./combined-after \
+  --out ./assurance-drift --signing-key issuer.pem
+
+lurescope assurance verify-drift ./assurance-drift \
+  --public-key issuer.pub.pem --require-signature \
+  --before ./combined-before --after ./combined-after
+```
+
+Extend an append-only history with `--previous-drift ./previous-entry`, then use
+`verify-drift --previous-drift ... --require-chain` to check both the predecessor
+statement digest and source continuity. The ledger supports continuous monitoring;
+it does not satisfy an agency logging requirement or establish compliance. See the
+[SCuBA Assurance Drift operator guide](docs/SCUBA_DRIFT.md).
 
 Export reviewed, minimized records as OCSF 1.8 Detection Findings, ECS 9.4 NDJSON,
 or a STIX 2.1 bundle—all without a network call:

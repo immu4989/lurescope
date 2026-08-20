@@ -27,6 +27,8 @@ contract changes. Validation requires:
 - `Tool=ScubaGear`, `ProductSuite=Microsoft 365`, the known product mapping, canonical
   report and tenant UUIDs, and a timezone-bearing report timestamp;
 - supported product/control ID relationships and unique control IDs;
+- an official `github.com/cisagov/ScubaGear` result-group baseline URL whose
+  release and product path exactly match the report's declared tool version;
 - a recognized result and criticality for every control; and
 - exact reconciliation of every reported summary category to underlying controls.
 
@@ -34,6 +36,12 @@ The command accepts only AAD, Defender, and Exchange Online into the derived ema
 evidence. Other assessed products are validated and reconciled but excluded from the
 bridge output. A 32 MiB input limit, bounded arrays and strings, regular-file checks,
 and symlink rejection constrain hostile or accidental input.
+
+The official PowerShell JSON form may include a UTF-8 byte-order mark. Config-file
+supplemental fields such as organization or unit names remain inside the `Raw`
+provider payload; the importer accepts that bounded object but never traverses or
+copies any of its values. Unknown fields in the consolidated report, metadata,
+summary, result-group, or control contracts still fail closed.
 
 ## Run the bridge
 
@@ -152,10 +160,14 @@ permissions and no-overwrite behavior, authenticate DSSE, detect tampering, and
 validate both generated OSCAL documents against official NIST schemas. See the
 [synthetic fixture contract](../examples/scuba-bridge/README.md).
 
+To compare successive verified bridge outputs, continue with the
+[SCuBA Assurance Drift Ledger](SCUBA_DRIFT.md).
+
 ## Authoritative references
 
 - [CISA ScubaGear repository](https://github.com/cisagov/ScubaGear)
 - [CISA ScubaGear report documentation](https://github.com/cisagov/ScubaGear/blob/main/docs/execution/reports.md)
+- [CISA ScubaGear configuration documentation](https://github.com/cisagov/ScubaGear/blob/main/docs/configuration/configuration.md)
 - [NIST OSCAL 1.2.2 model reference](https://pages.nist.gov/OSCAL-Reference/models/v1.2.2/)
 - [NIST OSCAL Assessment Results model](https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/assessment-results/)
 - [NIST OSCAL Plan of Action and Milestones model](https://pages.nist.gov/OSCAL/learn/concepts/layer/assessment/poam/)

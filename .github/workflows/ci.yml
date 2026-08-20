@@ -39,9 +39,11 @@ jobs:
         run: >-
           uv run --frozen python scripts/run_golden_pilot.py
           --out "${RUNNER_TEMP}/lurescope-golden-pilot"
-      - name: Validate Federal OSCAL and SCuBA assurance artifacts
+      - name: Validate Federal OSCAL, SCuBA, and drift assurance artifacts
         if: matrix.python-version == '3.12'
-        run: uv run --frozen pytest -q tests/test_assurance.py tests/test_scuba.py
+        run: >-
+          uv run --frozen pytest -q
+          tests/test_assurance.py tests/test_scuba.py tests/test_drift.py
       - name: Test browser engine
         if: matrix.python-version == '3.12'
         run: node --test tests/browser_engine.test.cjs
