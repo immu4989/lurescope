@@ -302,6 +302,27 @@ def test_import_rejects_contract_drift_and_inconsistent_summary(tmp_path):
     with pytest.raises(ValueError, match="ProductsAssessed"):
         ingest_scuba_report(_write_source(tmp_path, invalid_products, "products.json"))
 
+    spoofed_baseline = _load_source()
+    spoofed_baseline["Results"]["AAD"][0]["GroupReferenceURL"] = (
+        "https://example.invalid/counterfeit-baseline.md"
+    )
+    with pytest.raises(ValueError, match="reported v1.8.0 CISA baseline"):
+        ingest_scuba_report(_write_source(tmp_path, spoofed_baseline, "spoofed.json"))
+
+
+def test_import_accepts_official_bom_and_discards_supplemental_raw_metadata(tmp_path):
+    configured = _load_source()
+    configured["Raw"]["ScubaConfig"] = {
+        "OrgName": "Sensitive Department Name",
+        "OrgUnitName": "Sensitive Program Office",
+    }
+    path = tmp_path / "configured.json"
+    path.write_bytes(b"\xef\xbb\xbf" + json.dumps(configured).encode("utf-8"))
+    evidence, _ = ingest_scuba_report(path)
+    serialized = json.dumps(evidence)
+    assert "Sensitive Department Name" not in serialized
+    assert "Sensitive Program Office" not in serialized
+
 
 def test_bundle_refuses_overwrite_and_omits_empty_candidate_poam(tmp_path):
     plan, pilot = _reviewed_pilot(tmp_path)

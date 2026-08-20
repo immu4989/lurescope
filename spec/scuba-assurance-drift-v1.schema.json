@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/scuba-assurance-drift/v1",
+  "title": "LureScope SCuBA Assurance Drift Ledger v1",
+  "description": "Privacy-minimized, deterministic longitudinal comparison of two compatible Combined Email Assurance bundles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "generated_at",
+    "comparison",
+    "compatibility",
+    "previous_ledger",
+    "pilot_gate",
+    "summary",
+    "transitions",
+    "privacy",
+    "interpretation_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/scuba-assurance-drift/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"$ref": "#/$defs/source"},
+        "after": {"$ref": "#/$defs/source"}
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comparable", "basis", "baseline"],
+      "properties": {
+        "comparable": {"const": true},
+        "basis": {
+          "const": [
+            "same-scubagear-contract",
+            "same-scubagear-release",
+            "same-email-product-scope",
+            "same-assurance-profile",
+            "strictly-increasing-report-time"
+          ]
+        },
+        "baseline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "release",
+            "before_control_set_sha256",
+            "after_control_set_sha256",
+            "control_set_changed"
+          ],
+          "properties": {
+            "release": {"type": "string", "pattern": "^v1\\.8\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"},
+            "before_control_set_sha256": {"$ref": "#/$defs/sha256"},
+            "after_control_set_sha256": {"$ref": "#/$defs/sha256"},
+            "control_set_changed": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "previous_ledger": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement_sha256"],
+          "properties": {"statement_sha256": {"$ref": "#/$defs/sha256"}}
+        }
+      ]
+    },
+    "pilot_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "changed"],
+      "properties": {
+        "before": {"$ref": "#/$defs/verdict"},
+        "after": {"$ref": "#/$defs/verdict"},
+        "changed": {"type": "boolean"}
+      }
+    },
+    "summary": {"$ref": "#/$defs/summary"},
+    "transitions": {
+      "type": "array",
+      "maxItems": 15000,
+      "items": {"$ref": "#/$defs/transition"}
+    },
+    "privacy": {
+      "const": {
+        "minimized": true,
+        "shareable_by_default": false,
+        "security_posture_sensitive": true,
+        "contains_tenant_identifiers": false,
+        "contains_raw_provider_settings": false,
+        "contains_free_text_details": false,
+        "contains_message_content": false,
+        "retained_control_fields": ["product", "control_id", "result", "criticality"]
+      }
+    },
+    "interpretation_boundary": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9_]+$", "maxLength": 128}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "verdict": {"enum": ["pass", "fail", "insufficient_evidence"]},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "combined_statement_sha256",
+        "source_authentication",
+        "scuba_evidence_sha256",
+        "scubagear_report_sha256",
+        "scubagear_version",
+        "scubagear_contract",
+        "baseline_release",
+        "control_set_sha256",
+        "report_timestamp",
+        "scope",
+        "pilot_gate_sha256",
+        "pilot_gate_verdict",
+        "assurance_profile_sha256",
+        "assessment_plan_sha256",
+        "assessment_plan_uuid"
+      ],
+      "properties": {
+        "combined_statement_sha256": {"$ref": "#/$defs/sha256"},
+        "source_authentication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authenticated", "key_ids"],
+          "properties": {
+            "authenticated": {"type": "boolean"},
+            "key_ids": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        "scuba_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "scubagear_report_sha256": {"$ref": "#/$defs/sha256"},
+        "scubagear_version": {"type": "string", "pattern": "^1\\.8\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"},
+        "scubagear_contract": {"const": "cisagov-scubagear-consolidated-json-1.8"},
+        "baseline_release": {"type": "string", "pattern": "^v1\\.8\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"},
+        "control_set_sha256": {"$ref": "#/$defs/sha256"},
+        "report_timestamp": {"type": "string", "format": "date-time", "maxLength": 64},
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["products", "selection"],
+          "properties": {
+            "products": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "uniqueItems": true,
+              "items": {"enum": ["AAD", "Defender", "EXO"]}
+            },
+            "selection": {"const": "email-relevant-products-v1"}
+          }
+        },
+        "pilot_gate_sha256": {"$ref": "#/$defs/sha256"},
+        "pilot_gate_verdict": {"$ref": "#/$defs/verdict"},
+        "assurance_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "assessment_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "assessment_plan_uuid": {"type": "string", "format": "uuid"}
+      }
+    },
+    "state": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["result", "criticality"],
+          "properties": {
+            "result": {
+              "enum": [
+                "Pass",
+                "Fail",
+                "Warning",
+                "N/A",
+                "Omitted",
+                "Incorrect result",
+                "Error - Test results missing",
+                "Error"
+              ]
+            },
+            "criticality": {
+              "enum": [
+                "Shall",
+                "Should",
+                "Shall/Not-Implemented",
+                "Should/Not-Implemented",
+                "Shall/3rd Party",
+                "Should/3rd Party",
+                "-"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product",
+        "control_id",
+        "before",
+        "after",
+        "transition",
+        "candidate_lifecycle"
+      ],
+      "properties": {
+        "product": {"enum": ["AAD", "Defender", "EXO"]},
+        "control_id": {"type": "string", "pattern": "^MS\\.(AAD|DEFENDER|EXO)\\.\\d+\\.\\d+v\\d+$"},
+        "before": {"$ref": "#/$defs/state"},
+        "after": {"$ref": "#/$defs/state"},
+        "transition": {
+          "enum": [
+            "added",
+            "improved",
+            "newly_failing",
+            "non_comparable",
+            "regressed",
+            "removed",
+            "unchanged"
+          ]
+        },
+        "candidate_lifecycle": {
+          "enum": [
+            "new_candidate",
+            "no_longer_observed",
+            "not_candidate",
+            "persistent_candidate"
+          ]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_control_count",
+        "changed_control_count",
+        "transitions",
+        "candidate_lifecycle"
+      ],
+      "properties": {
+        "total_control_count": {"type": "integer", "minimum": 0, "maximum": 15000},
+        "changed_control_count": {"type": "integer", "minimum": 0, "maximum": 15000},
+        "transitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "added",
+            "improved",
+            "newly_failing",
+            "non_comparable",
+            "regressed",
+            "removed",
+            "unchanged"
+          ],
+          "properties": {
+            "added": {"type": "integer", "minimum": 0},
+            "improved": {"type": "integer", "minimum": 0},
+            "newly_failing": {"type": "integer", "minimum": 0},
+            "non_comparable": {"type": "integer", "minimum": 0},
+            "regressed": {"type": "integer", "minimum": 0},
+            "removed": {"type": "integer", "minimum": 0},
+            "unchanged": {"type": "integer", "minimum": 0}
+          }
+        },
+        "candidate_lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "new_candidate",
+            "no_longer_observed",
+            "not_candidate",
+            "persistent_candidate"
+          ],
+          "properties": {
+            "new_candidate": {"type": "integer", "minimum": 0},
+            "no_longer_observed": {"type": "integer", "minimum": 0},
+            "not_candidate": {"type": "integer", "minimum": 0},
+            "persistent_candidate": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

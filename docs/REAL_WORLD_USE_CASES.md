@@ -124,6 +124,20 @@ configuration and observed-outcome evidence. Failing `Shall` results become cand
 POA&M records only; the bridge does not create findings, accept risk, set deadlines, or
 replace ScubaGear execution. See [CISA SCuBA Evidence Bridge](SCUBA_BRIDGE.md).
 
+For recurring assessments, compare successive verified packages instead of manually
+diffing sensitive source reports:
+
+```bash
+lurescope assurance drift ./combined-before ./combined-after \
+  --out ./assurance-drift
+```
+
+The resulting [SCuBA Assurance Drift Ledger](SCUBA_DRIFT.md) records conservative
+control transitions, candidate POA&M lifecycle observations, Pilot Gate verdict
+change, OSCAL observations, and optional signed predecessor continuity. It can reduce
+repetitive evidence review while preserving human judgment for ambiguous changes. It
+does not prove remediation, explain causality, or satisfy an event-logging mandate.
+
 ## 5. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:
