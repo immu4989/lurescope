@@ -65,6 +65,11 @@ def verify(base_url: str) -> None:
         if not isinstance(model.get("vocab"), dict) or len(model["vocab"]) < 1000:
             raise AssertionError("browser model is missing or unexpectedly small")
 
+    with _get(f"{base}/static/evidence-explorer.js") as response:
+        explorer = response.read().decode("utf-8")
+        if "LureScopeEvidence" not in explorer or "MAX_ARTIFACT_BYTES" not in explorer:
+            raise AssertionError("browser Evidence Explorer is missing or incomplete")
+
     try:
         _get(f"{base}/capabilities")
     except urllib.error.HTTPError as exc:

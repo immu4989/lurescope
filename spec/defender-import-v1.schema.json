@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/defender-import/v1",
+  "title": "LureScope private Microsoft Defender EmailEvents import v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "decision_rule",
+    "source_csv_sha256", "source_row_count", "matched_source_row_count",
+    "unmatched_source_row_count", "message_count", "matched_message_count",
+    "unmatched_message_count", "identifier_columns", "shadow_manifest_sha256",
+    "cases_file", "cases_sha256", "privacy"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/defender-import/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "decision_rule": {"const": "defender_attention_v1"},
+    "source_csv_sha256": {"$ref": "#/$defs/sha256"},
+    "source_row_count": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "matched_source_row_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "unmatched_source_row_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "message_count": {"$ref": "#/$defs/count"},
+    "matched_message_count": {"$ref": "#/$defs/zeroCount"},
+    "unmatched_message_count": {"$ref": "#/$defs/zeroCount"},
+    "identifier_columns": {
+      "type": "object",
+      "required": ["network_message_id", "internet_message_id"],
+      "properties": {
+        "network_message_id": {"type": "boolean"},
+        "internet_message_id": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "shadow_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "cases_file": {"const": "defender-cases.jsonl"},
+    "cases_sha256": {"$ref": "#/$defs/sha256"},
+    "privacy": {
+      "type": "object",
+      "required": ["identifiers_joined_in_memory_only", "excluded_fields"],
+      "properties": {
+        "identifiers_joined_in_memory_only": {"const": true},
+        "excluded_fields": {"$ref": "#/$defs/excludedFields"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "zeroCount": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "excludedFields": {
+      "const": [
+        "source_paths", "subjects", "sender_addresses", "recipient_addresses",
+        "internet_message_ids", "network_message_ids", "tenant_identifiers",
+        "url_values", "attachment_names", "message_content"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

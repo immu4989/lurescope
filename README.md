@@ -11,8 +11,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
 [![PyPI install](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurescope?color=2a78d6)](https://pypi.org/project/lurescope/)
-[![GHCR](https://img.shields.io/badge/GHCR-pull_0.8.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
-![Version](https://img.shields.io/badge/version-0.8.0-57f2c1)
+[![GHCR](https://img.shields.io/badge/GHCR-pull_0.9.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
+![Version](https://img.shields.io/badge/version-0.9.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -22,6 +22,9 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
+**[Compare Defender offline →](docs/MICROSOFT_DEFENDER_OFFLINE.md)** ·
+**[Create a LureEval receipt →](docs/LUREEVAL.md)** ·
+**[Explore evidence in-browser →](https://immu4989.github.io/lurescope/#evidence)** ·
 **[Verify the Golden Pilot →](examples/shadow-pilot/README.md)** ·
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
 **[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
@@ -48,6 +51,14 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > recomputes their exact statistics, and exposes assurance and limitations at
 > `GET /policy`. See [risk-controlled policy deployment](docs/RISK_CONTROLLED_POLICY.md).
 
+> **Private evidence can now travel without private email.** LureScope pairs an
+> offline Microsoft Defender `EmailEvents` export with `.eml` evidence entirely in
+> memory, produces signed LureEval operational receipts, and explains receipts,
+> Pilot Gates, LureProof, and SCuBA statements in a no-upload browser Evidence
+> Explorer. See the [Defender operator workflow](docs/MICROSOFT_DEFENDER_OFFLINE.md),
+> [LureEval protocol](docs/LUREEVAL.md), and
+> [browser verification boundary](docs/EVIDENCE_EXPLORER.md).
+
 ## Shadow Inbox: measure before enforcement
 
 Evaluate an exported `.eml` directory, Maildir, or mbox without connecting to a
@@ -57,8 +68,9 @@ aggregate-only report of routing recall, false-positive rate, workload, and
 adversarial weaknesses. Pilot Gate adds a pre-run statistical contract that cannot
 pass with incomplete labels or inadequate evidence:
 
-> Shadow Inbox, Pilot Gate, the Golden Pilot, and Federal Email Assurance ship in
-> v0.8.0. Install the tagged package with `python -m pip install lurescope==0.8.0`.
+> Shadow Inbox, Pilot Gate, the Golden Pilot, Federal Email Assurance, SCuBA
+> evidence/drift, Defender comparison, and LureEval ship in v0.9.0. Install the
+> tagged package with `python -m pip install lurescope==0.9.0`.
 
 Verify the complete synthetic workflow first—fixture integrity, ingestion,
 deduplication, known ground truth, exact statistical gate, schemas, privacy scan,
@@ -100,6 +112,55 @@ one-sided recall/FPR bounds; checks review capacity; and returns
 non-zero exit unless every registered criterion passes. See the
 [statistical definitions, protocol, and interpretation limits](docs/PILOT_GATE.md).
 
+### Compare Microsoft Defender offline on the same reviewed cohort
+
+Export a bounded Microsoft Defender `EmailEvents` result and the corresponding
+messages through your approved evidence process. LureScope joins Exchange or
+Internet message IDs only in memory, then persists random case IDs and four fixed
+native-attention signals—never subjects, addresses, recipients, tenant IDs,
+message IDs, paths, URLs, attachment names, or content:
+
+```bash
+lurescope defender import ./EmailEvents.csv ./exported-eml \
+  --recursive --threshold 0.5 --out ./defender-shadow-pilot
+
+# Fixed-vocabulary adjudication refreshes both paired reports.
+lurescope shadow label ./defender-shadow-pilot case-0123456789abcdef fraud \
+  --reason confirmed_external
+lurescope defender report ./defender-shadow-pilot --confidence 0.95
+```
+
+The aggregate report compares Defender attention and LureScope routing on exactly
+the same matched, processed, fraud/benign-labeled messages, with exact one-sided
+recall and FPR bounds. Unmatched, failed, uncertain, and unlabeled cases are
+excluded and counted. Follow the
+[offline Microsoft Defender workflow and decision rule](docs/MICROSOFT_DEFENDER_OFFLINE.md).
+
+### Share field evidence without sharing messages
+
+Once a reviewed bundle has a registered Pilot Gate, create a LureEval receipt:
+
+```bash
+lurescope lureeval create ./shadow-pilot \
+  --sampling consecutive_sample --minimum-slice-count 20 \
+  --issuer "Example SOC" --signing-key issuer.pem \
+  --out site-a.lureeval.dsse.json
+
+lurescope lureeval verify site-a.lureeval.dsse.json \
+  --public-key issuer.pub.pem --require-signature
+```
+
+The receipt binds detector/policy bytes, cohort manifest, latest labels,
+registered plan, and current gate; recomputes aggregate metrics; and suppresses
+small slices. LureBench can authenticate and pool only compatible multi-site
+receipts. Read the [trust model, commands, and non-guarantees](docs/LUREEVAL.md).
+
+Prefer a visual explanation? Open the
+[browser Evidence Explorer](https://immu4989.github.io/lurescope/#evidence) and
+choose a JSON artifact. The file stays in the tab. The explorer intentionally
+does not call a DSSE signature authenticated; trusted-key semantic verification
+remains a CLI operation.
+
 For an agency or supplier pilot, pre-register the same criteria together with a
 portable identifier for the operator-controlled OSCAL System Security Plan, then
 export aggregate NIST OSCAL 1.2.2 observations:
@@ -121,7 +182,7 @@ does not create or validate an SSP, satisfy a control, grant an ATO, or authoriz
 enforcement. See the
 [Federal Email Assurance Profile operator guide](docs/FEDERAL_EMAIL_ASSURANCE.md).
 
-> **On `main`, targeted for the next release:** the CISA SCuBA Evidence Bridge can
+> **In v0.9.0:** the CISA SCuBA Evidence Bridge can
 > combine that registered outcome evidence with a validated ScubaGear 1.8.x
 > consolidated report. It emits minimized configuration observations, a combined
 > OSCAL Assessment Results document, candidate-only OSCAL POA&M items for failing
@@ -142,7 +203,7 @@ decisions. Follow the [SCuBA Evidence Bridge operator guide](docs/SCUBA_BRIDGE.m
 
 ### SCuBA Assurance Drift: detect posture change without retaining tenant data
 
-Also on `main` for the next release, the offline Drift Ledger compares two
+The v0.9.0 offline Drift Ledger compares two
 compatible Combined Email Assurance bundles and reports exactly what changed.
 It refuses cross-release, cross-scope, cross-plan, or reverse-time comparisons;
 classifies ambiguous result changes as `non_comparable`; and never calls an item
@@ -393,13 +454,13 @@ curl -s localhost:8000/attack -H 'content-type: application/json' \
 Run it in a hardened local container instead:
 
 ```bash
-docker pull ghcr.io/immu4989/lurescope:0.8.0
+docker pull ghcr.io/immu4989/lurescope:0.9.0
 docker run --name lurescope-local --restart unless-stopped \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
   --cap-drop ALL --security-opt no-new-privileges:true \
   -p 127.0.0.1:8000:8000 \
   -e LURESCOPE_LLM_ENGINE=openrouter -e OPENROUTER_API_KEY \
-  ghcr.io/immu4989/lurescope:0.8.0
+  ghcr.io/immu4989/lurescope:0.9.0
 ```
 
 The public image supports `linux/amd64` and `linux/arm64` and carries SBOM and

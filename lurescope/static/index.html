@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#071218">
-<meta name="description" content="Score, attack, and defend fraud detectors in an interactive adversarial lab.">
+<meta name="description" content="Score, attack, defend, and inspect fraud-detection evidence privately in an interactive adversarial lab.">
 <meta property="og:title" content="LureScope — Break the detector before they do">
 <meta property="og:description" content="A private, browser-based adversarial lab for scoring fraud lures, measuring evasion, and testing normalization defenses.">
 <meta property="og:type" content="website">
@@ -149,18 +149,45 @@
   .outcome.held { color: var(--mint); border: 1px solid rgba(87,242,193,.4); background: var(--mint-soft); }
   .outcome.evaded { color: var(--coral); border: 1px solid rgba(255,113,107,.4); background: var(--coral-soft); }
   .outcome.neutral { color: var(--ink-2); border: 1px solid var(--line); background: var(--surface-2); }
+  .evidence-lab { margin-top: 22px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(135deg, rgba(98,199,255,.07), rgba(11,23,29,.95) 42%, rgba(87,242,193,.045)); }
+  .evidence-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px; align-items: center; }
+  .evidence-copy { max-width: 720px; margin: 8px 0 0; color: var(--ink-2); font-size: 13px; }
+  .evidence-result { display: none; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .artifact-head { display: flex; justify-content: space-between; gap: 22px; align-items: flex-start; }
+  .artifact-kind { color: var(--cyan); font: 10px var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+  .artifact-title { margin: 5px 0 4px; font-size: 25px; letter-spacing: -.035em; }
+  .artifact-description { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .artifact-state { white-space: nowrap; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; font: 700 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .artifact-state.pass { color: var(--mint); border-color: rgba(87,242,193,.45); background: var(--mint-soft); }
+  .artifact-state.fail { color: var(--coral); border-color: rgba(255,113,107,.45); background: var(--coral-soft); }
+  .artifact-state.warn { color: var(--amber); border-color: rgba(245,198,93,.45); background: rgba(245,198,93,.08); }
+  .artifact-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+  .artifact-metric { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: rgba(8,19,25,.72); }
+  .artifact-metric small { display: block; color: var(--muted); font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+  .artifact-metric strong { display: block; margin-top: 5px; font: 19px var(--mono); overflow-wrap: anywhere; }
+  .artifact-metric em { display: block; margin-top: 3px; color: var(--muted); font: normal 9px var(--mono); }
+  .artifact-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .artifact-detail { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 11px; background: rgba(8,19,25,.55); }
+  .artifact-detail h3 { margin: 0 0 10px; font-size: 12px; }
+  .artifact-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; color: var(--ink-2); font: 10px/1.5 var(--mono); }
+  .artifact-list li { padding-bottom: 7px; border-bottom: 1px solid rgba(38,59,64,.65); overflow-wrap: anywhere; }
+  .artifact-list li:last-child { padding-bottom: 0; border-bottom: 0; }
+  .artifact-list b { color: var(--ink); }
+  .artifact-warning { margin-top: 12px; padding: 12px 14px; border: 1px solid rgba(245,198,93,.25); border-radius: 10px; color: var(--ink-2); background: rgba(245,198,93,.055); font-size: 11px; }
+  .artifact-signature { margin-top: 12px; color: var(--muted); font: 10px var(--mono); }
   footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px 2px 0; color: var(--muted); font-size: 11px; }
   footer a { color: var(--ink-2); }
   @media (max-width: 860px) {
     .hero { grid-template-columns: 1fr; padding-top: 58px; } .hero-side { display: none; }
     .workspace { grid-template-columns: 1fr; } .compose { border-right: 0; border-bottom: 1px solid var(--line); }
-    .score-empty { min-height: 220px; } .timeline { grid-template-columns: 1fr; }
+    .score-empty { min-height: 220px; } .timeline { grid-template-columns: 1fr; } .artifact-metrics { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 620px) {
     .shell { padding: 20px 14px 48px; } .status { display: none; } .top-actions { gap: 8px; } .repo-link { font-size: 9px; } .mode-note { margin-bottom: -22px; } .hero { padding: 50px 2px 38px; }
     h1 { font-size: 52px; } .compose, .panel, .attack-lab { padding: 20px; }
     .controls, .attack-grid { grid-template-columns: 1fr; } .primary, .secondary { width: 100%; }
     .meta-grid { grid-template-columns: 1fr; } .privacy { display: none; } .email-row, .triage-summary { grid-template-columns: 1fr; } .file-button { width: 100%; } .proof-actions { align-items: stretch; flex-direction: column; } .proof-button { width: 100%; } footer { display: block; } footer span { display: block; margin-top: 8px; }
+    .evidence-intro, .artifact-detail-grid { grid-template-columns: 1fr; } .artifact-head { display: grid; } .artifact-state { justify-self: start; } .artifact-metrics { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 </style>
@@ -248,9 +275,28 @@
     </div>
   </section>
 
+  <section class="evidence-lab" id="evidence" aria-label="Evidence Explorer">
+    <div class="evidence-intro">
+      <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2><p class="evidence-copy">Inspect a LureEval receipt, Pilot Gate, Defender comparison, Shadow report, LureProof, or SCuBA statement. Parsing stays in this tab. The explorer reveals metrics, privacy boundaries, byte bindings, and limitations without uploading the file.</p></div>
+      <div><input id="evidenceFile" type="file" accept=".json,application/json" hidden><label class="file-button" for="evidenceFile">Choose evidence JSON</label></div>
+    </div>
+    <div class="error" id="evidenceErr" role="alert"></div>
+    <div class="evidence-result" id="evidenceResult" aria-live="polite">
+      <div class="artifact-head"><div><span class="artifact-kind" id="artifactKind">—</span><h2 class="artifact-title" id="artifactTitle">—</h2><p class="artifact-description" id="artifactDescription"></p></div><span class="artifact-state" id="artifactState">—</span></div>
+      <div class="artifact-metrics" id="artifactMetrics"></div>
+      <div class="artifact-detail-grid">
+        <article class="artifact-detail"><h3>Cryptographic byte bindings</h3><ul class="artifact-list" id="artifactBindings"></ul></article>
+        <article class="artifact-detail"><h3>Privacy boundary</h3><ul class="artifact-list" id="artifactPrivacy"></ul></article>
+      </div>
+      <div class="artifact-warning" id="artifactWarnings"></div>
+      <div class="artifact-signature" id="artifactSignature"></div>
+    </div>
+  </section>
+
   <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a id="docsLink" href="/docs">API docs</a></span></footer>
 </main>
 <script src="static/browser-engine.js"></script>
+<script src="static/evidence-explorer.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const pct = (value) => `${Math.round(value * 100)}%`;
@@ -266,6 +312,7 @@ const params = new URLSearchParams(window.location.search);
 const standalone = window.location.hostname.endsWith("github.io") || params.get("standalone") === "1";
 const directFile = window.location.protocol === "file:";
 const browserEngine = window.LureScopeBrowser;
+const evidenceEngine = window.LureScopeEvidence;
 
 async function responseData(response) {
   const data = await response.json();
@@ -374,9 +421,28 @@ async function downloadProof() {
   finally { $("proofBtn").disabled = false; $("proofBtn").textContent = "Download salted LureProof"; }
 }
 
+async function exploreEvidence(file) {
+  $("evidenceErr").textContent = ""; $("evidenceResult").style.display = "none";
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) { $("evidenceErr").textContent = "Evidence file exceeds the 8 MB safety limit."; return; }
+  try {
+    if (!evidenceEngine) throw new Error("Evidence Explorer failed to load");
+    const summary = evidenceEngine.parseArtifact(await file.text());
+    $("artifactKind").textContent = summary.kind; $("artifactTitle").textContent = summary.title; $("artifactDescription").textContent = summary.description;
+    $("artifactState").textContent = summary.status; $("artifactState").className = `artifact-state ${summary.tone}`;
+    $("artifactMetrics").innerHTML = summary.metrics.map(item => `<div class="artifact-metric"><small>${safe(item.label)}</small><strong>${safe(item.value)}</strong>${item.note ? `<em>${safe(item.note)}</em>` : ""}</div>`).join("") || '<div class="artifact-metric"><small>Metrics</small><strong>Bound artifact</strong></div>';
+    $("artifactBindings").innerHTML = summary.bindings.length ? summary.bindings.map(item => `<li><b>${safe(item.label)}</b><br>${safe(item.value)}</li>`).join("") : "<li>No SHA-256 bindings exposed by this artifact type.</li>";
+    $("artifactPrivacy").innerHTML = summary.privacy.length ? summary.privacy.map(item => `<li>${safe(String(item).replaceAll("_", " "))}</li>`).join("") : "<li>Read the artifact's interpretation boundary before sharing.</li>";
+    $("artifactWarnings").innerHTML = `<b>Interpret carefully.</b> ${safe(summary.warnings.slice(0, 4).map(item => String(item).replaceAll("_", " ")).join(" · ") || "No machine-readable limitations were found.")}`;
+    $("artifactSignature").textContent = `${summary.signature.label}. Shape inspection is not strict semantic or cryptographic verification; use “lurescope lureeval verify” with a trusted public key for that.`;
+    $("evidenceResult").style.display = "block";
+  } catch (error) { $("evidenceErr").textContent = error.message; }
+}
+
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { $("text").value = samples[button.dataset.sample]; analyze(); }));
 $("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack); $("detector").addEventListener("change", analyze);
 $("emailFile").addEventListener("change", event => triageFile(event.target.files[0]));
+$("evidenceFile").addEventListener("change", event => exploreEvidence(event.target.files[0]));
 $("proofBtn").addEventListener("click", downloadProof);
 loadCapabilities().then(analyze).catch(error => { $("engineStatus").textContent = "Engine unavailable"; $("scoreErr").textContent = error.message; });
 </script>

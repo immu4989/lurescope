@@ -792,14 +792,17 @@ wheels = [
 
 [[package]]
 name = "lurebench"
-version = "0.9.1"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/92/aeba9966804bdde81ecf22928685710edd85d9529c8a74020096292dbd1e/lurebench-0.9.1.tar.gz", hash = "sha256:178002dae4cc6dd94764f40839fe696e20cb6d7d3314e30034c97852cfa8c0c0", size = 2352031, upload-time = "2026-08-13T04:49:23.376Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/a2/6ed5db104b7812f8a23ea6581a941a958cbacb8ca09c5a01449900fd3a08/lurebench-0.10.0.tar.gz", hash = "sha256:ff7037d15632c831464b6f91beb9ab2d592efdea52d539e8f8e5f13d281983a8", size = 2401354, upload-time = "2026-08-23T20:54:29.692Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/69/b5e1f6eb45b6f87db652892981503cf805d6a4186684215e0ac5b6acce39/lurebench-0.9.1-py3-none-any.whl", hash = "sha256:35fa8deff2b8468422ecccad2cadfc9cb9c1fb50a6fdb67f2b868befb3f25714", size = 100677, upload-time = "2026-08-13T04:49:22.004Z" },
+    { url = "https://files.pythonhosted.org/packages/16/bf/a27798f19c91df65a1d97000600691da2c1689d1368a6116f1fca81c187d/lurebench-0.10.0-py3-none-any.whl", hash = "sha256:0ddd6c208249a418b06aa5717818ed3c0697d0a8a9fff1b705ce557a26d36fe5", size = 129803, upload-time = "2026-08-23T20:54:27.856Z" },
 ]
 
 [package.optional-dependencies]
+receipts = [
+    { name = "cryptography" },
+]
 train = [
     { name = "joblib" },
     { name = "scikit-learn" },
@@ -807,12 +810,12 @@ train = [
 
 [[package]]
 name = "lurescope"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
-    { name = "lurebench", extra = ["train"] },
+    { name = "lurebench", extra = ["receipts", "train"] },
     { name = "pydantic" },
     { name = "scikit-learn" },
     { name = "uvicorn", extra = ["standard"] },
@@ -838,7 +841,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", marker = "extra == 'dev'" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23" },
-    { name = "lurebench", extras = ["train"], specifier = "==0.9.1" },
+    { name = "lurebench", extras = ["train", "receipts"], specifier = "==0.10.0" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.6" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'dev'" },

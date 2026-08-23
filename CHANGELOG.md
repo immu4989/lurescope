@@ -2,7 +2,29 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-08-23
+
 ### Added
+- Added `lurescope lureeval create` and `verify` for cross-organization,
+  privacy-minimized operational evaluation receipts. Each in-toto Statement
+  refreshes and binds the current Pilot Gate, manifest, latest-label log,
+  registered plan, detector artifact, threshold, and optional policy bytes;
+  recomputes exact metrics; suppresses small slices; and optionally authenticates
+  canonical payload bytes with P-256 DSSE. LureBench owns the strict protocol,
+  verifier, and compatible multi-site aggregator.
+- Added `lurescope defender import` and `report` for an offline, paired comparison
+  of Microsoft Defender `EmailEvents` and LureScope routing. The importer joins
+  Exchange/Internet message identifiers to exported `.eml` evidence only in
+  memory, persists random case IDs and four fixed native-attention signals, and
+  reports matched-cohort confusion counts with exact one-sided recall/FPR bounds.
+- Added a no-upload browser Evidence Explorer for LureEval receipts/aggregates,
+  Pilot Gates, Defender and Shadow reports, LureProof, and combined SCuBA/drift
+  statements. It explains metrics, byte bindings, privacy boundaries, and
+  limitations while correctly distinguishing “DSSE signature present” from
+  trusted-key authentication.
+- Added strict Defender import, minimized-case, and paired-report schemas;
+  cross-repository LureEval tests; browser explorer tests; official Microsoft
+  export guidance; and complete operator/trust-boundary documentation.
 - Added a private, offline SCuBA Assurance Drift Ledger that compares two
   semantically verified Combined Email Assurance bundles only when their
   ScubaGear contract, exact release, selected products, assurance profile, and
@@ -35,6 +57,16 @@
   Assessment Plan and Results checks.
 
 ### Security
+- Defender imports reject oversized/malformed CSV, missing contract columns,
+  symbolic links, duplicate headers, identifier-free rows, and one event row
+  matching multiple unique messages before creating a bundle. Byte bindings and
+  strict allowlists detect later case/import/manifest/label changes, and privacy
+  tests scan every persisted file for tenant paths, subjects, addresses, message
+  IDs, recipients, and content.
+- LureEval output refuses stale Gate bindings, unbound policy IDs, small published
+  slices, unsupported source fields, overwrites, and symbolic-link inputs.
+  Browser inspection never upgrades unverified envelope bytes into an
+  authentication claim.
 - Bound every imported result group to the official versioned CISA baseline URL
   matching the report's declared ScubaGear release. Configured supplemental
   organizational fields remain confined to the discarded raw provider payload;

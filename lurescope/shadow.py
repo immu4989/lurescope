@@ -558,6 +558,11 @@ def append_analyst_label(
         from .pilot import write_pilot_gate
 
         write_pilot_gate(bundle, registered_plan)
+    defender_import = bundle / "defender-import.json"
+    if defender_import.exists() or defender_import.is_symlink():
+        from .defender import write_defender_report
+
+        write_defender_report(bundle, overwrite=True)
     return event
 
 
@@ -785,6 +790,41 @@ def run_shadow_inbox(
         recursive=recursive,
         max_messages=max_messages,
     )
+    return materialize_shadow_discovery(
+        discovery,
+        output_dir,
+        detector_name=detector_name,
+        threshold=threshold,
+        privacy_profile=privacy_profile,
+        nonce=nonce,
+        issuer=issuer,
+        signing_key_pem=signing_key_pem,
+        max_messages=max_messages,
+    )
+
+
+def materialize_shadow_discovery(
+    discovery: ShadowDiscovery,
+    output_dir: Path,
+    *,
+    detector_name: str = service.DEFAULT_DETECTOR,
+    threshold: Optional[float] = None,
+    privacy_profile: str = "salted-commitment",
+    nonce: Optional[str] = None,
+    issuer: Optional[str] = None,
+    signing_key_pem: Optional[bytes] = None,
+    max_messages: int = MAX_INBOX_MESSAGES,
+) -> ShadowRun:
+    """Materialize an already bounded discovery into a private Shadow bundle.
+
+    Integrations may inspect transport metadata in memory before this step. The
+    discovery object still contains local sources and raw messages, so callers
+    must never serialize it.
+    """
+    if not discovery.messages:
+        raise ValueError("Shadow Inbox discovery contains no unique messages")
+    if len(discovery.messages) > max_messages:
+        raise ValueError("Shadow Inbox discovery exceeds the configured message limit")
     inbox_run = process_inbox(
         [(message.source, message.raw) for message in discovery.messages],
         Path(output_dir),
