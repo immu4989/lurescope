@@ -1071,6 +1071,59 @@ def _policy(argv: Sequence[str]) -> int:
     return 0 if status["configured"] else 1
 
 
+def _operational_pilot(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope pilot",
+        description=(
+            "Create or reverify the offline synthetic operational evidence bundle."
+        ),
+    )
+    commands = parser.add_subparsers(dest="pilot_command", required=True)
+    run_parser = commands.add_parser(
+        "run", help="atomically create the reviewed one-command pilot bundle"
+    )
+    run_parser.add_argument("--out", "-o", required=True, help="new private output directory")
+    run_parser.add_argument("--json", action="store_true", help="print the final receipt")
+    verify_parser = commands.add_parser(
+        "verify", help="reverify every binding without changing the bundle"
+    )
+    verify_parser.add_argument("bundle", help="existing operational pilot directory")
+    verify_parser.add_argument("--json", action="store_true", help="print the receipt")
+    args = parser.parse_args(argv)
+    try:
+        from .operational_pilot import run_operational_pilot, verify_operational_pilot
+
+        if args.pilot_command == "run":
+            target = Path(args.out)
+            receipt = run_operational_pilot(target)
+        else:
+            target = Path(args.bundle)
+            receipt = verify_operational_pilot(target)
+        if args.json:
+            print(json.dumps(receipt, indent=2, sort_keys=True))
+        else:
+            action = "CREATED" if args.pilot_command == "run" else "VERIFIED"
+            print(f"OPERATIONAL PILOT {action}: PASS — {target}")
+            print(
+                "boundary: synthetic offline workflow proof; "
+                "not deployment or compliance evidence"
+            )
+        return 0
+    except (
+        AssertionError,
+        FileExistsError,
+        FileNotFoundError,
+        ImportError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        print(f"! operational pilot failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -1097,6 +1150,8 @@ def main(argv=None) -> int:
         return _api_key(args[1:])
     if args and args[0] == "policy":
         return _policy(args[1:])
+    if args and args[0] == "pilot":
+        return _operational_pilot(args[1:])
     return _serve(args)
 
 

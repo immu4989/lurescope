@@ -39,6 +39,13 @@ jobs:
         run: >-
           uv run --frozen python scripts/run_golden_pilot.py
           --out "${RUNNER_TEMP}/lurescope-golden-pilot"
+      - name: Run and reverify installable operational pilot
+        if: matrix.python-version == '3.12'
+        run: |
+          uv run --frozen lurescope pilot run \
+            --out "${RUNNER_TEMP}/lurescope-operational-pilot"
+          uv run --frozen lurescope pilot verify \
+            "${RUNNER_TEMP}/lurescope-operational-pilot"
       - name: Validate Federal OSCAL, SCuBA, and drift assurance artifacts
         if: matrix.python-version == '3.12'
         run: >-

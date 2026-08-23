@@ -64,7 +64,13 @@ lurescope = "lurescope.cli:main"
 [tool.setuptools]
 # Data-only namespace packages are explicit so setuptools does not ambiguously
 # infer the model and web-asset directories during wheel builds.
-packages = ["lurescope", "lurescope.models", "lurescope.static"]
+packages = [
+  "lurescope",
+  "lurescope.data",
+  "lurescope.data.pilot",
+  "lurescope.models",
+  "lurescope.static",
+]
 
 [tool.setuptools.package-data]
 lurescope = [
@@ -75,6 +81,7 @@ lurescope = [
   "static/*.webmanifest",
   "static/*.xml",
   "models/*.joblib",
+  "data/pilot/*.eml",
 ]
 
 [tool.setuptools.data-files]

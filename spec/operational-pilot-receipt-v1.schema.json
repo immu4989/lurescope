@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/operational-pilot-receipt/v1",
+  "title": "LureScope synthetic operational pilot receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "generated_at",
+    "status",
+    "workflow",
+    "privacy",
+    "artifacts",
+    "verification",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/operational-pilot-receipt/v1"
+    },
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "status": { "const": "verified" },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_set_sha256",
+        "candidate_count",
+        "unique_count",
+        "duplicate_count",
+        "detector",
+        "detector_artifact_sha256",
+        "threshold",
+        "pilot_gate_verdict"
+      ],
+      "properties": {
+        "fixture_set_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_count": { "const": 6 },
+        "unique_count": { "const": 5 },
+        "duplicate_count": { "const": 1 },
+        "detector": { "const": "tfidf-logreg" },
+        "detector_artifact_sha256": {
+          "const": "84c7254c464ff9faa3ede012691c13d53da08ab1f26223633af7b9377d60ed0b"
+        },
+        "threshold": { "const": 0.5 },
+        "pilot_gate_verdict": { "const": "pass" }
+      }
+    },
+    "privacy": {
+      "const": {
+        "synthetic_only": true,
+        "private_bundle": true,
+        "contains_message_content": false,
+        "contains_opaque_case_identifiers": true,
+        "network_required": false,
+        "private_key_persisted": false
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 17,
+      "maxItems": 17,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "role", "sha256", "bytes"],
+        "properties": {
+          "file": {
+            "enum": [
+              "analyst-labels.jsonl",
+              "assurance-profile.json",
+              "lureeval-public.pem",
+              "lureeval.dsse.json",
+              "manifest.jsonl",
+              "oscal-assessment-plan.json",
+              "oscal-assessment-results.json",
+              "pilot-gate.json",
+              "pilot-gate.md",
+              "pilot-plan.json",
+              "shadow-report.json",
+              "shadow-report.md",
+              "shadow-run.json",
+              "siem-ocsf-1.8.json",
+              "siem-sentinel.json",
+              "siem-splunk-hec.jsonl",
+              "summary.json"
+            ]
+          },
+          "role": {
+            "enum": [
+              "analyst_labels",
+              "assurance_profile",
+              "lureeval_public_key",
+              "lureeval_receipt",
+              "inbox_manifest",
+              "oscal_assessment_plan",
+              "oscal_assessment_results",
+              "pilot_gate",
+              "pilot_gate_human_report",
+              "pilot_plan",
+              "shadow_report",
+              "shadow_report_human_report",
+              "shadow_run",
+              "ocsf_export",
+              "sentinel_export",
+              "splunk_hec_export",
+              "inbox_summary"
+            ]
+          },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 33554432
+          }
+        }
+      }
+    },
+    "verification": {
+      "const": {
+        "fixture_integrity": true,
+        "pilot_gate_passed": true,
+        "lureeval_signature_authenticated": true,
+        "oscal_generated": true,
+        "siem_exports_generated": true,
+        "private_permissions": true,
+        "private_key_not_persisted": true
+      }
+    },
+    "limitations": {
+      "const": [
+        "synthetic_fixture_not_representative",
+        "demo_thresholds_not_for_deployment",
+        "oscal_evidence_not_compliance_or_authorization",
+        "siem_exports_are_files_not_delivered_events",
+        "ephemeral_signing_key_authenticates_run_not_organization"
+      ]
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

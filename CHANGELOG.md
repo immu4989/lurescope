@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Added
+- Added `lurescope pilot run` and `pilot verify`, an atomic, installable,
+  network-free synthetic operational workflow. It packages byte-locked fixtures,
+  creates one pre-registered Pilot Gate, signs and authenticates a LureEval
+  receipt with an in-memory-only P-256 key, emits NIST OSCAL 1.2.2 observations,
+  writes local Splunk/Sentinel/OCSF exports, and produces a strict digest index.
+- Added a no-write verifier that recomputes the Shadow report and Pilot Gate,
+  validates every LureProof and fixed artifact binding, authenticates LureEval,
+  checks OSCAL and SIEM cross-bindings, enforces private permissions, scans fixture
+  privacy exclusions, and rejects persisted private keys or unexpected files.
+
+### Security
+- Added read-only Pilot Gate semantic verification so downstream LureEval and
+  OSCAL artifacts can bind one exact gate instead of independently refreshing
+  timestamps. Pilot plan/gate loading now rejects duplicate JSON keys,
+  non-finite constants, malformed UTF-8, stale evidence, and semantic tampering.
+- Operational pilot creation uses a private sibling staging directory, refuses
+  overwrite and symlink targets, verifies the complete bundle before atomic
+  rename, and removes only its own incomplete staging directory on failure.
+
 ### Changed
 - Pinned the public Space build to the exact LureScope 0.9.0 PyPI wheel SHA-256
   and the hardened Compose deployment to the immutable multi-architecture 0.9.0

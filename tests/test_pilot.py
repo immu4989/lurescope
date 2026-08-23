@@ -146,6 +146,13 @@ def test_plan_is_strict_private_non_overwriting_and_schema_valid(tmp_path):
     with pytest.raises(ValueError, match="allowlist"):
         load_pilot_plan(path)
 
+    duplicate = json.dumps(plan, sort_keys=True).replace(
+        '"schema":', '"schema": "duplicate", "schema":', 1
+    )
+    path.write_text(duplicate, encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate JSON key"):
+        load_pilot_plan(path)
+
 
 def test_exact_bounds_and_pre_registered_gate_pass(tmp_path, monkeypatch):
     plan_path = tmp_path / "pilot-plan.json"

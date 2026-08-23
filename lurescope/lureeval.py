@@ -21,7 +21,7 @@ from lurebench.receipts import (
 
 from . import __version__
 from .defender import load_defender_import
-from .pilot import load_pilot_plan, write_pilot_gate
+from .pilot import load_pilot_gate, load_pilot_plan, write_pilot_gate
 from .policy import load_policy
 from .shadow import build_shadow_report, load_shadow_run
 
@@ -115,12 +115,17 @@ def create_lureeval_receipt(
     signing_key_pem: Optional[bytes] = None,
     receipt_id: Optional[str] = None,
     generated_at: Optional[str] = None,
+    refresh_gate: bool = True,
 ) -> Dict[str, Any]:
-    """Refresh the Pilot Gate and create a new privacy-minimized receipt."""
+    """Create a receipt from a semantically current gate, refreshing it by default."""
     bundle = Path(bundle)
     plan_path = bundle / "pilot-plan.json"
     plan = load_pilot_plan(plan_path)
-    gate = write_pilot_gate(bundle, plan_path)
+    gate = (
+        write_pilot_gate(bundle, plan_path)
+        if refresh_gate
+        else load_pilot_gate(bundle, plan_path)
+    )
     run = load_shadow_run(bundle)
     report = build_shadow_report(bundle)
 
