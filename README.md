@@ -65,7 +65,8 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > reviewed synthetic workflow offline and atomically produces one exact Pilot
 > Gate, an authenticated LureEval receipt, OSCAL 1.2.2 observations, and local
 > Splunk, Sentinel, and OCSF exports. `lurescope pilot verify` rechecks every
-> binding without rewriting evidence. See the
+> binding without rewriting evidence. This is available on `main` and will ship
+> in the next tagged release. See the
 > [operational pilot trust boundary](docs/OPERATIONAL_PILOT.md).
 
 ## Shadow Inbox: measure before enforcement
@@ -87,9 +88,14 @@ private output permissions, signed LureEval, OSCAL, and SIEM exports—in one
 offline, installable command:
 
 ```bash
+python -m pip install \
+  "lurescope @ git+https://github.com/immu4989/lurescope.git@main"
 lurescope pilot run --out ./lurescope-operational-pilot
 lurescope pilot verify ./lurescope-operational-pilot
 ```
+
+Use the GitHub-source install above until the next tagged release publishes the
+operational-pilot command to PyPI.
 
 Success ends with `OPERATIONAL PILOT CREATED: PASS` and writes a strict artifact
 index. The tiny locked sample proves that the software path works; it is

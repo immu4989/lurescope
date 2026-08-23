@@ -11,10 +11,14 @@ authorization package, compliance result, or deployment recommendation.
 ## Run and reverify
 
 ```bash
-python -m pip install lurescope
+python -m pip install \
+  "lurescope @ git+https://github.com/immu4989/lurescope.git@main"
 lurescope pilot run --out ./lurescope-operational-pilot
 lurescope pilot verify ./lurescope-operational-pilot
 ```
+
+Use the GitHub-source install until the next tagged release includes this
+currently unreleased command on PyPI.
 
 The run accepts no mailbox path, API key, provider credential, or destination
 URL. It uses six byte-locked synthetic `.eml` files packaged in the wheel, removes
@@ -78,4 +82,3 @@ real-world pilot:
 See [Federal Email Assurance](FEDERAL_EMAIL_ASSURANCE.md),
 [Shadow Inbox](SHADOW_INBOX.md), and [Pilot Gate](PILOT_GATE.md) for the full
 operational boundaries.
-
