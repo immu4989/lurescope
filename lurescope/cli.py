@@ -475,9 +475,178 @@ def _shadow(argv: Sequence[str]) -> int:
         from .shadow import write_shadow_reports
 
         write_shadow_reports(Path(args.bundle), overwrite=True)
+        if (Path(args.bundle) / "defender-import.json").exists():
+            from .defender import write_defender_report
+
+            write_defender_report(Path(args.bundle), overwrite=True)
         print(f"refreshed aggregate reports in {args.bundle}")
         return 0
     except (FileExistsError, FileNotFoundError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _defender(argv: Sequence[str]) -> int:
+    from .shadow import INPUT_FORMATS
+
+    parser = argparse.ArgumentParser(
+        prog="lurescope defender",
+        description=(
+            "Pair an offline Microsoft Defender EmailEvents CSV with exported .eml "
+            "evidence; no tenant API or mailbox connection is used."
+        ),
+    )
+    commands = parser.add_subparsers(dest="defender_command", required=True)
+    import_parser = commands.add_parser(
+        "import", help="create a minimized paired Shadow Inbox bundle"
+    )
+    import_parser.add_argument("csv", help="Defender portal EmailEvents CSV export")
+    import_parser.add_argument("input", nargs="+", help="exported .eml file or directory")
+    import_parser.add_argument("--out", "-o", required=True, help="new private output directory")
+    import_parser.add_argument("--format", choices=INPUT_FORMATS, default="auto")
+    import_parser.add_argument("--recursive", "-r", action="store_true")
+    import_parser.add_argument("--detector", default="tfidf-logreg")
+    import_parser.add_argument("--threshold", type=float, default=None)
+    import_parser.add_argument(
+        "--privacy",
+        choices=("salted-commitment", "correlatable"),
+        default="salted-commitment",
+    )
+    import_parser.add_argument("--nonce")
+    import_parser.add_argument("--issuer")
+    import_parser.add_argument("--signing-key")
+    import_parser.add_argument("--max-messages", type=int, default=MAX_BATCH_MESSAGES)
+
+    report_parser = commands.add_parser(
+        "report", help="refresh the aggregate Defender-vs-LureScope paired report"
+    )
+    report_parser.add_argument("bundle", help="Defender Shadow Inbox bundle")
+    report_parser.add_argument("--confidence", type=float, default=0.95)
+
+    args = parser.parse_args(argv)
+    try:
+        if args.defender_command == "import":
+            from .defender import import_defender_shadow
+
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = import_defender_shadow(
+                Path(args.csv),
+                [Path(value) for value in args.input],
+                Path(args.out),
+                input_format=args.format,
+                recursive=args.recursive,
+                detector_name=args.detector,
+                threshold=args.threshold,
+                privacy_profile=args.privacy,
+                nonce=args.nonce,
+                issuer=args.issuer,
+                signing_key_pem=signing_key,
+                max_messages=args.max_messages,
+            )
+            imported = result["import"]
+            print(
+                f"paired {imported['matched_message_count']}/{imported['message_count']} "
+                f"messages to {imported['matched_source_row_count']}/"
+                f"{imported['source_row_count']} EmailEvents rows; wrote {args.out}"
+            )
+            return 1 if result["run"].failed_count else 0
+
+        from .defender import write_defender_report
+
+        report = write_defender_report(
+            Path(args.bundle), overwrite=True, confidence=args.confidence
+        )
+        print(
+            f"refreshed paired report for "
+            f"{report['cohort']['evaluated_matched_messages']} evaluated messages"
+        )
+        return 0
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _lureeval(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope lureeval",
+        description="Create or verify privacy-minimized operational evaluation receipts.",
+    )
+    commands = parser.add_subparsers(dest="lureeval_command", required=True)
+    create_parser = commands.add_parser(
+        "create", help="create a receipt from a reviewed, Pilot-Gated Shadow bundle"
+    )
+    create_parser.add_argument("bundle", help="reviewed Shadow Inbox bundle")
+    create_parser.add_argument("--out", "-o", required=True, help="new receipt JSON path")
+    create_parser.add_argument(
+        "--sampling",
+        choices=(
+            "complete_population",
+            "consecutive_sample",
+            "random_sample",
+            "operator_declared_other",
+        ),
+        default="consecutive_sample",
+    )
+    create_parser.add_argument("--minimum-slice-count", type=int, default=20)
+    create_parser.add_argument("--issuer")
+    create_parser.add_argument(
+        "--policy", help="policy JSON required when the registered plan has a policy_id"
+    )
+    create_parser.add_argument("--signing-key", help="ECDSA P-256 private PEM")
+
+    verify_parser = commands.add_parser(
+        "verify", help="strictly verify a LureEval receipt or aggregate"
+    )
+    verify_parser.add_argument("artifact")
+    verify_parser.add_argument("--public-key", help="trusted ECDSA P-256 public PEM")
+    verify_parser.add_argument("--require-signature", action="store_true")
+
+    args = parser.parse_args(argv)
+    try:
+        if args.lureeval_command == "create":
+            from .lureeval import create_lureeval_receipt
+
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            artifact = create_lureeval_receipt(
+                Path(args.bundle),
+                Path(args.out),
+                sampling=args.sampling,
+                minimum_slice_count=args.minimum_slice_count,
+                issuer=args.issuer,
+                policy_path=Path(args.policy) if args.policy else None,
+                signing_key_pem=signing_key,
+            )
+            signed = set(artifact) == {"payloadType", "payload", "signatures"}
+            print(f"created {args.out} ({'signed DSSE' if signed else 'unsigned statement'})")
+            return 0
+
+        from .lureeval import verify_lureeval_receipt
+
+        public_key = Path(args.public_key).read_bytes() if args.public_key else None
+        verification = verify_lureeval_receipt(
+            Path(args.artifact),
+            public_key_pem=public_key,
+            require_signature=args.require_signature,
+        )
+        print(json.dumps(verification, sort_keys=True))
+        return 0
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        ImportError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
 
@@ -914,6 +1083,10 @@ def main(argv=None) -> int:
         return _export(args[1:])
     if args and args[0] == "shadow":
         return _shadow(args[1:])
+    if args and args[0] == "defender":
+        return _defender(args[1:])
+    if args and args[0] == "lureeval":
+        return _lureeval(args[1:])
     if args and args[0] == "assurance":
         return _assurance(args[1:])
     if args and args[0] == "verify":

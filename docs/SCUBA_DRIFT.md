@@ -6,8 +6,7 @@ evidence. It is designed for scheduled assessments and continuous monitoring,
 where the operational question is not only “what failed?” but “what changed since
 the last accepted assessment?”
 
-This feature is on `main` and targeted for the next LureScope release. It is not
-included in the published `0.8.0` package.
+This feature is included beginning with tagged release `0.9.0`.
 
 ## What the ledger does
 

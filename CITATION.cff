@@ -19,9 +19,12 @@ abstract: >-
   The inbox workflow turns reported-email queues into minimized routing manifests,
   per-case proofs, and offline SIEM payloads. Shadow Inbox and Pilot Gate measure a
   registered email control before enforcement, while the Federal Email Assurance
-  Profile exports aggregate NIST OSCAL 1.2.2 assessment observations.
-version: 0.8.0
-date-released: "2026-08-18"
+  Profile exports aggregate NIST OSCAL 1.2.2 assessment observations. LureEval
+  adds signed, privacy-minimized cross-organization operational receipts; the
+  Microsoft Defender importer enables offline paired evaluation; and the local
+  Evidence Explorer makes assurance artifacts reviewable without uploading them.
+version: 0.9.0
+date-released: "2026-08-23"
 license: Apache-2.0
 keywords:
   - fraud detection

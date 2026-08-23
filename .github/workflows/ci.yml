@@ -46,7 +46,7 @@ jobs:
           tests/test_assurance.py tests/test_scuba.py tests/test_drift.py
       - name: Test browser engine
         if: matrix.python-version == '3.12'
-        run: node --test tests/browser_engine.test.cjs
+        run: node --test tests/browser_engine.test.cjs tests/evidence_explorer.test.cjs
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: uv build
@@ -57,8 +57,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build runtime image
         run: docker build --tag lurescope:ci .
-      - name: Build PyPI-backed static Space image
-        run: docker build --tag lurescope-space:ci ./space
+      - name: Build source-checkout static Space image
+        run: docker build --file Dockerfile.space-ci --tag lurescope-space:ci .
       - name: Start hardened container
         run: |
           docker run --detach --name lurescope-ci \

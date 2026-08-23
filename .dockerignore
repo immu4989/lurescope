@@ -14,7 +14,9 @@ scripts
 docs
 blog
 examples
-space
+space/*
+!space/model.json
+!space/server.py
 .env
 .env.*
 *.key

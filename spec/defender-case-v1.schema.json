@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/defender-case/v1",
+  "title": "LureScope private minimized Defender case signal v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "case_id", "processing_status", "match_status",
+    "matched_event_rows", "native_attention", "signals"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/defender-case/v1"},
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "pattern": "^case-[a-f0-9]{16}$"},
+    "processing_status": {"enum": ["processed", "error"]},
+    "match_status": {"enum": ["matched", "unmatched"]},
+    "matched_event_rows": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "native_attention": {"type": ["boolean", "null"]},
+    "signals": {
+      "type": "array", "maxItems": 4, "uniqueItems": true,
+      "items": {
+        "enum": [
+          "threat_classified", "delivery_action_intervened",
+          "delivery_location_intervened", "user_action_intervened"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

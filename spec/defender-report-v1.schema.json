@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/defender-report/v1",
+  "title": "LureScope aggregate Microsoft Defender paired evaluation v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "privacy", "bindings", "cohort",
+    "native_attention", "lurescope_paired", "paired_correctness", "confidence",
+    "interpretation_boundary", "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/defender-report/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "privacy": {
+      "type": "object",
+      "required": [
+        "aggregate_only", "contains_case_identifiers", "contains_message_identifiers",
+        "excluded_fields"
+      ],
+      "properties": {
+        "aggregate_only": {"const": true},
+        "contains_case_identifiers": {"const": false},
+        "contains_message_identifiers": {"const": false},
+        "excluded_fields": {"$ref": "#/$defs/excludedFields"}
+      },
+      "additionalProperties": false
+    },
+    "bindings": {
+      "type": "object",
+      "required": ["defender_import_sha256", "shadow_manifest_sha256", "labels_sha256"],
+      "properties": {
+        "defender_import_sha256": {"$ref": "#/$defs/sha256"},
+        "shadow_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "labels_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "cohort": {
+      "type": "object",
+      "required": [
+        "messages", "matched_messages", "unmatched_messages", "matched_processed_messages",
+        "evaluated_matched_messages", "latest_label_count", "label_revision_count"
+      ],
+      "properties": {
+        "messages": {"$ref": "#/$defs/count"},
+        "matched_messages": {"$ref": "#/$defs/count"},
+        "unmatched_messages": {"$ref": "#/$defs/count"},
+        "matched_processed_messages": {"$ref": "#/$defs/count"},
+        "evaluated_matched_messages": {"$ref": "#/$defs/count"},
+        "latest_label_count": {"$ref": "#/$defs/count"},
+        "label_revision_count": {"type": "integer", "minimum": 0, "maximum": 10000}
+      },
+      "additionalProperties": false
+    },
+    "native_attention": {"$ref": "#/$defs/evaluation"},
+    "lurescope_paired": {"$ref": "#/$defs/evaluation"},
+    "paired_correctness": {
+      "type": "object",
+      "required": ["both_correct", "native_only_correct", "lurescope_only_correct", "both_incorrect"],
+      "properties": {
+        "both_correct": {"$ref": "#/$defs/count"},
+        "native_only_correct": {"$ref": "#/$defs/count"},
+        "lurescope_only_correct": {"$ref": "#/$defs/count"},
+        "both_incorrect": {"$ref": "#/$defs/count"}
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "object", "required": ["level", "method", "scope"],
+      "properties": {
+        "level": {"type": "number", "minimum": 0.8, "maximum": 0.999},
+        "method": {"const": "one_sided_clopper_pearson_exact_v1"},
+        "scope": {"const": "per_metric_one_sided"}
+      },
+      "additionalProperties": false
+    },
+    "interpretation_boundary": {"type": "string", "minLength": 1, "maxLength": 500},
+    "limitations": {
+      "const": [
+        "representative_iid_sample_required", "label_quality_not_verified",
+        "email_events_export_semantics_may_change",
+        "unmatched_messages_excluded_from_paired_performance",
+        "per_metric_confidence_not_simultaneous_confidence"
+      ]
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "confusion": {
+      "type": "object",
+      "required": ["true_positive", "false_positive", "true_negative", "false_negative"],
+      "properties": {
+        "true_positive": {"$ref": "#/$defs/count"},
+        "false_positive": {"$ref": "#/$defs/count"},
+        "true_negative": {"$ref": "#/$defs/count"},
+        "false_negative": {"$ref": "#/$defs/count"}
+      },
+      "additionalProperties": false
+    },
+    "performance": {
+      "type": "object",
+      "required": [
+        "recall_estimate", "recall_lower_bound", "false_positive_rate_estimate",
+        "false_positive_rate_upper_bound"
+      ],
+      "properties": {
+        "recall_estimate": {"$ref": "#/$defs/ratio"},
+        "recall_lower_bound": {"$ref": "#/$defs/ratio"},
+        "false_positive_rate_estimate": {"$ref": "#/$defs/ratio"},
+        "false_positive_rate_upper_bound": {"$ref": "#/$defs/ratio"}
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["decision_rule", "confusion", "performance"],
+      "properties": {
+        "decision_rule": {"enum": ["defender_attention_v1", "high_or_review_is_routed_v1"]},
+        "attention_count": {"$ref": "#/$defs/count"},
+        "signal_counts": {
+          "type": "object",
+          "required": [
+            "threat_classified", "delivery_action_intervened",
+            "delivery_location_intervened", "user_action_intervened"
+          ],
+          "properties": {
+            "threat_classified": {"$ref": "#/$defs/count"},
+            "delivery_action_intervened": {"$ref": "#/$defs/count"},
+            "delivery_location_intervened": {"$ref": "#/$defs/count"},
+            "user_action_intervened": {"$ref": "#/$defs/count"}
+          },
+          "additionalProperties": false
+        },
+        "confusion": {"$ref": "#/$defs/confusion"},
+        "performance": {"$ref": "#/$defs/performance"}
+      },
+      "additionalProperties": false
+    },
+    "excludedFields": {
+      "const": [
+        "source_paths", "subjects", "sender_addresses", "recipient_addresses",
+        "internet_message_ids", "network_message_ids", "tenant_identifiers",
+        "url_values", "attachment_names", "message_content"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

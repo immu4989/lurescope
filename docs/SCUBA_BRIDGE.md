@@ -13,9 +13,8 @@ system owner. It does not connect to Microsoft 365, execute ScubaGear, reinterpr
 baseline, determine control satisfaction, accept risk, or grant an authorization to
 operate.
 
-> This capability is currently on `main` and is targeted for the next release. A
-> normal `pip install lurescope==0.8.0` does not yet include these commands. Until the
-> next tagged release, use a reviewed source checkout.
+> This capability is included beginning with tagged release `0.9.0`. Install it
+> with `python -m pip install lurescope==0.9.0` or use a reviewed source checkout.
 
 ## Supported input
 
