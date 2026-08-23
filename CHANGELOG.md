@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+- Pinned the public Space build to the exact LureScope 0.9.0 PyPI wheel SHA-256
+  and the hardened Compose deployment to the immutable multi-architecture 0.9.0
+  GHCR index digest published by the protected release workflow.
+
 ## 0.9.0 — 2026-08-23
 
 ### Added

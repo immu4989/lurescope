@@ -25,8 +25,8 @@ attacks, email preview, and the normalization defense execute inside your browse
 No scoring or message-content endpoint exists in the container, so pasted text and
 uploaded email stay in the tab.
 
-The image build installs the exact `lurescope==0.8.0` wheel from
-[PyPI](https://pypi.org/project/lurescope/0.8.0/) with its SHA-256 pinned, then
+The image build installs the exact `lurescope==0.9.0` wheel from
+[PyPI](https://pypi.org/project/lurescope/0.9.0/) with its SHA-256 pinned, then
 extracts the wheel's packaged web interface. The trained LureBench model remains a
 checked-in, client-side JSON artifact. This makes the public Space a deployment
 test of the released package without weakening its privacy boundary.
