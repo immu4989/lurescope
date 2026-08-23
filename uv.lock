@@ -792,11 +792,11 @@ wheels = [
 
 [[package]]
 name = "lurebench"
-version = "0.10.0"
+version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c5/a2/6ed5db104b7812f8a23ea6581a941a958cbacb8ca09c5a01449900fd3a08/lurebench-0.10.0.tar.gz", hash = "sha256:ff7037d15632c831464b6f91beb9ab2d592efdea52d539e8f8e5f13d281983a8", size = 2401354, upload-time = "2026-08-23T20:54:29.692Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/d2/1cb952bc67558e2d654113d8ae14bc0a6868994b1de86e453f30f07eb694/lurebench-0.11.0.tar.gz", hash = "sha256:812e020808f686cdffab446d3e200929b2f3bfc1ee69f2836576865178467ad1", size = 2426067, upload-time = "2026-08-23T22:56:08.101Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/bf/a27798f19c91df65a1d97000600691da2c1689d1368a6116f1fca81c187d/lurebench-0.10.0-py3-none-any.whl", hash = "sha256:0ddd6c208249a418b06aa5717818ed3c0697d0a8a9fff1b705ce557a26d36fe5", size = 129803, upload-time = "2026-08-23T20:54:27.856Z" },
+    { url = "https://files.pythonhosted.org/packages/50/4f/ad4dc0548eeee7c90c10a823b590e6de632e4763e41babbe3034b002159f/lurebench-0.11.0-py3-none-any.whl", hash = "sha256:8d531152286c88b6b25d9bb722f3667efbf389caeadf0f7958444314f934b1e4", size = 158828, upload-time = "2026-08-23T22:56:06.266Z" },
 ]
 
 [package.optional-dependencies]
@@ -810,7 +810,7 @@ train = [
 
 [[package]]
 name = "lurescope"
-version = "0.9.0"
+version = "0.10.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
@@ -841,7 +841,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", marker = "extra == 'dev'" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23" },
-    { name = "lurebench", extras = ["train", "receipts"], specifier = "==0.10.0" },
+    { name = "lurebench", extras = ["train", "receipts"], specifier = "==0.11.0" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.6" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'dev'" },
