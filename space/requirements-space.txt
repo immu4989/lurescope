@@ -1,2 +1,2 @@
-lurescope==0.9.0 \
-    --hash=sha256:04569a2fb959711a49bcd857a65823d00f7c5404281af98759c9be4f1ad42979
+lurescope @ https://files.pythonhosted.org/packages/0f/bf/89b6ceb9ae081f86c4cb9cab409665fde3679c97db1a1bc1e0ed4fe15556/lurescope-0.10.0-py3-none-any.whl \
+    --hash=sha256:6a3b637b371450afbd081621040d4fada40668fa26a69fc41deab131a7a54aff
