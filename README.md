@@ -21,6 +21,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
+**[Run one-command operational pilot →](docs/OPERATIONAL_PILOT.md)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[Compare Defender offline →](docs/MICROSOFT_DEFENDER_OFFLINE.md)** ·
 **[Create a LureEval receipt →](docs/LUREEVAL.md)** ·
@@ -59,6 +60,14 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > [LureEval protocol](docs/LUREEVAL.md), and
 > [browser verification boundary](docs/EVIDENCE_EXPLORER.md).
 
+> **New — one install, one command, one cross-bound evidence bundle.**
+> `lurescope pilot run --out ./lurescope-operational-pilot` exercises the
+> reviewed synthetic workflow offline and atomically produces one exact Pilot
+> Gate, an authenticated LureEval receipt, OSCAL 1.2.2 observations, and local
+> Splunk, Sentinel, and OCSF exports. `lurescope pilot verify` rechecks every
+> binding without rewriting evidence. See the
+> [operational pilot trust boundary](docs/OPERATIONAL_PILOT.md).
+
 ## Shadow Inbox: measure before enforcement
 
 Evaluate an exported `.eml` directory, Maildir, or mbox without connecting to a
@@ -74,17 +83,20 @@ pass with incomplete labels or inadequate evidence:
 
 Verify the complete synthetic workflow first—fixture integrity, ingestion,
 deduplication, known ground truth, exact statistical gate, schemas, privacy scan,
-and private output permissions—in one offline command:
+private output permissions, signed LureEval, OSCAL, and SIEM exports—in one
+offline, installable command:
 
 ```bash
-uv run --frozen --extra dev python scripts/run_golden_pilot.py \
-  --out ./golden-shadow-pilot
+lurescope pilot run --out ./lurescope-operational-pilot
+lurescope pilot verify ./lurescope-operational-pilot
 ```
 
-Success ends with `GOLDEN PILOT VERIFIED: PASS` and writes an aggregate
-`golden-pilot-receipt.json`. The tiny locked sample proves that the software path
-works; it is explicitly not representative data or deployment evidence. See the
-[reviewed fixture contract and expected outputs](examples/shadow-pilot/README.md).
+Success ends with `OPERATIONAL PILOT CREATED: PASS` and writes a strict artifact
+index. The tiny locked sample proves that the software path works; it is
+explicitly not representative data, compliance evidence, or deployment evidence.
+See the [evidence inventory and trust boundary](docs/OPERATIONAL_PILOT.md). The
+source-only Golden Pilot remains available for regression compatibility in
+[`scripts/run_golden_pilot.py`](scripts/run_golden_pilot.py).
 
 For a manually reviewed synthetic exercise:
 

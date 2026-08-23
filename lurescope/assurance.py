@@ -19,7 +19,13 @@ from typing import Any, Dict, Optional
 from urllib.parse import urlsplit
 
 from . import __version__
-from .pilot import create_pilot_plan, load_pilot_plan, pilot_plan_sha256, write_pilot_gate
+from .pilot import (
+    create_pilot_plan,
+    load_pilot_gate,
+    load_pilot_plan,
+    pilot_plan_sha256,
+    write_pilot_gate,
+)
 
 ASSURANCE_PROFILE_SCHEMA = "https://github.com/immu4989/lurescope/spec/assurance-profile/v1"
 FEDERAL_PROFILE_ID = "federal-email-assurance-v1"
@@ -568,8 +574,10 @@ def _assessment_results(
     }
 
 
-def export_assurance_results(bundle: Path, assurance_plan: Path) -> Dict[str, Any]:
-    """Refresh the gate and write registered, aggregate-only OSCAL results."""
+def export_assurance_results(
+    bundle: Path, assurance_plan: Path, *, refresh_gate: bool = True
+) -> Dict[str, Any]:
+    """Write OSCAL results from a current registered gate, refreshing by default."""
     bundle = Path(bundle)
     if bundle.is_symlink():
         raise ValueError("refusing symbolic-link Shadow Inbox bundle")
@@ -588,7 +596,11 @@ def export_assurance_results(bundle: Path, assurance_plan: Path) -> Dict[str, An
         if destination.exists() or destination.is_symlink():
             _register_artifact(source, destination)
 
-    gate = write_pilot_gate(bundle, Path(assurance_plan) / PILOT_PLAN_FILE)
+    gate = (
+        write_pilot_gate(bundle, Path(assurance_plan) / PILOT_PLAN_FILE)
+        if refresh_gate
+        else load_pilot_gate(bundle, Path(assurance_plan) / PILOT_PLAN_FILE)
+    )
     _register_artifact(source_profile, bundle / PROFILE_FILE)
     _register_artifact(source_ap, bundle / OSCAL_PLAN_FILE)
     profile_digest = _sha256(_read_regular(bundle / PROFILE_FILE))

@@ -121,6 +121,30 @@ def _read_regular(path: Path, max_bytes: int = 64 * 1024) -> bytes:
     return path.read_bytes()
 
 
+def _load_strict_json(path: Path, max_bytes: int = 64 * 1024) -> Any:
+    """Load bounded UTF-8 JSON without duplicate keys or non-finite constants."""
+
+    def no_duplicates(pairs: list[tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"{path.name} contains a duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"{path.name} contains a non-standard JSON constant: {value}")
+
+    try:
+        return json.loads(
+            _read_regular(path, max_bytes).decode("utf-8"),
+            object_pairs_hook=no_duplicates,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{path.name} is not strict UTF-8 JSON") from exc
+
+
 def _write_new(path: Path, payload: bytes) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -144,11 +168,7 @@ def _replace_private(path: Path, payload: bytes) -> None:
 def load_pilot_plan(path: Path) -> Dict[str, Any]:
     """Load and strictly validate a Pilot Gate plan v1."""
     path = Path(path)
-    raw = _read_regular(path)
-    try:
-        plan = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{path.name} is not valid JSON") from exc
+    plan = _load_strict_json(path)
     if not isinstance(plan, dict) or set(plan) != _PLAN_KEYS:
         raise ValueError("pilot plan violates the v1 allowlist")
     if plan.get("schema") != PILOT_PLAN_SCHEMA or plan.get("schema_version") != 1:
@@ -238,6 +258,34 @@ def load_pilot_plan(path: Path) -> Dict[str, Any]:
     if maximum_routed > MAX_INBOX_MESSAGES:
         raise ValueError(f"max_routed_count cannot exceed {MAX_INBOX_MESSAGES}")
     return plan
+
+
+def load_pilot_gate(bundle: Path, plan_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Load an existing gate and re-evaluate its complete semantic binding."""
+
+    bundle = Path(bundle)
+    registered_plan = bundle / "pilot-plan.json"
+    if plan_path is not None:
+        source_plan = Path(plan_path)
+        if not secrets.compare_digest(
+            _read_regular(source_plan), _read_regular(registered_plan)
+        ):
+            raise ValueError("registered pilot plan differs from the supplied assurance plan")
+    actual = _load_strict_json(bundle / "pilot-gate.json", 2 * 1024 * 1024)
+    if not isinstance(actual, dict):
+        raise ValueError("pilot-gate.json must contain a JSON object")
+    expected = build_pilot_gate(bundle, registered_plan)
+    try:
+        generated_at = _parse_timestamp(actual["generated_at"], "gate generated_at")
+        run_at = _parse_timestamp(expected["run_binding"]["generated_at"], "run generated_at")
+    except KeyError as exc:
+        raise ValueError("pilot-gate.json is missing its generated_at binding") from exc
+    if generated_at < run_at:
+        raise ValueError("pilot-gate.json cannot predate its Shadow Inbox run")
+    expected["generated_at"] = actual["generated_at"]
+    if actual != expected:
+        raise ValueError("pilot-gate.json does not match current plan, manifest, and labels")
+    return actual
 
 
 def create_pilot_plan(
