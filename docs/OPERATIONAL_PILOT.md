@@ -11,14 +11,10 @@ authorization package, compliance result, or deployment recommendation.
 ## Run and reverify
 
 ```bash
-python -m pip install \
-  "lurescope @ git+https://github.com/immu4989/lurescope.git@main"
+python -m pip install "lurescope==0.10.0"
 lurescope pilot run --out ./lurescope-operational-pilot
 lurescope pilot verify ./lurescope-operational-pilot
 ```
-
-Use the GitHub-source install until the next tagged release includes this
-currently unreleased command on PyPI.
 
 The run accepts no mailbox path, API key, provider credential, or destination
 URL. It uses six byte-locked synthetic `.eml` files packaged in the wheel, removes

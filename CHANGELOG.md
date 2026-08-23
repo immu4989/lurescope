@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0 — 2026-08-23
+
 ### Added
 - Added `lurescope pilot run` and `pilot verify`, an atomic, installable,
   network-free synthetic operational workflow. It packages byte-locked fixtures,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lurescope"
-version = "0.9.0"
+version = "0.10.0"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,7 +39,7 @@ dependencies = [
   # Detection + attack logic is reused from the exact public LureBench release
   # so the service and benchmark cannot silently drift. [train] supplies the
   # compatible scikit-learn/joblib runtime for the bundled model.
-  "lurebench[train,receipts]==0.10.0",
+  "lurebench[train,receipts]==0.11.0",
 ]
 
 [project.optional-dependencies]

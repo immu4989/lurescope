@@ -23,7 +23,9 @@ abstract: >-
   adds signed, privacy-minimized cross-organization operational receipts; the
   Microsoft Defender importer enables offline paired evaluation; and the local
   Evidence Explorer makes assurance artifacts reviewable without uploading them.
-version: 0.9.0
+  Version 0.10 adds an installable, one-command operational pilot that creates
+  and independently verifies a cross-bound synthetic evidence bundle.
+version: 0.10.0
 date-released: "2026-08-23"
 license: Apache-2.0
 keywords:

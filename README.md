@@ -11,8 +11,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![CI](https://github.com/immu4989/lurescope/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/ci.yml)
 [![PyPI install](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurescope/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurescope?color=2a78d6)](https://pypi.org/project/lurescope/)
-[![GHCR](https://img.shields.io/badge/GHCR-pull_0.9.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
-![Version](https://img.shields.io/badge/version-0.9.0-57f2c1)
+[![GHCR](https://img.shields.io/badge/GHCR-pull_0.10.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
+![Version](https://img.shields.io/badge/version-0.10.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
@@ -65,8 +65,8 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > reviewed synthetic workflow offline and atomically produces one exact Pilot
 > Gate, an authenticated LureEval receipt, OSCAL 1.2.2 observations, and local
 > Splunk, Sentinel, and OCSF exports. `lurescope pilot verify` rechecks every
-> binding without rewriting evidence. This is available on `main` and will ship
-> in the next tagged release. See the
+> binding without rewriting evidence. Install `lurescope==0.10.0` and run it
+> without a mailbox connection, API key, or network access. See the
 > [operational pilot trust boundary](docs/OPERATIONAL_PILOT.md).
 
 ## Shadow Inbox: measure before enforcement
@@ -88,14 +88,10 @@ private output permissions, signed LureEval, OSCAL, and SIEM exports—in one
 offline, installable command:
 
 ```bash
-python -m pip install \
-  "lurescope @ git+https://github.com/immu4989/lurescope.git@main"
+python -m pip install "lurescope==0.10.0"
 lurescope pilot run --out ./lurescope-operational-pilot
 lurescope pilot verify ./lurescope-operational-pilot
 ```
-
-Use the GitHub-source install above until the next tagged release publishes the
-operational-pilot command to PyPI.
 
 Success ends with `OPERATIONAL PILOT CREATED: PASS` and writes a strict artifact
 index. The tiny locked sample proves that the software path works; it is
@@ -472,13 +468,13 @@ curl -s localhost:8000/attack -H 'content-type: application/json' \
 Run it in a hardened local container instead:
 
 ```bash
-docker pull ghcr.io/immu4989/lurescope:0.9.0
+docker pull ghcr.io/immu4989/lurescope:0.10.0
 docker run --name lurescope-local --restart unless-stopped \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
   --cap-drop ALL --security-opt no-new-privileges:true \
   -p 127.0.0.1:8000:8000 \
   -e LURESCOPE_LLM_ENGINE=openrouter -e OPENROUTER_API_KEY \
-  ghcr.io/immu4989/lurescope:0.9.0
+  ghcr.io/immu4989/lurescope:0.10.0
 ```
 
 The public image supports `linux/amd64` and `linux/arm64` and carries SBOM and
