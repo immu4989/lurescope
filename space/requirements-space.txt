@@ -1,2 +1,2 @@
-lurescope==0.8.0 \
-    --hash=sha256:05eaabfcab49aed7a8bc6c30b415af9d9cf040ec6fe926045cb905264deeda4a
+lurescope==0.9.0 \
+    --hash=sha256:04569a2fb959711a49bcd857a65823d00f7c5404281af98759c9be4f1ad42979

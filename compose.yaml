@@ -2,7 +2,7 @@ name: lurescope
 
 services:
   lurescope:
-    image: ghcr.io/immu4989/lurescope:0.8.0@sha256:20aadf7ada6683eabb653491c0f3f03fb0af5baa62b023d17a1b07f62a060c2a
+    image: ghcr.io/immu4989/lurescope:0.9.0@sha256:b983b023dca68b2748c784d50b0a0fab2eaac160695335f0eca03e8f978d975d
     pull_policy: always
     init: true
     user: "10001:10001"
