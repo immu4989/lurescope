@@ -24,9 +24,11 @@ abstract: >-
   Microsoft Defender importer enables offline paired evaluation; and the local
   Evidence Explorer makes assurance artifacts reviewable without uploading them.
   Version 0.10 adds an installable, one-command operational pilot that creates
-  and independently verifies a cross-bound synthetic evidence bundle.
-version: 0.10.0
-date-released: "2026-08-23"
+  and independently verifies a cross-bound synthetic evidence bundle. Version
+  0.11 adds LureWatch, an aggregate-only, anytime-valid post-deployment FPR/FNR
+  monitor with hash-chained checkpoints and optional DSSE authentication.
+version: 0.11.0
+date-released: "2026-08-27"
 license: Apache-2.0
 keywords:
   - fraud detection

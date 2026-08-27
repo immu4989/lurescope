@@ -1,6 +1,6 @@
 {
   "title": "LureScope: Adversarial Fraud Triage and Portable Resilience Evidence",
-  "description": "<p>LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies adversarial attacks, and tests an input-normalization defense.</p><p>The Inbox-to-LureProof workflow turns user-reported email queues into random case IDs, privacy-minimized routing manifests, per-case evidence, and offline Splunk or Microsoft Sentinel payloads without persisting source paths or message content in the case bundle.</p><p>LureProof 0.2 expresses privacy-minimized fraud-control evidence as a strict in-toto Statement, optionally authenticated in a standard DSSE envelope with ECDSA P-256. Its default salted commitment prevents direct subject-hash matching between separately generated proofs, while preserving detector, threshold, model-artifact, attack, and defense provenance without message content.</p><p>Version 0.10 adds an installable, one-command operational pilot that atomically creates and independently verifies a synthetic bundle spanning one pre-registered Pilot Gate, authenticated LureEval evidence, NIST OSCAL 1.2.2 observations, and local Splunk, Sentinel, and OCSF exports.</p><p>LureScope reuses LureBench's detectors and attacks directly and publishes reproducible corpus-level robustness scorecards.</p>",
+  "description": "<p>LureScope safely triages RFC 5322 email, scores fraud-lure likelihood, applies adversarial attacks, and tests an input-normalization defense.</p><p>The Inbox-to-LureProof workflow turns user-reported email queues into random case IDs, privacy-minimized routing manifests, per-case evidence, and offline Splunk or Microsoft Sentinel payloads without persisting source paths or message content in the case bundle.</p><p>LureProof 0.2 expresses privacy-minimized fraud-control evidence as a strict in-toto Statement, optionally authenticated in a standard DSSE envelope with ECDSA P-256. Its default salted commitment prevents direct subject-hash matching between separately generated proofs, while preserving detector, threshold, model-artifact, attack, and defense provenance without message content.</p><p>Version 0.10 adds an installable, one-command operational pilot that atomically creates and independently verifies a synthetic bundle spanning one pre-registered Pilot Gate, authenticated LureEval evidence, NIST OSCAL 1.2.2 observations, and local Splunk, Sentinel, and OCSF exports.</p><p>Version 0.11 adds LureWatch, an aggregate-only, anytime-valid post-deployment FPR/FNR monitor with predeclared risk limits, sticky breach evidence, hash-chained in-toto checkpoints, strict public schemas, and optional ECDSA P-256 DSSE authentication.</p><p>LureScope reuses LureBench's detectors and attacks directly and publishes reproducible corpus-level robustness scorecards.</p>",
   "upload_type": "software",
   "license": "Apache-2.0",
   "access_right": "open",
@@ -18,6 +18,8 @@
     "AI security",
     "input normalization",
     "security attestations",
+    "continuous monitoring",
+    "e-processes",
     "threat information sharing"
   ],
   "related_identifiers": [

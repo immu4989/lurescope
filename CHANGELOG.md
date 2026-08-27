@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-08-27
+
 ### Added
 - Added LureWatch, an anytime-valid post-deployment FPR/FNR monitor using a
   predeclared finite mixture of Bernoulli e-processes. Repeated inspection at

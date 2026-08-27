@@ -11,7 +11,7 @@ authorization package, compliance result, or deployment recommendation.
 ## Run and reverify
 
 ```bash
-python -m pip install "lurescope==0.10.0"
+python -m pip install "lurescope==0.11.0"
 lurescope pilot run --out ./lurescope-operational-pilot
 lurescope pilot verify ./lurescope-operational-pilot
 ```
