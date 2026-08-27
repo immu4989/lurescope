@@ -95,6 +95,69 @@ test("Defender paired report compares only aggregate operational metrics", () =>
   assert.equal(summary.bindings.length, 3);
 });
 
+test("LureWatch entry exposes aggregate e-process state and chain bindings", () => {
+  const entry = {
+    schema: "https://github.com/immu4989/lurescope/spec/lurewatch-entry/v1",
+    sequence: 4,
+    family_status: "breach",
+    plan_sha256: sha("a"),
+    previous_entry_sha256: sha("b"),
+    batch: {source_commitment_sha256: sha("c")},
+    states: [
+      {
+        monitor_id: "overall-fpr",
+        empirical_rate: 0.08,
+        log_e_value: 5.2,
+        alarm_log_threshold: 3.69,
+        status: "breach",
+      },
+    ],
+    privacy: {
+      contains_message_content: false,
+      contains_case_identifiers: false,
+      contains_per_message_scores: false,
+    },
+  };
+  const summary = explorer.summarizeArtifact(entry);
+
+  assert.equal(summary.kind, "LureWatch entry");
+  assert.equal(summary.status, "breach");
+  assert.equal(summary.tone, "fail");
+  assert.equal(summary.metrics.find(item => item.label === "overall-fpr").value, "8.0%");
+  assert.equal(summary.bindings.length, 3);
+  assert.ok(summary.privacy.includes("no message_content"));
+  assert.match(summary.warnings.join(" "), /No alarm is not proof/i);
+});
+
+test("signed LureWatch checkpoint is inspected without claiming authentication", () => {
+  const checkpoint = {
+    _type: "https://in-toto.io/Statement/v1",
+    subject: [
+      {name: "monitor-plan.json", digest: {sha256: sha("d")}},
+      {name: "entries/00000001.json", digest: {sha256: sha("e")}},
+    ],
+    predicateType: "https://github.com/immu4989/lurescope/spec/lurewatch-checkpoint/v1",
+    predicate: {
+      sequence: 1,
+      family_status: "monitoring",
+      authentication_mode: "ecdsa-p256-dsse",
+      previous_statement_sha256: null,
+      limitations: ["no_alarm_is_not_proof_that_risk_is_below_the_limit"],
+    },
+  };
+  const envelope = {
+    payloadType: "application/vnd.in-toto+json",
+    payload: Buffer.from(JSON.stringify(checkpoint), "utf8").toString("base64"),
+    signatures: [{keyid: sha("1"), sig: "AAAA"}],
+  };
+  const summary = explorer.summarizeArtifact(envelope);
+
+  assert.equal(summary.kind, "LureWatch checkpoint");
+  assert.equal(summary.status, "monitoring");
+  assert.equal(summary.signature.authenticated, false);
+  assert.match(summary.warnings[0], /not cryptographically authenticated/i);
+});
+
 test("unsupported, malformed, and oversized evidence fails closed", () => {
   assert.throws(() => explorer.parseArtifact("not-json"), /not valid JSON/i);
   assert.throws(() => explorer.summarizeArtifact({schema: "unknown"}), /Unsupported evidence/);

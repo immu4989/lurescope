@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurewatch-plan/v1",
+  "title": "LureWatch anytime-valid deployment monitor plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "plan_id", "created_at", "producer", "control",
+    "protocol", "monitors", "authentication", "privacy", "framework_mappings",
+    "limitations", "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurewatch-plan/v1"},
+    "schema_version": {"const": "1.0"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detector", "detector_artifact_sha256", "threshold", "policy_id", "policy_sha256"
+      ],
+      "properties": {
+        "detector": {"$ref": "#/$defs/id"},
+        "detector_artifact_sha256": {"$ref": "#/$defs/nullableDigest"},
+        "threshold": {"$ref": "#/$defs/probability"},
+        "policy_id": {"$ref": "#/$defs/nullableId"},
+        "policy_sha256": {"$ref": "#/$defs/nullableDigest"}
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method", "family_alpha", "multiple_monitor_control", "look_unit", "sampling",
+        "labeling_protocol", "alternative_grid_fractions"
+      ],
+      "properties": {
+        "method": {"const": "predeclared_mixture_bernoulli_e_process_v1"},
+        "family_alpha": {"type": "number", "minimum": 1e-9, "maximum": 0.2},
+        "multiple_monitor_control": {"const": "bonferroni_fixed_family_v1"},
+        "look_unit": {"const": "submitted_adjudicated_batch"},
+        "sampling": {
+          "enum": [
+            "complete_population", "consecutive_sample", "random_sample",
+            "operator_declared_other"
+          ]
+        },
+        "labeling_protocol": {"$ref": "#/$defs/id"},
+        "alternative_grid_fractions": {
+          "const": [
+            0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625,
+            0.0078125, 0.00390625, 0.001953125, 0.0009765625,
+            0.00048828125, 0.000244140625
+          ]
+        }
+      }
+    },
+    "monitors": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/monitor"}
+    },
+    "authentication": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": {
+            "mode": {"const": "unsigned"},
+            "signer_key_id": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": {
+            "mode": {"const": "ecdsa-p256-dsse"},
+            "signer_key_id": {"$ref": "#/$defs/digest"}
+          }
+        }
+      ]
+    },
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "framework_mappings": {"$ref": "#/$defs/frameworkMappings"},
+    "limitations": {"$ref": "#/$defs/limitations"},
+    "interpretation_boundary": {"$ref": "#/$defs/boundary"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,199}$"
+    },
+    "nullableId": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "monitor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "monitor_id", "metric", "risk_limit", "slice_dimension", "slice_value",
+        "event_definition", "denominator_definition"
+      ],
+      "properties": {
+        "monitor_id": {"$ref": "#/$defs/id"},
+        "metric": {"enum": ["false_positive_rate", "false_negative_rate"]},
+        "risk_limit": {"type": "number", "minimum": 1e-9, "maximum": 0.999999999},
+        "slice_dimension": {"$ref": "#/$defs/id"},
+        "slice_value": {"$ref": "#/$defs/id"},
+        "event_definition": {"enum": ["false_positive", "false_negative"]},
+        "denominator_definition": {"enum": ["actual_benign", "actual_fraud"]}
+      }
+    },
+    "privacy": {
+      "const": {
+        "aggregate_only": true,
+        "contains_message_content": false,
+        "contains_case_identifiers": false,
+        "contains_addresses": false,
+        "contains_per_message_scores": false,
+        "contains_per_message_labels": false
+      }
+    },
+    "frameworkMappings": {
+      "const": {
+        "nist_ai_rmf": ["MEASURE-2.4", "MANAGE-4.1"],
+        "nist_sp_800_53": ["CA-7"],
+        "relationship": "evidence_relevant_not_compliance_determination"
+      }
+    },
+    "limitations": {
+      "const": [
+        "representative_conditionally_independent_adjudicated_sample_required",
+        "label_quality_and_sampling_protocol_not_verified",
+        "missing_or_delayed_labels_must_not_be_counted_as_correct_outcomes",
+        "model_policy_threshold_and_population_changes_require_a_new_plan",
+        "alarm_evidence_applies_only_at_submitted_batch_boundaries",
+        "no_alarm_is_not_proof_that_risk_is_below_the_limit",
+        "bonferroni_control_applies_only_to_the_fixed_declared_monitor_family",
+        "hash_chaining_does_not_prevent_tail_deletion_without_external_checkpointing",
+        "unsigned_checkpoints_do_not_authenticate_an_issuer",
+        "framework_mappings_are_not_compliance_or_authorization_determinations"
+      ]
+    },
+    "boundary": {
+      "const": "A breach is anytime-valid statistical evidence that a predeclared aggregate error-rate limit was exceeded under the plan assumptions. No breach is not proof of safety, and this package is not certification, compliance, or authorization evidence by itself."
+    }
+  }
+}

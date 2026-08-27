@@ -138,7 +138,30 @@ change, OSCAL observations, and optional signed predecessor continuity. It can r
 repetitive evidence review while preserving human judgment for ambiguous changes. It
 does not prove remediation, explain causality, or satisfy an event-logging mandate.
 
-## 5. Add evidence to a SOC or SOAR workflow
+## 5. Detect post-deployment error-rate deterioration without repeated-peeking bias
+
+After a detector enters shadow or production use, submit disjoint batches of
+adjudicated aggregate confusion counts to a predeclared LureWatch plan:
+
+```bash
+lurescope monitor init --out ./agency-lurewatch \
+  --plan-id agency-email-fraud-v1 \
+  --fpr-limit 0.01 --fnr-limit 0.10 --family-alpha 0.05
+lurescope monitor append ./agency-lurewatch --batch-id 2026-W35 \
+  --true-positive 94 --false-negative 6 \
+  --true-negative 298 --false-positive 2
+```
+
+The mixture e-process controls the probability of ever raising a false breach
+alarm across repeated submitted looks, and Bonferroni allocation controls the
+fixed FPR/FNR family. Entries contain aggregate counts only and are chained to an
+immutable detector/policy plan; optional P-256 DSSE authenticates every
+checkpoint. This is useful for agency continuous monitoring, vendor post-award
+oversight, model rollback triggers, and SOC change control. It does not verify
+sampling, labels, causality, control satisfaction, or safety. See
+[LureWatch anytime-valid monitoring](ANYTIME_MONITORING.md).
+
+## 6. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:
 
@@ -155,7 +178,7 @@ Offline export mappings are available for OCSF 1.8 Detection Finding, ECS 9.4,
 STIX 2.1, Splunk HEC, and Microsoft Sentinel. These documented application
 mappings are not standards certification.
 
-## 6. Evaluate a proposed email control before deployment
+## 7. Evaluate a proposed email control before deployment
 
 Use LureScope for a single-message failure investigation, then LureBench for the
 corpus-level claim:

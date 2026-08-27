@@ -1124,6 +1124,204 @@ def _operational_pilot(argv: Sequence[str]) -> int:
         return 2
 
 
+def _monitor(argv: Sequence[str]) -> int:
+    """Create, append, and independently verify LureWatch evidence."""
+
+    parser = argparse.ArgumentParser(
+        prog="lurescope monitor",
+        description=(
+            "Anytime-valid, aggregate-only post-deployment FPR/FNR monitoring. "
+            "Repeated inspection at submitted batch boundaries does not inflate the "
+            "declared false-alarm budget."
+        ),
+    )
+    commands = parser.add_subparsers(dest="monitor_command", required=True)
+
+    init_parser = commands.add_parser(
+        "init", help="create an immutable monitor plan and empty checkpoint chain"
+    )
+    init_parser.add_argument("--out", "-o", required=True, help="new private bundle directory")
+    init_parser.add_argument("--plan-id", help="portable plan identifier; generated if omitted")
+    init_parser.add_argument("--policy", help="validated LureBench decision-policy JSON")
+    init_parser.add_argument("--detector", help="detector identity; defaults from policy or tfidf")
+    init_parser.add_argument(
+        "--threshold", type=float, help="decision threshold; defaults from policy"
+    )
+    init_parser.add_argument(
+        "--fpr-limit",
+        type=float,
+        help="overall false-positive-rate limit; defaults from risk-controlled policy or 0.01",
+    )
+    init_parser.add_argument("--fnr-limit", type=float, default=0.10)
+    init_parser.add_argument("--family-alpha", type=float, default=0.05)
+    init_parser.add_argument(
+        "--sampling",
+        choices=(
+            "complete_population",
+            "consecutive_sample",
+            "random_sample",
+            "operator_declared_other",
+        ),
+        default="random_sample",
+    )
+    init_parser.add_argument("--labeling-protocol", default="human-adjudication-v1")
+    init_parser.add_argument(
+        "--signer-public-key",
+        help="external ECDSA P-256 trust key; requires signed checkpoints",
+    )
+
+    append_parser = commands.add_parser(
+        "append", help="append one adjudicated aggregate confusion matrix"
+    )
+    append_parser.add_argument("bundle")
+    append_parser.add_argument("--batch-id", required=True)
+    append_parser.add_argument("--true-positive", type=int, required=True)
+    append_parser.add_argument("--false-positive", type=int, required=True)
+    append_parser.add_argument("--true-negative", type=int, required=True)
+    append_parser.add_argument("--false-negative", type=int, required=True)
+    append_parser.add_argument("--observed-at", help="ISO 8601 time represented by the batch")
+    append_parser.add_argument(
+        "--source-sha256",
+        help="optional SHA-256 commitment to the private adjudication source",
+    )
+    append_parser.add_argument(
+        "--signing-key", help="unencrypted P-256 private key required by signed plans"
+    )
+    append_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="recompute every statistic, digest, chain link, and signature"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key", help="external trusted P-256 public key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(argv)
+    try:
+        from .watch import (
+            append_monitor_batch,
+            confusion_counts,
+            create_monitor_bundle,
+            default_monitors,
+            verify_monitor_bundle,
+        )
+
+        if args.monitor_command == "init":
+            import uuid
+
+            from .pilot import detector_artifact_sha256
+
+            policy = None
+            policy_digest = None
+            if args.policy:
+                from .policy import load_policy
+
+                policy_path = Path(args.policy)
+                policy_bytes = policy_path.read_bytes()
+                if len(policy_bytes) > 2 * 1024 * 1024:
+                    raise ValueError("decision policy exceeds the 2 MB safety limit")
+                policy = load_policy(str(policy_path.resolve()))
+                policy_digest = hashlib.sha256(policy_bytes).hexdigest()
+            detector = args.detector or (policy.detector if policy else "tfidf-logreg")
+            threshold = args.threshold
+            if threshold is None:
+                threshold = policy.threshold if policy else 0.5
+            if policy and detector != policy.detector:
+                raise ValueError("--detector conflicts with the bound decision policy")
+            if policy and threshold != policy.threshold:
+                raise ValueError("--threshold conflicts with the bound decision policy")
+            fpr_limit = args.fpr_limit
+            if fpr_limit is None:
+                fpr_limit = policy.target_fpr if policy and policy.target_fpr else 0.01
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            plan = create_monitor_bundle(
+                Path(args.out),
+                plan_id=args.plan_id or f"lurewatch-{uuid.uuid4()}",
+                detector=detector,
+                threshold=threshold,
+                monitors=default_monitors(fpr_limit, args.fnr_limit),
+                family_alpha=args.family_alpha,
+                sampling=args.sampling,
+                labeling_protocol=args.labeling_protocol,
+                detector_artifact_sha256=detector_artifact_sha256(detector),
+                policy_id=policy.policy_id if policy else None,
+                policy_sha256=policy_digest,
+                signer_public_key_pem=signer_public,
+            )
+            print(
+                f"LUREWATCH PLAN CREATED: {plan['plan_id']} — {args.out}\n"
+                f"monitors: FPR <= {fpr_limit:g}; FNR <= {args.fnr_limit:g}; "
+                f"family alpha {args.family_alpha:g}\n"
+                "boundary: aggregate adjudicated counts only; no alarm is not proof of safety"
+            )
+            return 0
+
+        if args.monitor_command == "append":
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            entry = append_monitor_batch(
+                Path(args.bundle),
+                batch_id=args.batch_id,
+                counts=confusion_counts(
+                    true_positive=args.true_positive,
+                    false_positive=args.false_positive,
+                    true_negative=args.true_negative,
+                    false_negative=args.false_negative,
+                ),
+                observed_at=args.observed_at,
+                source_commitment_sha256=args.source_sha256,
+                signing_key_pem=signing_key,
+            )
+            if args.json:
+                print(json.dumps(entry, indent=2, sort_keys=True))
+            else:
+                print(
+                    f"LUREWATCH BATCH {entry['sequence']} APPENDED: "
+                    f"{entry['family_status'].upper()} — {args.batch_id}"
+                )
+                for state in entry["states"]:
+                    rate = (
+                        "not measurable"
+                        if state["empirical_rate"] is None
+                        else f"{state['empirical_rate']:.2%}"
+                    )
+                    print(
+                        f"  {state['monitor_id']}: {rate}; "
+                        f"log(e)={state['log_e_value']:.3f}; {state['status']}"
+                    )
+                print("boundary: a breach is evidence under the plan assumptions, not causality")
+            return 1 if entry["family_status"] == "breach" else 0
+
+        public_key = Path(args.public_key).read_bytes() if args.public_key else None
+        result = verify_monitor_bundle(Path(args.bundle), public_key_pem=public_key)
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            auth = "authenticated" if result["authenticated"] else "unsigned"
+            print(
+                f"LUREWATCH VERIFIED: {result['family_status'].upper()} — "
+                f"{result['entry_count']} checkpoints ({auth})"
+            )
+            print(f"plan sha256:{result['plan_sha256']}")
+            if result["latest_statement_sha256"]:
+                print(f"latest checkpoint sha256:{result['latest_statement_sha256']}")
+            print("boundary: integrity and statistical evidence are not compliance")
+        return 0
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        ImportError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        print(f"! LureWatch failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -1152,6 +1350,8 @@ def main(argv=None) -> int:
         return _policy(args[1:])
     if args and args[0] == "pilot":
         return _operational_pilot(args[1:])
+    if args and args[0] == "monitor":
+        return _monitor(args[1:])
     return _serve(args)
 
 

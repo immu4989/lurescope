@@ -14,6 +14,8 @@
   const PILOT_GATE = "https://github.com/immu4989/lurescope/spec/pilot-gate/v1";
   const SHADOW_REPORT = "https://github.com/immu4989/lurescope/spec/shadow-report/v1";
   const DEFENDER_REPORT = "https://github.com/immu4989/lurescope/spec/defender-report/v1";
+  const LUREWATCH_ENTRY = "https://github.com/immu4989/lurescope/spec/lurewatch-entry/v1";
+  const LUREWATCH_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lurewatch-checkpoint/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -102,7 +104,8 @@
   function gateStatus(summary, verdict) {
     const normalized = String(verdict || "unknown");
     summary.status = normalized.replaceAll("_", " ");
-    summary.tone = normalized === "pass" ? "pass" : normalized === "fail" ? "fail" : "warn";
+    summary.tone = normalized === "pass"
+      ? "pass" : ["fail", "breach"].includes(normalized) ? "fail" : "warn";
   }
 
   function receiptSummary(statement, meta) {
@@ -220,6 +223,43 @@
     return summary;
   }
 
+  function lurewatchEntrySummary(value, meta) {
+    if (!Array.isArray(value.states) || value.states.length < 1) {
+      throw new Error("LureWatch entry must contain monitor states");
+    }
+    const summary = base(
+      "LureWatch entry",
+      "Anytime-valid deployment risk",
+      "One aggregate-only batch boundary in a predeclared FPR/FNR e-process.",
+      meta,
+    );
+    gateStatus(summary, value.family_status);
+    summary.metrics = value.states.slice(0, 6).map(state => {
+      const item = object(state, "LureWatch monitor state");
+      const empirical = item.empirical_rate === null || item.empirical_rate === undefined
+        ? "Not measurable" : ratio(item.empirical_rate);
+      return {
+        label: String(item.monitor_id || "monitor"),
+        value: empirical,
+        note: `log(e) ${Number(item.log_e_value).toFixed(2)} · alarm ${Number(item.alarm_log_threshold).toFixed(2)} · ${item.status}`,
+      };
+    });
+    summary.metrics.unshift({label: "Sequence", value: count(value.sequence)});
+    summary.bindings = [
+      binding("Plan", value.plan_sha256),
+      binding("Previous entry", value.previous_entry_sha256),
+      binding("Private source", value.batch && value.batch.source_commitment_sha256),
+    ].filter(Boolean);
+    summary.privacy = value.privacy
+      ? Object.entries(value.privacy).filter(([, present]) => present === false).map(([name]) => name.replace("contains_", "no "))
+      : [];
+    summary.warnings = [
+      "No alarm is not proof that risk is below the limit.",
+      "The browser recomputes no e-process or chain links; use `lurescope monitor verify`.",
+    ];
+    return summary;
+  }
+
   function statementSummary(statement, meta) {
     if (statement.predicateType === RECEIPT) return receiptSummary(statement, meta);
     if (statement.predicateType === AGGREGATE) return aggregateSummary(statement, meta);
@@ -269,6 +309,28 @@
       summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
       return summary;
     }
+    if (statement.predicateType === LUREWATCH_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureWatch checkpoint predicate");
+      const summary = base(
+        "LureWatch checkpoint",
+        "Chain-bound deployment monitor",
+        "An in-toto checkpoint binding one aggregate monitor entry to its immutable plan and predecessor.",
+        meta,
+      );
+      gateStatus(summary, predicate.family_status);
+      summary.metrics = [
+        {label: "Sequence", value: count(predicate.sequence)},
+        {label: "Authentication mode", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = Array.isArray(statement.subject)
+        ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256)).filter(Boolean)
+        : [];
+      const previous = binding("Previous checkpoint", predicate.previous_statement_sha256);
+      if (previous) summary.bindings.push(previous);
+      summary.privacy = ["aggregate entry", "no message content", "no case identifiers", "no per-message labels or scores"];
+      summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
+      return summary;
+    }
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
@@ -280,7 +342,8 @@
     else if (statement.schema === PILOT_GATE) summary = pilotGateSummary(statement, meta);
     else if (statement.schema === DEFENDER_REPORT) summary = defenderSummary(statement, meta);
     else if (statement.schema === SHADOW_REPORT) summary = shadowSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, or SCuBA artifact.");
+    else if (statement.schema === LUREWATCH_ENTRY) summary = lurewatchEntrySummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, or LureWatch artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

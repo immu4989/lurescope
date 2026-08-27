@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurewatch-entry/v1",
+  "title": "LureWatch anytime-valid aggregate checkpoint entry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "sequence", "generated_at", "plan_id", "plan_sha256",
+    "previous_entry_sha256", "batch", "states", "family_status", "privacy",
+    "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurewatch-entry/v1"},
+    "schema_version": {"const": "1.0"},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "previous_entry_sha256": {"$ref": "#/$defs/nullableDigest"},
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batch_id", "observed_at", "source_commitment_sha256", "counts"],
+      "properties": {
+        "batch_id": {"$ref": "#/$defs/id"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "source_commitment_sha256": {"$ref": "#/$defs/nullableDigest"},
+        "counts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["monitor_id", "events", "trials"],
+            "properties": {
+              "monitor_id": {"$ref": "#/$defs/id"},
+              "events": {"type": "integer", "minimum": 0, "maximum": 1000000000000},
+              "trials": {"type": "integer", "minimum": 0, "maximum": 1000000000000}
+            }
+          }
+        }
+      }
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/state"}
+    },
+    "family_status": {"enum": ["monitoring", "breach"]},
+    "privacy": {
+      "const": {
+        "aggregate_only": true,
+        "contains_message_content": false,
+        "contains_case_identifiers": false,
+        "contains_addresses": false,
+        "contains_per_message_scores": false,
+        "contains_per_message_labels": false
+      }
+    },
+    "interpretation_boundary": {
+      "const": "A breach is anytime-valid statistical evidence that a predeclared aggregate error-rate limit was exceeded under the plan assumptions. No breach is not proof of safety, and this package is not certification, compliance, or authorization evidence by itself."
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,199}$"
+    },
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "nullableProbability": {
+      "oneOf": [{"type": "null"}, {"type": "number", "minimum": 0, "maximum": 1}]
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "monitor_id", "cumulative_events", "cumulative_trials", "empirical_rate",
+        "log_e_value", "max_log_e_value", "alarm_log_threshold", "per_monitor_alpha",
+        "status"
+      ],
+      "properties": {
+        "monitor_id": {"$ref": "#/$defs/id"},
+        "cumulative_events": {
+          "type": "integer", "minimum": 0, "maximum": 1000000000000
+        },
+        "cumulative_trials": {
+          "type": "integer", "minimum": 0, "maximum": 1000000000000
+        },
+        "empirical_rate": {"$ref": "#/$defs/nullableProbability"},
+        "log_e_value": {"type": "number"},
+        "max_log_e_value": {"type": "number", "minimum": 0},
+        "alarm_log_threshold": {"type": "number", "exclusiveMinimum": 0},
+        "per_monitor_alpha": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.2},
+        "status": {"enum": ["monitoring", "breach"]}
+      }
+    }
+  }
+}
