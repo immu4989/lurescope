@@ -8,7 +8,8 @@ page to inspect:
 - Pilot Gate and Shadow Inbox reports;
 - offline Microsoft Defender paired reports;
 - LureProof statements and DSSE envelopes; and
-- combined SCuBA assurance and drift-ledger statements.
+- combined SCuBA assurance and drift-ledger statements; and
+- LureWatch aggregate entries and in-toto checkpoint/DSSE artifacts.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -21,3 +22,7 @@ public key or authenticate the signature. A badge saying “signature present”
 means only that an envelope carries signature bytes. Use the corresponding CLI
 verification command and a trusted public key before relying on issuer identity
 or semantic validity.
+
+For LureWatch, browser inspection also does not recompute the e-process, fixed
+family correction, or predecessor chain. Use `lurescope monitor verify` for the
+normative statistical and integrity check.

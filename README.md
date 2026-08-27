@@ -31,6 +31,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
 **[Bridge CISA SCuBA evidence →](docs/SCUBA_BRIDGE.md)** ·
 **[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
+**[Monitor deployment risk anytime →](docs/ANYTIME_MONITORING.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -68,6 +69,28 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > binding without rewriting evidence. Install `lurescope==0.10.0` and run it
 > without a mailbox connection, API key, or network access. See the
 > [operational pilot trust boundary](docs/OPERATIONAL_PILOT.md).
+
+> **Next release — continuous monitoring without the peeking penalty.**
+> [LureWatch](docs/ANYTIME_MONITORING.md) turns adjudicated aggregate FPR/FNR
+> counts into an anytime-valid breach alarm. The detector, policy, risk limits,
+> monitor family, and false-alarm budget are fixed first; every submitted batch
+> is recomputed in a hash-chained in-toto checkpoint, with optional P-256 DSSE
+> authentication. It stores no messages, case IDs, addresses, per-message scores,
+> or per-message labels. No alarm is deliberately **not** called proof of safety.
+
+Create an overall post-deployment monitor, then append one reviewed confusion
+matrix. Exit status `1` is a successfully recorded breach signal, while `2`
+means integrity or input validation failed:
+
+```bash
+lurescope monitor init --out ./agency-lurewatch \
+  --plan-id agency-email-fraud-v1 \
+  --fpr-limit 0.01 --fnr-limit 0.10 --family-alpha 0.05
+lurescope monitor append ./agency-lurewatch --batch-id 2026-W35 \
+  --true-positive 94 --false-negative 6 \
+  --true-negative 298 --false-positive 2
+lurescope monitor verify ./agency-lurewatch
+```
 
 ## Shadow Inbox: measure before enforcement
 

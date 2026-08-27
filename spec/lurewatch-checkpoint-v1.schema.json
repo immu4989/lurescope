@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurewatch-checkpoint/v1",
+  "title": "LureWatch in-toto checkpoint statement v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "digest"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 256},
+          "digest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sha256"],
+            "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+          }
+        }
+      }
+    },
+    "predicateType": {
+      "const": "https://github.com/immu4989/lurescope/spec/lurewatch-checkpoint/v1"
+    },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec", "spec_version", "plan_id", "sequence", "generated_at",
+        "previous_statement_sha256", "family_status", "authentication_mode",
+        "framework_mappings", "limitations", "interpretation_boundary"
+      ],
+      "properties": {
+        "spec": {"const": "lurewatch-checkpoint"},
+        "spec_version": {"const": "1.0"},
+        "plan_id": {
+          "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,199}$"
+        },
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "previous_statement_sha256": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+          ]
+        },
+        "family_status": {"enum": ["monitoring", "breach"]},
+        "authentication_mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]},
+        "framework_mappings": {
+          "const": {
+            "nist_ai_rmf": ["MEASURE-2.4", "MANAGE-4.1"],
+            "nist_sp_800_53": ["CA-7"],
+            "relationship": "evidence_relevant_not_compliance_determination"
+          }
+        },
+        "limitations": {"$ref": "#/$defs/limitations"},
+        "interpretation_boundary": {
+          "const": "A breach is anytime-valid statistical evidence that a predeclared aggregate error-rate limit was exceeded under the plan assumptions. No breach is not proof of safety, and this package is not certification, compliance, or authorization evidence by itself."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "limitations": {
+      "const": [
+        "representative_conditionally_independent_adjudicated_sample_required",
+        "label_quality_and_sampling_protocol_not_verified",
+        "missing_or_delayed_labels_must_not_be_counted_as_correct_outcomes",
+        "model_policy_threshold_and_population_changes_require_a_new_plan",
+        "alarm_evidence_applies_only_at_submitted_batch_boundaries",
+        "no_alarm_is_not_proof_that_risk_is_below_the_limit",
+        "bonferroni_control_applies_only_to_the_fixed_declared_monitor_family",
+        "hash_chaining_does_not_prevent_tail_deletion_without_external_checkpointing",
+        "unsigned_checkpoints_do_not_authenticate_an_issuer",
+        "framework_mappings_are_not_compliance_or_authorization_determinations"
+      ]
+    }
+  }
+}

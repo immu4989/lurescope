@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+- Added LureWatch, an anytime-valid post-deployment FPR/FNR monitor using a
+  predeclared finite mixture of Bernoulli e-processes. Repeated inspection at
+  submitted adjudicated-batch boundaries retains the declared per-monitor error
+  guarantee, while Bonferroni allocation controls the fixed monitor family.
+- Added `lurescope monitor init`, `append`, and `verify`; immutable detector,
+  threshold, LureBench policy, sampling, labeling, risk-limit, and signer
+  bindings; aggregate-only confusion-count entries; sticky breach evidence;
+  hash-chained in-toto checkpoints; optional P-256 DSSE authentication; strict
+  public plan, entry, and checkpoint schemas; and an operator/research guide.
+- Added deterministic exact-path statistical tests, signed and unsigned
+  end-to-end tests, generic slice-family support, schema validation, CLI exit-code
+  coverage, privacy scans, private-permission checks, and adversarial chain,
+  signature, plan, count, duplicate-batch, and sequence-gap tests.
+
+### Security
+- LureWatch fails closed on unknown fields, duplicate keys, non-finite values,
+  non-canonical JSON, symlinks, unsafe permissions, unexpected artifacts, reused
+  batch IDs, altered aggregate counts, non-recomputing statistics, chain gaps,
+  signer substitution, and DSSE payload or signature mismatch. Signed plans bind
+  one externally supplied P-256 trust key before the first outcome is observed.
+
 ### Changed
 - Pinned the public Space build to the exact LureScope 0.10.0 PyPI wheel SHA-256
   and the hardened Compose deployment to the immutable multi-architecture 0.10.0
