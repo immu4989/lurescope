@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureboundary-plan/v1",
+  "title": "LureBoundary preregistered assurance plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "plan_id", "created_at", "producer", "system",
+    "control", "benchmark", "response", "authentication", "interoperability",
+    "privacy", "framework_mappings", "limitations", "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": { "const": "https://github.com/immu4989/lurescope/spec/lureboundary-plan/v1" },
+    "schema_version": { "const": "1.0" },
+    "plan_id": { "$ref": "#/$defs/id" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "lurescope" },
+        "version": { "$ref": "#/$defs/id" }
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_id", "environment", "model_id", "model_sha256"],
+      "properties": {
+        "system_id": { "$ref": "#/$defs/id" },
+        "environment": { "enum": ["development", "evaluation", "staging", "production"] },
+        "model_id": { "$ref": "#/$defs/id" },
+        "model_sha256": { "$ref": "#/$defs/nullable-digest" }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id", "policy_sha256", "controller_id", "controller_sha256",
+        "monitor_id", "monitor_artifact_sha256"
+      ],
+      "properties": {
+        "policy_id": { "$ref": "#/$defs/nullable-id" },
+        "policy_sha256": { "$ref": "#/$defs/nullable-digest" },
+        "controller_id": { "$ref": "#/$defs/nullable-id" },
+        "controller_sha256": { "$ref": "#/$defs/nullable-digest" },
+        "monitor_id": { "$ref": "#/$defs/lower-id" },
+        "monitor_artifact_sha256": { "$ref": "#/$defs/nullable-digest" }
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suite_id", "suite_version", "suite_sha256", "minimum_trajectory_recall",
+        "maximum_benign_false_positive_rate", "maximum_detection_delay_events",
+        "minimum_category_accuracy"
+      ],
+      "properties": {
+        "suite_id": { "$ref": "#/$defs/lower-id" },
+        "suite_version": { "$ref": "#/$defs/id" },
+        "suite_sha256": { "$ref": "#/$defs/digest" },
+        "minimum_trajectory_recall": { "$ref": "#/$defs/rate" },
+        "maximum_benign_false_positive_rate": { "$ref": "#/$defs/rate" },
+        "maximum_detection_delay_events": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "minimum_category_accuracy": { "$ref": "#/$defs/rate" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_id", "critical_action", "review_sla_minutes"],
+      "properties": {
+        "authority_id": { "$ref": "#/$defs/id" },
+        "critical_action": {
+          "enum": [
+            "evaluation_shutdown_review", "human_review_required",
+            "pause_authority_notification"
+          ]
+        },
+        "review_sla_minutes": { "type": "integer", "minimum": 1, "maximum": 10080 }
+      }
+    },
+    "authentication": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": { "mode": { "const": "unsigned" }, "signer_key_id": { "type": "null" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": { "mode": { "const": "ecdsa-p256-dsse" }, "signer_key_id": { "$ref": "#/$defs/digest" } }
+        }
+      ]
+    },
+    "interoperability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oscal_assessment_plan_href"],
+      "properties": {
+        "oscal_assessment_plan_href": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 500, "format": "uri" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "privacy": { "$ref": "#/$defs/privacy" },
+    "framework_mappings": { "$ref": "#/$defs/framework" },
+    "limitations": { "$ref": "#/$defs/limitations" },
+    "interpretation_boundary": { "$ref": "#/$defs/interpretation" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$" },
+    "nullable-id": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+    "lower-id": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullable-digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+    "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "privacy": {
+      "const": {
+        "contains_prompts": false,
+        "contains_commands_or_payloads": false,
+        "contains_credentials": false,
+        "contains_hosts_or_urls": false,
+        "contains_model_reasoning": false,
+        "synthetic_metadata_only": true
+      }
+    },
+    "framework": {
+      "const": {
+        "nist_ai_rmf": ["GOVERN-1.7", "MAP-3.5", "MEASURE-2.7", "MANAGE-4.1"],
+        "nist_sp_800_53": ["AC-6", "CA-7", "IR-4", "SI-4"],
+        "relationship": "evidence_relevant_not_compliance_determination"
+      }
+    },
+    "limitations": {
+      "const": [
+        "synthetic_suite_performance_does_not_establish_deployment_containment",
+        "event_source_completeness_and_runtime_complete_mediation_are_not_verified",
+        "monitor_and_controller_correctness_are_not_proven_by_artifact_integrity",
+        "hash_chaining_does_not_prevent_tail_deletion_without_external_checkpointing",
+        "unsigned_checkpoints_do_not_authenticate_an_issuer",
+        "framework_mappings_are_not_compliance_certification_or_authorization",
+        "required_response_is_recorded_but_never_executed_by_lurescope"
+      ]
+    },
+    "interpretation": {
+      "const": "This bundle proves internal consistency and, when signed, checkpoint authenticity for the declared synthetic evaluation evidence. It does not prove complete mediation, deployment containment, sensor completeness, model safety, compliance, certification, or authorization. Human authorities retain every operational decision."
+    }
+  }
+}

@@ -8,8 +8,10 @@ page to inspect:
 - Pilot Gate and Shadow Inbox reports;
 - offline Microsoft Defender paired reports;
 - LureProof statements and DSSE envelopes; and
-- combined SCuBA assurance and drift-ledger statements; and
-- LureWatch aggregate entries and in-toto checkpoint/DSSE artifacts.
+- combined SCuBA assurance and drift-ledger statements;
+- LureWatch aggregate entries and in-toto checkpoint/DSSE artifacts; and
+- LureBoundary plans, LureBench evaluations, append-only entries, and
+  in-toto checkpoint/DSSE artifacts.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -26,3 +28,8 @@ or semantic validity.
 For LureWatch, browser inspection also does not recompute the e-process, fixed
 family correction, or predecessor chain. Use `lurescope monitor verify` for the
 normative statistical and integrity check.
+
+For LureBoundary, browser inspection does not recompute confusion counts,
+metrics, detection delay, category accuracy, plan bindings, sticky breach state,
+or checkpoint links. Use `lurescope boundary verify` with the externally trusted
+public key when the plan is signed.

@@ -1322,6 +1322,188 @@ def _monitor(argv: Sequence[str]) -> int:
         return 2
 
 
+def _boundary(argv: Sequence[str]) -> int:
+    """Preregister, append, verify, and export LureBoundary evidence."""
+
+    parser = argparse.ArgumentParser(
+        prog="lurescope boundary",
+        description=(
+            "Tamper-evident assurance for safe synthetic autonomous-agent boundary "
+            "evaluations. Records human response requirements; never executes enforcement."
+        ),
+    )
+    commands = parser.add_subparsers(dest="boundary_command", required=True)
+
+    init_parser = commands.add_parser(
+        "init", help="bind a benchmark, monitor, system, and response authority before use"
+    )
+    init_parser.add_argument("--out", "-o", required=True, help="new private bundle directory")
+    init_parser.add_argument("--plan-id", required=True)
+    init_parser.add_argument(
+        "--evaluation",
+        required=True,
+        help="reviewed LureBench boundary evaluation used to bind suite and thresholds",
+    )
+    init_parser.add_argument("--system-id", required=True)
+    init_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        default="evaluation",
+    )
+    init_parser.add_argument("--model-id", required=True)
+    init_parser.add_argument("--model-sha256")
+    init_parser.add_argument("--policy-id")
+    init_parser.add_argument("--policy-sha256")
+    init_parser.add_argument("--controller-id")
+    init_parser.add_argument("--controller-sha256")
+    init_parser.add_argument("--authority-id", default="human-security-authority")
+    init_parser.add_argument(
+        "--critical-action",
+        choices=(
+            "human_review_required",
+            "pause_authority_notification",
+            "evaluation_shutdown_review",
+        ),
+        default="human_review_required",
+    )
+    init_parser.add_argument("--review-sla-minutes", type=int, default=60)
+    init_parser.add_argument("--signer-public-key", help="external ECDSA P-256 trust key")
+    init_parser.add_argument(
+        "--oscal-ap-href",
+        help="operator-controlled https: or urn: OSCAL Assessment Plan reference",
+    )
+
+    append_parser = commands.add_parser(
+        "append", help="append one validated LureBench boundary evaluation"
+    )
+    append_parser.add_argument("bundle")
+    append_parser.add_argument("evaluation")
+    append_parser.add_argument("--evaluation-id", required=True)
+    append_parser.add_argument("--signing-key", help="P-256 key required by signed plans")
+    append_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="recompute every metric, digest, chain link, and signature"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key", help="external trusted P-256 public key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    export_parser = commands.add_parser(
+        "export-oscal", help="export latest verified evidence as observation-only OSCAL AR"
+    )
+    export_parser.add_argument("bundle")
+    export_parser.add_argument("--out", "-o", required=True, help="new private OSCAL JSON")
+    export_parser.add_argument("--public-key", help="trusted key for a signed bundle")
+
+    args = parser.parse_args(argv)
+    try:
+        from .boundary import (
+            append_boundary_evaluation,
+            create_boundary_bundle,
+            export_boundary_oscal,
+            load_boundary_evaluation,
+            verify_boundary_bundle,
+        )
+
+        if args.boundary_command == "init":
+            report, _ = load_boundary_evaluation(Path(args.evaluation))
+            suite = report["suite"]
+            monitor = report["monitor"]
+            acceptance = report["acceptance"]
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            plan = create_boundary_bundle(
+                Path(args.out),
+                plan_id=args.plan_id,
+                system_id=args.system_id,
+                environment=args.environment,
+                model_id=args.model_id,
+                model_sha256=args.model_sha256,
+                suite_id=suite["suite_id"],
+                suite_version=suite["suite_version"],
+                suite_sha256=suite["suite_sha256"],
+                monitor_id=monitor["monitor_id"],
+                monitor_artifact_sha256=monitor["artifact_sha256"],
+                minimum_trajectory_recall=acceptance["minimum_trajectory_recall"],
+                maximum_benign_false_positive_rate=acceptance["maximum_benign_false_positive_rate"],
+                maximum_detection_delay_events=acceptance["maximum_detection_delay_events"],
+                minimum_category_accuracy=acceptance["minimum_category_accuracy"],
+                policy_id=args.policy_id,
+                policy_sha256=args.policy_sha256,
+                controller_id=args.controller_id,
+                controller_sha256=args.controller_sha256,
+                authority_id=args.authority_id,
+                critical_action=args.critical_action,
+                review_sla_minutes=args.review_sla_minutes,
+                signer_public_key_pem=signer_public,
+                oscal_assessment_plan_href=args.oscal_ap_href,
+            )
+            print(
+                f"LUREBOUNDARY PLAN CREATED: {plan['plan_id']} — {args.out}\n"
+                f"suite sha256:{plan['benchmark']['suite_sha256']}\n"
+                "boundary: synthetic evaluation evidence only; no enforcement is executed"
+            )
+            return 0
+
+        if args.boundary_command == "append":
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            entry = append_boundary_evaluation(
+                Path(args.bundle),
+                Path(args.evaluation),
+                evaluation_id=args.evaluation_id,
+                signing_key_pem=signing_key,
+            )
+            if args.json:
+                print(json.dumps(entry, indent=2, sort_keys=True))
+            else:
+                print(
+                    f"LUREBOUNDARY EVALUATION {entry['sequence']} APPENDED: "
+                    f"{entry['decision']['boundary_status'].upper()} — {args.evaluation_id}"
+                )
+                print(f"required action: {entry['decision']['required_action']}")
+                print("boundary: response is recorded for a human authority, never executed")
+            return 1 if entry["decision"]["boundary_status"] == "breach" else 0
+
+        public_key = Path(args.public_key).read_bytes() if args.public_key else None
+        if args.boundary_command == "export-oscal":
+            document = export_boundary_oscal(
+                Path(args.bundle), Path(args.out), public_key_pem=public_key
+            )
+            status = document["assessment-results"]["results"][0]["props"][0]["value"]
+            print(f"LUREBOUNDARY OSCAL EXPORTED: {status.upper()} — {args.out}")
+            print("boundary: observations only; not a compliance or authorization decision")
+            return 0
+
+        result = verify_boundary_bundle(Path(args.bundle), public_key_pem=public_key)
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            authentication = "authenticated" if result["authenticated"] else "unsigned"
+            print(
+                f"LUREBOUNDARY VERIFIED: {result['boundary_status'].upper()} — "
+                f"{result['entry_count']} checkpoints ({authentication})"
+            )
+            print(f"plan sha256:{result['plan_sha256']}")
+            if result["latest_statement_sha256"]:
+                print(f"latest checkpoint sha256:{result['latest_statement_sha256']}")
+            print("boundary: integrity evidence is not proof of deployment containment")
+        return 0
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        ImportError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        print(f"! LureBoundary failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -1352,6 +1534,8 @@ def main(argv=None) -> int:
         return _operational_pilot(args[1:])
     if args and args[0] == "monitor":
         return _monitor(args[1:])
+    if args and args[0] == "boundary":
+        return _boundary(args[1:])
     return _serve(args)
 
 

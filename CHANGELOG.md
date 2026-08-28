@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Added
+- Added LureBoundary preregistration and append-only assurance for autonomous-agent
+  boundary-monitor evaluations. Plans bind the system, environment, model, suite,
+  monitor, optional policy/controller artifacts, acceptance thresholds, human
+  response authority, optional OSCAL Assessment Plan, and signing identity.
+- Added `lurescope boundary init`, `append`, `verify`, and `export-oscal`; exact
+  LureBench report preservation; independently recomputed metrics and verdicts;
+  sticky breach state; hash-chained in-toto checkpoints; optional ECDSA P-256
+  DSSE; strict public plan/entry schemas; and an operator guide.
+- Added observation-only NIST OSCAL 1.2.2 Assessment Results for trajectory
+  recall, benign false-positive rate, maximum detection delay, and category
+  accuracy, validated against the vendored official NIST schema without findings
+  or control-satisfaction claims.
+
+### Security
+- LureBoundary rejects unknown fields and artifacts, duplicate JSON keys and
+  evaluation IDs, non-finite values, unsafe permissions, symbolic links, sequence
+  gaps, report/metric/threshold substitution, noncanonical chain records,
+  altered evidence, key substitution, and DSSE payload/signature mismatch.
+- Response actions are immutable evidence fields with `action_executed: false`;
+  LureScope never performs shutdown, revocation, network blocking, controller
+  mutation, compliance determination, certification, or authorization.
+
 ## 0.11.0 — 2026-08-27
 
 ### Added

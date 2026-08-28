@@ -16,6 +16,10 @@
   const DEFENDER_REPORT = "https://github.com/immu4989/lurescope/spec/defender-report/v1";
   const LUREWATCH_ENTRY = "https://github.com/immu4989/lurescope/spec/lurewatch-entry/v1";
   const LUREWATCH_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lurewatch-checkpoint/v1";
+  const LUREBOUNDARY_EVALUATION = "https://github.com/immu4989/lurebench/spec/agent-boundary-evaluation/v1";
+  const LUREBOUNDARY_PLAN = "https://github.com/immu4989/lurescope/spec/lureboundary-plan/v1";
+  const LUREBOUNDARY_ENTRY = "https://github.com/immu4989/lurescope/spec/lureboundary-entry/v1";
+  const LUREBOUNDARY_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lureboundary-checkpoint/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -260,6 +264,99 @@
     return summary;
   }
 
+  function boundaryEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "LureBoundary evaluation summary");
+    const suite = object(value.suite, "LureBoundary suite binding");
+    const monitor = object(value.monitor, "LureBoundary monitor binding");
+    const summary = base(
+      "LureBoundary evaluation",
+      "Synthetic agent-boundary monitor test",
+      "Typed, content-free trajectories measuring recall, benign alarms, category accuracy, and alert delay.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Trajectories", value: count(metrics.total_trajectories)},
+      {label: "Recall", value: ratio(metrics.trajectory_recall)},
+      {label: "Benign FPR", value: ratio(metrics.benign_false_positive_rate)},
+      {label: "Category accuracy", value: ratio(metrics.category_accuracy)},
+      {label: "Max delay", value: `${count(metrics.maximum_detection_delay_events)} event(s)`},
+      {label: "Monitor", value: String(monitor.monitor_id || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Suite", suite.suite_sha256),
+      binding("Monitor", monitor.artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["synthetic metadata only", "no prompts", "no commands or payloads", "no credentials", "no hosts or URLs", "no model reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function boundaryPlanSummary(value, meta) {
+    const benchmark = object(value.benchmark, "LureBoundary benchmark binding");
+    const control = object(value.control, "LureBoundary control binding");
+    const response = object(value.response, "LureBoundary response binding");
+    const summary = base(
+      "LureBoundary plan",
+      "Preregistered agent assurance boundary",
+      "Immutable system, benchmark, monitor, threshold, response-authority, and signer declarations.",
+      meta,
+    );
+    summary.status = "Preregistered";
+    summary.tone = "neutral";
+    summary.metrics = [
+      {label: "Environment", value: String(value.system && value.system.environment || "unknown")},
+      {label: "Min recall", value: ratio(benchmark.minimum_trajectory_recall)},
+      {label: "Max benign FPR", value: ratio(benchmark.maximum_benign_false_positive_rate)},
+      {label: "Max delay", value: `${count(benchmark.maximum_detection_delay_events)} event(s)`},
+      {label: "Monitor", value: String(control.monitor_id || "unknown")},
+      {label: "Breach response", value: String(response.critical_action || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Suite", benchmark.suite_sha256), binding("Model", value.system && value.system.model_sha256),
+      binding("Monitor", control.monitor_artifact_sha256), binding("Policy", control.policy_sha256),
+      binding("Controller", control.controller_sha256), binding("Signer", value.authentication && value.authentication.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = value.privacy
+      ? Object.entries(value.privacy).filter(([, present]) => present === false).map(([name]) => name.replace("contains_", "no "))
+      : [];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function boundaryEntrySummary(value, meta) {
+    const decision = object(value.decision, "LureBoundary decision");
+    const evaluation = object(value.evaluation, "LureBoundary evaluation binding");
+    const metrics = object(evaluation.summary, "LureBoundary metrics");
+    const summary = base(
+      "LureBoundary entry",
+      "Append-only agent assurance evidence",
+      "One validated evaluation bound to its preregistered plan and predecessor checkpoint.",
+      meta,
+    );
+    gateStatus(summary, decision.boundary_status);
+    summary.metrics = [
+      {label: "Sequence", value: count(value.sequence)},
+      {label: "Evaluation", value: String(decision.evaluation_status || "unknown")},
+      {label: "Recall", value: ratio(metrics.trajectory_recall)},
+      {label: "Benign FPR", value: ratio(metrics.benign_false_positive_rate)},
+      {label: "Max delay", value: `${count(metrics.maximum_detection_delay_events)} event(s)`},
+      {label: "Required action", value: String(decision.required_action || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Plan", value.plan_sha256), binding("Previous entry", value.previous_entry_sha256),
+      binding("Evaluation", evaluation.sha256), binding("Suite", evaluation.suite_sha256),
+    ].filter(Boolean);
+    summary.privacy = value.privacy
+      ? Object.entries(value.privacy).filter(([, present]) => present === false).map(([name]) => name.replace("contains_", "no "))
+      : [];
+    summary.warnings = [
+      "A pass measures the declared monitor on the bound synthetic suite; it is not proof of deployment containment.",
+      "The browser does not recompute metrics, chain links, or signatures; use `lurescope boundary verify`.",
+    ];
+    return summary;
+  }
+
   function statementSummary(statement, meta) {
     if (statement.predicateType === RECEIPT) return receiptSummary(statement, meta);
     if (statement.predicateType === AGGREGATE) return aggregateSummary(statement, meta);
@@ -331,6 +428,29 @@
       summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
       return summary;
     }
+    if (statement.predicateType === LUREBOUNDARY_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureBoundary checkpoint predicate");
+      const summary = base(
+        "LureBoundary checkpoint",
+        "Chain-bound agent assurance",
+        "An in-toto checkpoint binding a plan, exact evaluation, entry, and predecessor statement.",
+        meta,
+      );
+      gateStatus(summary, predicate.boundary_status);
+      summary.metrics = [
+        {label: "Sequence", value: count(predicate.sequence)},
+        {label: "Required action", value: String(predicate.required_action || "unknown")},
+        {label: "Authentication mode", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = Array.isArray(statement.subject)
+        ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256)).filter(Boolean)
+        : [];
+      const previous = binding("Previous checkpoint", predicate.previous_statement_sha256);
+      if (previous) summary.bindings.push(previous);
+      summary.privacy = ["synthetic metadata only", "no prompts, commands, payloads, credentials, hosts, URLs, or reasoning"];
+      summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
+      return summary;
+    }
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
@@ -343,7 +463,10 @@
     else if (statement.schema === DEFENDER_REPORT) summary = defenderSummary(statement, meta);
     else if (statement.schema === SHADOW_REPORT) summary = shadowSummary(statement, meta);
     else if (statement.schema === LUREWATCH_ENTRY) summary = lurewatchEntrySummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, or LureWatch artifact.");
+    else if (statement.schema === LUREBOUNDARY_EVALUATION) summary = boundaryEvaluationSummary(statement, meta);
+    else if (statement.schema === LUREBOUNDARY_PLAN) summary = boundaryPlanSummary(statement, meta);
+    else if (statement.schema === LUREBOUNDARY_ENTRY) summary = boundaryEntrySummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, or LureBoundary artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

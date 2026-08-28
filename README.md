@@ -32,6 +32,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Bridge CISA SCuBA evidence →](docs/SCUBA_BRIDGE.md)** ·
 **[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
 **[Monitor deployment risk anytime →](docs/ANYTIME_MONITORING.md)** ·
+**[Assure autonomous-agent boundaries →](docs/AGENT_BOUNDARY_ASSURANCE.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -77,6 +78,25 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > is recomputed in a hash-chained in-toto checkpoint, with optional P-256 DSSE
 > authentication. It stores no messages, case IDs, addresses, per-message scores,
 > or per-message labels. No alarm is deliberately **not** called proof of safety.
+
+> **New — preregister and preserve agent-boundary evidence.**
+> [LureBoundary](docs/AGENT_BOUNDARY_ASSURANCE.md) binds a system, model, suite,
+> monitor, optional policy/controller digests, thresholds, human response
+> authority, and signer before accepting safe LureBench boundary reports. Failed
+> evidence is sticky, every entry is hash-chained into an in-toto checkpoint,
+> optional P-256 DSSE authenticates exact bytes, and an observation-only OSCAL
+> 1.2.2 export passes the official NIST schema. It records response requirements
+> but never executes shutdown or enforcement.
+
+```bash
+lurebench boundary-eval --out boundary-evaluation.json
+lurescope boundary init --out ./agent-boundary-evidence \
+  --plan-id agent-evaluation-v1 --evaluation boundary-evaluation.json \
+  --system-id evaluation-platform --model-id release-candidate
+lurescope boundary append ./agent-boundary-evidence boundary-evaluation.json \
+  --evaluation-id release-candidate-1
+lurescope boundary verify ./agent-boundary-evidence
+```
 
 Create an overall post-deployment monitor, then append one reviewed confusion
 matrix. Exit status `1` is a successfully recorded breach signal, while `2`

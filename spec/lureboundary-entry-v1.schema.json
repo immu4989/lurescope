@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureboundary-entry/v1",
+  "title": "LureBoundary append-only evidence entry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "sequence", "generated_at", "plan_id", "plan_sha256",
+    "previous_entry_sha256", "evaluation", "decision", "privacy", "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": { "const": "https://github.com/immu4989/lurescope/spec/lureboundary-entry/v1" },
+    "schema_version": { "const": "1.0" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 100000 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "$ref": "#/$defs/id" },
+    "plan_sha256": { "$ref": "#/$defs/digest" },
+    "previous_entry_sha256": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation_id", "file", "sha256", "generated_at", "suite_sha256", "monitor_id", "verdict", "summary"],
+      "properties": {
+        "evaluation_id": { "$ref": "#/$defs/id" },
+        "file": { "type": "string", "pattern": "^evaluations/[0-9]{8}\\.json$" },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "suite_sha256": { "$ref": "#/$defs/digest" },
+        "monitor_id": { "$ref": "#/$defs/lower-id" },
+        "verdict": { "enum": ["pass", "fail"] },
+        "summary": { "$ref": "#/$defs/summary" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation_status", "boundary_status", "required_action", "authority_id", "review_sla_minutes", "action_executed"],
+      "properties": {
+        "evaluation_status": { "enum": ["pass", "breach"] },
+        "boundary_status": { "enum": ["pass", "breach"] },
+        "required_action": { "enum": ["none", "evaluation_shutdown_review", "human_review_required", "pause_authority_notification"] },
+        "authority_id": { "$ref": "#/$defs/id" },
+        "review_sla_minutes": { "type": "integer", "minimum": 1, "maximum": 10080 },
+        "action_executed": { "const": false }
+      }
+    },
+    "privacy": {
+      "const": {
+        "contains_prompts": false,
+        "contains_commands_or_payloads": false,
+        "contains_credentials": false,
+        "contains_hosts_or_urls": false,
+        "contains_model_reasoning": false,
+        "synthetic_metadata_only": true
+      }
+    },
+    "interpretation_boundary": {
+      "const": "This bundle proves internal consistency and, when signed, checkpoint authenticity for the declared synthetic evaluation evidence. It does not prove complete mediation, deployment containment, sensor completeness, model safety, compliance, certification, or authorization. Human authorities retain every operational decision."
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$" },
+    "lower-id": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_trajectories", "violation_trajectories", "benign_trajectories", "true_positive", "false_negative", "false_positive", "true_negative", "trajectory_recall", "benign_false_positive_rate", "category_accuracy", "maximum_detection_delay_events", "verdict"],
+      "properties": {
+        "total_trajectories": { "$ref": "#/$defs/count" },
+        "violation_trajectories": { "$ref": "#/$defs/count" },
+        "benign_trajectories": { "$ref": "#/$defs/count" },
+        "true_positive": { "$ref": "#/$defs/count" },
+        "false_negative": { "$ref": "#/$defs/count" },
+        "false_positive": { "$ref": "#/$defs/count" },
+        "true_negative": { "$ref": "#/$defs/count" },
+        "trajectory_recall": { "$ref": "#/$defs/rate" },
+        "benign_false_positive_rate": { "$ref": "#/$defs/rate" },
+        "category_accuracy": { "$ref": "#/$defs/rate" },
+        "maximum_detection_delay_events": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 128 }, { "type": "null" }] },
+        "verdict": { "enum": ["pass", "fail"] }
+      }
+    }
+  }
+}

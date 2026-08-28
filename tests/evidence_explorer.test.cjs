@@ -158,6 +158,92 @@ test("signed LureWatch checkpoint is inspected without claiming authentication",
   assert.match(summary.warnings[0], /not cryptographically authenticated/i);
 });
 
+test("LureBoundary evaluation shows containment metrics without event content", () => {
+  const evaluation = {
+    schema: "https://github.com/immu4989/lurebench/spec/agent-boundary-evaluation/v1",
+    suite: {suite_sha256: sha("a")},
+    monitor: {monitor_id: "boundary-monitor", artifact_sha256: sha("b")},
+    summary: {
+      total_trajectories: 14,
+      trajectory_recall: 1,
+      benign_false_positive_rate: 0,
+      category_accuracy: 1,
+      maximum_detection_delay_events: 0,
+      verdict: "pass",
+    },
+    limitations: ["results_measure_the_declared_monitor_on_this_suite_not_deployment_containment"],
+  };
+  const summary = explorer.summarizeArtifact(evaluation);
+
+  assert.equal(summary.kind, "LureBoundary evaluation");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Recall").value, "100.0%");
+  assert.equal(summary.bindings.length, 2);
+  assert.ok(summary.privacy.includes("no credentials"));
+});
+
+test("LureBoundary entry preserves sticky breach and response boundary", () => {
+  const entry = {
+    schema: "https://github.com/immu4989/lurescope/spec/lureboundary-entry/v1",
+    sequence: 2,
+    plan_sha256: sha("a"),
+    previous_entry_sha256: sha("b"),
+    evaluation: {
+      sha256: sha("c"),
+      suite_sha256: sha("d"),
+      summary: {
+        trajectory_recall: 1,
+        benign_false_positive_rate: 0,
+        maximum_detection_delay_events: 0,
+      },
+    },
+    decision: {
+      evaluation_status: "pass",
+      boundary_status: "breach",
+      required_action: "human_review_required",
+    },
+    privacy: {contains_prompts: false, contains_credentials: false},
+  };
+  const summary = explorer.summarizeArtifact(entry);
+
+  assert.equal(summary.kind, "LureBoundary entry");
+  assert.equal(summary.status, "breach");
+  assert.equal(summary.tone, "fail");
+  assert.equal(summary.metrics.find(item => item.label === "Required action").value, "human_review_required");
+  assert.equal(summary.bindings.length, 4);
+  assert.match(summary.warnings.join(" "), /not proof of deployment containment/i);
+});
+
+test("signed LureBoundary checkpoint never claims browser authentication", () => {
+  const checkpoint = {
+    _type: "https://in-toto.io/Statement/v1",
+    subject: [
+      {name: "boundary-plan.json", digest: {sha256: sha("d")}},
+      {name: "evaluations/00000001.json", digest: {sha256: sha("e")}},
+      {name: "entries/00000001.json", digest: {sha256: sha("f")}},
+    ],
+    predicateType: "https://github.com/immu4989/lurescope/spec/lureboundary-checkpoint/v1",
+    predicate: {
+      sequence: 1,
+      boundary_status: "pass",
+      required_action: "none",
+      authentication_mode: "ecdsa-p256-dsse",
+      previous_statement_sha256: null,
+      limitations: ["synthetic_suite_performance_does_not_establish_deployment_containment"],
+    },
+  };
+  const envelope = {
+    payloadType: "application/vnd.in-toto+json",
+    payload: Buffer.from(JSON.stringify(checkpoint), "utf8").toString("base64"),
+    signatures: [{keyid: sha("1"), sig: "AAAA"}],
+  };
+  const summary = explorer.summarizeArtifact(envelope);
+
+  assert.equal(summary.kind, "LureBoundary checkpoint");
+  assert.equal(summary.signature.authenticated, false);
+  assert.match(summary.warnings[0], /not cryptographically authenticated/i);
+});
+
 test("unsupported, malformed, and oversized evidence fails closed", () => {
   assert.throws(() => explorer.parseArtifact("not-json"), /not valid JSON/i);
   assert.throws(() => explorer.summarizeArtifact({schema: "unknown"}), /Unsupported evidence/);

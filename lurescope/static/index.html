@@ -277,7 +277,7 @@
 
   <section class="evidence-lab" id="evidence" aria-label="Evidence Explorer">
     <div class="evidence-intro">
-      <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2><p class="evidence-copy">Inspect a LureEval receipt, Pilot Gate, Defender comparison, Shadow report, LureProof, SCuBA statement, or LureWatch checkpoint. Parsing stays in this tab. The explorer reveals metrics, privacy boundaries, byte bindings, and limitations without uploading the file.</p></div>
+      <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2><p class="evidence-copy">Inspect a LureEval receipt, Pilot Gate, Defender comparison, Shadow report, LureProof, SCuBA statement, LureWatch checkpoint, or LureBoundary agent-assurance artifact. Parsing stays in this tab. The explorer reveals metrics, privacy boundaries, byte bindings, and limitations without uploading the file.</p></div>
       <div><input id="evidenceFile" type="file" accept=".json,application/json" hidden><label class="file-button" for="evidenceFile">Choose evidence JSON</label></div>
     </div>
     <div class="error" id="evidenceErr" role="alert"></div>
@@ -434,7 +434,7 @@ async function exploreEvidence(file) {
     $("artifactBindings").innerHTML = summary.bindings.length ? summary.bindings.map(item => `<li><b>${safe(item.label)}</b><br>${safe(item.value)}</li>`).join("") : "<li>No SHA-256 bindings exposed by this artifact type.</li>";
     $("artifactPrivacy").innerHTML = summary.privacy.length ? summary.privacy.map(item => `<li>${safe(String(item).replaceAll("_", " "))}</li>`).join("") : "<li>Read the artifact's interpretation boundary before sharing.</li>";
     $("artifactWarnings").innerHTML = `<b>Interpret carefully.</b> ${safe(summary.warnings.slice(0, 4).map(item => String(item).replaceAll("_", " ")).join(" · ") || "No machine-readable limitations were found.")}`;
-    $("artifactSignature").textContent = `${summary.signature.label}. Shape inspection is not strict semantic or cryptographic verification; use “lurescope lureeval verify” with a trusted public key for that.`;
+    $("artifactSignature").textContent = `${summary.signature.label}. Shape inspection is not strict semantic or cryptographic verification; use the artifact's LureScope CLI verifier with a trusted public key for that.`;
     $("evidenceResult").style.display = "block";
   } catch (error) { $("evidenceErr").textContent = error.message; }
 }
