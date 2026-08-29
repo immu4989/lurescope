@@ -161,7 +161,41 @@ oversight, model rollback triggers, and SOC change control. It does not verify
 sampling, labels, causality, control satisfaction, or safety. See
 [LureWatch anytime-valid monitoring](ANYTIME_MONITORING.md).
 
-## 6. Add evidence to a SOC or SOAR workflow
+## 6. Verify cross-layer agent-system invariants before and after a change
+
+An organization, public agency, AI platform, security vendor, or systems
+integrator can describe a bounded system as typed nodes and edges, then test
+properties that are easy to miss when each layer is reviewed separately:
+
+- no transitive route from an evaluation agent to a forbidden network;
+- every sensitive path traverses an independent mediator;
+- every stop request completes within a declared bound; and
+- no successful tool or network activity occurs after shutdown.
+
+LureBench evaluates the exact contract and observations. LureScope independently
+recomputes and signs the evidence, then compares a remediation only if the
+invariants, acceptance threshold, and source contract remain unchanged:
+
+```bash
+lurebench invariant-eval --plan before-plan.json \
+  --observations before-observations.json --out before-evaluation.json
+lurescope invariant create --plan before-plan.json \
+  --observations before-observations.json --evaluation before-evaluation.json \
+  --bundle-id before-change --environment evaluation --out before.bundle
+
+# Repeat after the separately approved change, then compare both bundles.
+lurescope invariant compare before.bundle after.bundle \
+  --comparison-id change-review --out remediation-comparison.json
+```
+
+This can make acquisition tests, release gates, vendor evidence, and incident
+remediation review more portable without exposing prompts, payloads, credentials,
+commands, live targets, or model reasoning. It does not discover the system,
+prove inventory or telemetry completeness, apply a fix, establish causality,
+certify compliance, or authorize deployment. See [LureInvariant evidence and
+remediation verification](LUREINVARIANT_EVIDENCE.md).
+
+## 7. Add evidence to a SOC or SOAR workflow
 
 The same operation is available over the local API:
 
@@ -178,7 +212,7 @@ Offline export mappings are available for OCSF 1.8 Detection Finding, ECS 9.4,
 STIX 2.1, Splunk HEC, and Microsoft Sentinel. These documented application
 mappings are not standards certification.
 
-## 7. Evaluate a proposed email control before deployment
+## 8. Evaluate a proposed email control before deployment
 
 Use LureScope for a single-message failure investigation, then LureBench for the
 corpus-level claim:

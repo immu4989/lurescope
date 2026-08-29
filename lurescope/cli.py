@@ -1825,6 +1825,144 @@ def _witness(argv: Sequence[str]) -> int:
         return 2
 
 
+def _invariant(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope invariant",
+        description=(
+            "Preserve, authenticate, and compare independently recomputed "
+            "LureInvariant graph and temporal evidence."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    create_parser = commands.add_parser(
+        "create", help="create a new private invariant evidence bundle"
+    )
+    create_parser.add_argument("--plan", required=True)
+    create_parser.add_argument("--observations", required=True)
+    create_parser.add_argument("--evaluation", required=True)
+    create_parser.add_argument("--bundle-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="verify a bundle and independently recompute every invariant"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    compare_parser = commands.add_parser(
+        "compare", help="compare before/after bundles without allowing weaker checks"
+    )
+    compare_parser.add_argument("before")
+    compare_parser.add_argument("after")
+    compare_parser.add_argument("--comparison-id", required=True)
+    compare_parser.add_argument("--before-public-key")
+    compare_parser.add_argument("--after-public-key")
+    compare_parser.add_argument("--out", "-o", required=True)
+    compare_parser.add_argument("--json", action="store_true")
+
+    comparison_parser = commands.add_parser(
+        "verify-comparison", help="recompute a remediation comparison from both bundles"
+    )
+    comparison_parser.add_argument("comparison")
+    comparison_parser.add_argument("before")
+    comparison_parser.add_argument("after")
+    comparison_parser.add_argument("--before-public-key")
+    comparison_parser.add_argument("--after-public-key")
+    comparison_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    try:
+        from .invariant import (
+            compare_invariant_bundles,
+            create_invariant_bundle,
+            verify_invariant_bundle,
+            verify_remediation_comparison,
+        )
+
+        before_key = (
+            Path(args.before_public_key).read_bytes()
+            if getattr(args, "before_public_key", None)
+            else None
+        )
+        after_key = (
+            Path(args.after_public_key).read_bytes()
+            if getattr(args, "after_public_key", None)
+            else None
+        )
+        if args.command == "create":
+            public_key = (
+                Path(args.signer_public_key).read_bytes()
+                if args.signer_public_key
+                else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = create_invariant_bundle(
+                Path(args.out),
+                bundle_id=args.bundle_id,
+                environment=args.environment,
+                plan=Path(args.plan),
+                observations=Path(args.observations),
+                evaluation=Path(args.evaluation),
+                signer_public_key_pem=public_key,
+                signing_key_pem=signing_key,
+            )
+            status = result["overall_status"]
+            label = "INVARIANT BUNDLE CREATED"
+            destination = args.out
+        elif args.command == "verify":
+            public_key = Path(args.public_key).read_bytes() if args.public_key else None
+            verified = verify_invariant_bundle(Path(args.bundle), public_key_pem=public_key)
+            result = {
+                key: value
+                for key, value in verified.items()
+                if key not in {"plan", "evaluation"}
+            }
+            status = result["overall_status"]
+            label = "INVARIANT BUNDLE VERIFIED"
+            destination = args.bundle
+        elif args.command == "compare":
+            result = compare_invariant_bundles(
+                Path(args.before),
+                Path(args.after),
+                Path(args.out),
+                comparison_id=args.comparison_id,
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["summary"]["status"]
+            label = "INVARIANT REMEDIATION COMPARED"
+            destination = args.out
+        else:
+            result = verify_remediation_comparison(
+                Path(args.comparison),
+                Path(args.before),
+                Path(args.after),
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["status"]
+            label = "INVARIANT REMEDIATION VERIFIED"
+            destination = args.comparison
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(f"{label}: {status.upper()} — {destination}")
+        return 0 if status in {"pass", "effective"} else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! Invariant evidence workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -1863,6 +2001,8 @@ def main(argv=None) -> int:
         return _agent_assurance(args[1:])
     if args and args[0] == "witness":
         return _witness(args[1:])
+    if args and args[0] == "invariant":
+        return _invariant(args[1:])
     return _serve(args)
 
 

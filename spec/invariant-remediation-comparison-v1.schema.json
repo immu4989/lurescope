@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/invariant-remediation-comparison/v1",
+  "title": "LureScope LureInvariant remediation comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "comparison_id",
+    "created_at",
+    "producer",
+    "system_id",
+    "plan_id",
+    "contract_sha256",
+    "before",
+    "after",
+    "resolved_invariant_ids",
+    "persistent_violation_ids",
+    "new_violation_ids",
+    "insufficient_invariant_ids",
+    "summary",
+    "limitations",
+    "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/invariant-remediation-comparison/v1"},
+    "schema_version": {"const": 1},
+    "comparison_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 40}
+      }
+    },
+    "system_id": {"$ref": "#/$defs/id"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "contract_sha256": {"$ref": "#/$defs/digest"},
+    "before": {"$ref": "#/$defs/bundle_reference"},
+    "after": {"$ref": "#/$defs/bundle_reference"},
+    "resolved_invariant_ids": {"$ref": "#/$defs/invariant_ids"},
+    "persistent_violation_ids": {"$ref": "#/$defs/invariant_ids"},
+    "new_violation_ids": {"$ref": "#/$defs/invariant_ids"},
+    "insufficient_invariant_ids": {"$ref": "#/$defs/invariant_ids"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolved", "persistent", "new", "insufficient_after", "status"],
+      "properties": {
+        "resolved": {"type": "integer", "minimum": 0, "maximum": 256},
+        "persistent": {"type": "integer", "minimum": 0, "maximum": 256},
+        "new": {"type": "integer", "minimum": 0, "maximum": 256},
+        "insufficient_after": {"type": "integer", "minimum": 0, "maximum": 256},
+        "status": {"enum": ["effective", "ineffective", "regressed", "inconclusive"]}
+      }
+    },
+    "limitations": {
+      "const": [
+        "comparison_requires_identical_invariants_acceptance_and_source_contracts",
+        "effective_means_the_before_violations_are_absent_in_complete_after_evidence",
+        "configuration_change_causality_and_unobserved_attack_paths_are_not_proven",
+        "comparison_is_not_enforcement_compliance_certification_or_authorization"
+      ]
+    },
+    "interpretation_boundary": {
+      "const": "An effective comparison means the same invariant and evidence-source contracts changed from one or more observed violations to a complete passing after-evaluation. It does not prove causality, eliminate undeclared paths, apply a change, or authorize deployment."
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$", "maxLength": 96},
+    "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "verdict": {"enum": ["pass", "fail", "insufficient_evidence"]},
+    "invariant_ids": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "bundle_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_id",
+        "manifest_sha256",
+        "statement_sha256",
+        "plan_version",
+        "captured_at",
+        "overall_status",
+        "authenticated"
+      ],
+      "properties": {
+        "bundle_id": {"$ref": "#/$defs/portable_id"},
+        "manifest_sha256": {"$ref": "#/$defs/digest"},
+        "statement_sha256": {"$ref": "#/$defs/digest"},
+        "plan_version": {"$ref": "#/$defs/id"},
+        "captured_at": {"type": "string", "format": "date-time"},
+        "overall_status": {"$ref": "#/$defs/verdict"},
+        "authenticated": {"type": "boolean"}
+      }
+    }
+  }
+}

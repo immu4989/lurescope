@@ -16,6 +16,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
+![LureInvariant](https://img.shields.io/badge/LureInvariant-signed_before_·_after_evidence-7b61ff)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
@@ -33,6 +34,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
 **[Monitor deployment risk anytime →](docs/ANYTIME_MONITORING.md)** ·
 **[Assure autonomous-agent boundaries →](docs/AGENT_BOUNDARY_ASSURANCE.md)** ·
+**[Verify cross-layer invariants →](docs/LUREINVARIANT_EVIDENCE.md)** ·
 **[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -49,6 +51,15 @@ python -m pip install lurescope
 `.eml` to privacy-minimized LureProof and offline Splunk/Sentinel payloads.
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
+
+> **New — prove that a remediation passed the same system-level test.**
+> [LureInvariant evidence](docs/LUREINVARIANT_EVIDENCE.md) independently
+> recomputes LureBench's transitive reachability, required-mediation, bounded
+> response, and post-trigger results; preserves the exact bytes in an in-toto
+> checkpoint; and optionally authenticates it with P-256 DSSE. Before/after
+> comparison rejects changed invariants, acceptance thresholds, and source
+> contracts. Incomplete evidence is inconclusive, never effective. The workflow
+> records evidence but performs no discovery, remediation, or enforcement.
 
 > **Deployment thresholds now carry inspectable evidence.** LureScope accepts
 > LureBench schema-v2 policies with finite-sample FPR control, independently

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/invariant-evidence-bundle/v1",
+  "title": "LureScope LureInvariant evidence bundle manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "bundle_id",
+    "created_at",
+    "producer",
+    "system",
+    "evidence",
+    "overall_status",
+    "authentication",
+    "limitations",
+    "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/invariant-evidence-bundle/v1"
+    },
+    "schema_version": {"const": 1},
+    "bundle_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 40}
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_id", "environment"],
+      "properties": {
+        "system_id": {"$ref": "#/$defs/id"},
+        "environment": {"enum": ["development", "evaluation", "staging", "production"]}
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/evidence"},
+      "allOf": [
+        {"contains": {"properties": {"kind": {"const": "plan"}}, "required": ["kind"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"kind": {"const": "observations"}}, "required": ["kind"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"kind": {"const": "evaluation"}}, "required": ["kind"]}, "minContains": 1, "maxContains": 1}
+      ]
+    },
+    "overall_status": {"$ref": "#/$defs/verdict"},
+    "authentication": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": {"mode": {"const": "unsigned"}, "signer_key_id": {"type": "null"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "signer_key_id"],
+          "properties": {"mode": {"const": "ecdsa-p256-dsse"}, "signer_key_id": {"$ref": "#/$defs/digest"}}
+        }
+      ]
+    },
+    "limitations": {
+      "const": [
+        "source_semantics_are_recomputed_but_source_collection_is_not_replayed",
+        "signed_evidence_authenticates_a_key_not_an_organization_without_external_trust",
+        "bundle_integrity_does_not_establish_inventory_or_telemetry_completeness",
+        "passing_is_not_proof_of_containment_safety_compliance_certification_or_authorization"
+      ]
+    },
+    "interpretation_boundary": {
+      "const": "This bundle proves the internal consistency and exact byte bindings of declared graph and temporal evidence. A pass means violations were not observed within the declared, complete evidence boundary; it is not proof of universal unreachability, containment, or safety."
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$", "maxLength": 96},
+    "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "verdict": {"enum": ["pass", "fail", "insufficient_evidence"]},
+    "evidence": {
+      "oneOf": [
+        {"$ref": "#/$defs/plan_evidence"},
+        {"$ref": "#/$defs/observation_evidence"},
+        {"$ref": "#/$defs/evaluation_evidence"}
+      ]
+    },
+    "plan_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "schema", "sha256", "verdict"],
+      "properties": {
+        "kind": {"const": "plan"},
+        "file": {"const": "evidence/plan.json"},
+        "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1"},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "verdict": {"const": "not_applicable"}
+      }
+    },
+    "observation_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "schema", "sha256", "verdict"],
+      "properties": {
+        "kind": {"const": "observations"},
+        "file": {"const": "evidence/observations.json"},
+        "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-observations/v1"},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "verdict": {"const": "not_applicable"}
+      }
+    },
+    "evaluation_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "schema", "sha256", "verdict"],
+      "properties": {
+        "kind": {"const": "evaluation"},
+        "file": {"const": "evidence/evaluation.json"},
+        "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-evaluation/v1"},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "verdict": {"$ref": "#/$defs/verdict"}
+      }
+    }
+  }
+}

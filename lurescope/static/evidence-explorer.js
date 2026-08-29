@@ -27,6 +27,11 @@
   const AGENT_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/agent-assurance-checkpoint/v1";
   const WITNESS_REQUEST = "https://github.com/immu4989/lurescope/spec/checkpoint-witness-request/v1";
   const WITNESS_RECEIPT = "https://github.com/immu4989/lurescope/spec/checkpoint-witness-receipt/v1";
+  const INVARIANT_PLAN = "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1";
+  const INVARIANT_EVALUATION = "https://github.com/immu4989/lurebench/spec/agent-invariant-evaluation/v1";
+  const INVARIANT_BUNDLE = "https://github.com/immu4989/lurescope/spec/invariant-evidence-bundle/v1";
+  const INVARIANT_COMPARISON = "https://github.com/immu4989/lurescope/spec/invariant-remediation-comparison/v1";
+  const INVARIANT_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/invariant-evidence-checkpoint/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -443,6 +448,121 @@
     return summary;
   }
 
+  function invariantPlanSummary(value, meta) {
+    if (!Array.isArray(value.nodes) || !Array.isArray(value.edges) || !Array.isArray(value.invariants)) {
+      throw new Error("LureInvariant plan must contain nodes, edges, and invariants");
+    }
+    const acceptance = object(value.acceptance, "LureInvariant acceptance contract");
+    const summary = base(
+      "LureInvariant plan",
+      "Cross-layer graph and temporal contract",
+      "Typed reachability, mediation, shutdown, and post-trigger assertions over a declared evidence boundary.",
+      meta,
+    );
+    summary.status = "Declared contract";
+    summary.metrics = [
+      {label: "Nodes", value: count(value.nodes.length)},
+      {label: "Edges", value: count(value.edges.length)},
+      {label: "Invariants", value: count(value.invariants.length)},
+      {label: "Sources", value: count(Array.isArray(value.sources) ? value.sources.length : 0)},
+      {label: "Allowed violations", value: count(acceptance.maximum_violations)},
+      {label: "Insufficient allowed", value: String(Boolean(acceptance.allow_insufficient_evidence))},
+    ];
+    summary.privacy = ["typed metadata only", "no targets, payloads, credentials, prompts, commands, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function invariantEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "LureInvariant evaluation summary");
+    const plan = object(value.plan, "LureInvariant plan binding");
+    const observations = object(value.observations, "LureInvariant observation binding");
+    const summary = base(
+      "LureInvariant evaluation",
+      "Graph and temporal invariant evidence",
+      "Deterministic results over exact plan and observation bytes with explicit unknown and incomplete states.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Invariants", value: count(metrics.total_invariants)},
+      {label: "Violated", value: count(metrics.violated)},
+      {label: "Not observed", value: count(metrics.not_observed_within_declared_boundary)},
+      {label: "Insufficient", value: count(metrics.insufficient_evidence)},
+      {label: "Source coverage", value: ratio(metrics.source_coverage)},
+      {label: "Unknown edges", value: count(metrics.unknown_edges)},
+    ];
+    summary.bindings = [
+      binding("Plan", plan.plan_sha256),
+      binding("Observations", observations.observations_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["typed identifiers and outcomes only", "paths do not contain live targets or exploit instructions"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function invariantBundleSummary(value, meta) {
+    if (!Array.isArray(value.evidence) || value.evidence.length !== 3) {
+      throw new Error("LureInvariant bundle must bind exactly three evidence artifacts");
+    }
+    const authentication = object(value.authentication, "LureInvariant authentication declaration");
+    const summary = base(
+      "LureInvariant evidence bundle",
+      "Tamper-evident invariant checkpoint",
+      "Exact plan, observations, and independently recomputable evaluation bindings.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Bundle", value: String(value.bundle_id || "unknown")},
+      {label: "Environment", value: String(value.system && value.system.environment || "unknown")},
+      {label: "Authentication", value: String(authentication.mode || "unknown")},
+      ...value.evidence.map(item => ({
+        label: String(item.kind || "evidence"),
+        value: String(item.verdict || "unknown"),
+      })),
+    ];
+    summary.bindings = value.evidence
+      .map(item => binding(String(item.file || item.kind || "Evidence"), item.sha256))
+      .filter(Boolean);
+    const signer = binding("Declared signer", authentication.signer_key_id);
+    if (signer) summary.bindings.push(signer);
+    summary.privacy = ["typed graph and event metadata", "no live actions or hidden reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    summary.warnings.push("Use `lurescope invariant verify` with a trusted public key to authenticate and recompute this bundle.");
+    return summary;
+  }
+
+  function invariantComparisonSummary(value, meta) {
+    const metrics = object(value.summary, "LureInvariant comparison summary");
+    const summary = base(
+      "LureInvariant remediation comparison",
+      "Before/after invariant evidence",
+      "A strict comparison that rejects changed invariants, acceptance thresholds, and evidence-source contracts.",
+      meta,
+    );
+    gateStatus(summary, metrics.status);
+    summary.metrics = [
+      {label: "Resolved", value: count(metrics.resolved)},
+      {label: "Persistent", value: count(metrics.persistent)},
+      {label: "New", value: count(metrics.new)},
+      {label: "Insufficient after", value: count(metrics.insufficient_after)},
+      {label: "Before", value: String(value.before && value.before.overall_status || "unknown")},
+      {label: "After", value: String(value.after && value.after.overall_status || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Invariant contract", value.contract_sha256),
+      binding("Before manifest", value.before && value.before.manifest_sha256),
+      binding("Before checkpoint", value.before && value.before.statement_sha256),
+      binding("After manifest", value.after && value.after.manifest_sha256),
+      binding("After checkpoint", value.after && value.after.statement_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["comparison contains identifiers, statuses, counts, and digests only"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    summary.warnings.push("Use `lurescope invariant verify-comparison` to recompute this result from both bundles.");
+    return summary;
+  }
+
   function portfolioSummary(value, meta) {
     const boundary = object(value.boundary, "portfolio boundary binding");
     if (!Array.isArray(value.evidence) || value.evidence.length !== 3) {
@@ -640,6 +760,26 @@
       summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
       return summary;
     }
+    if (statement.predicateType === INVARIANT_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureInvariant checkpoint predicate");
+      const summary = base(
+        "LureInvariant checkpoint",
+        "Exact invariant evidence binding",
+        "An in-toto checkpoint binding the manifest, plan, observations, and evaluation.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Bundle", value: String(predicate.bundle_id || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = Array.isArray(statement.subject)
+        ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256)).filter(Boolean)
+        : [];
+      summary.privacy = ["typed metadata only", "no targets, payloads, credentials, prompts, commands, or reasoning"];
+      summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
+      return summary;
+    }
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
@@ -661,7 +801,11 @@
     else if (statement.schema === AGENT_PORTFOLIO) summary = portfolioSummary(statement, meta);
     else if (statement.schema === WITNESS_REQUEST) summary = witnessRequestSummary(statement, meta);
     else if (statement.schema === WITNESS_RECEIPT) summary = witnessReceiptSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, coverage, delegation, LureIR, portfolio, or witness artifact.");
+    else if (statement.schema === INVARIANT_PLAN) summary = invariantPlanSummary(statement, meta);
+    else if (statement.schema === INVARIANT_EVALUATION) summary = invariantEvaluationSummary(statement, meta);
+    else if (statement.schema === INVARIANT_BUNDLE) summary = invariantBundleSummary(statement, meta);
+    else if (statement.schema === INVARIANT_COMPARISON) summary = invariantComparisonSummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

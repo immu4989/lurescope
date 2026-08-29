@@ -14,7 +14,9 @@ page to inspect:
   in-toto checkpoint/DSSE artifacts;
 - LureCoverage, LureDelegation, and LureIR evaluation reports;
 - combined agent-assurance portfolios and in-toto checkpoints; and
-- checkpoint witness requests and embedded DSSE receipts.
+- checkpoint witness requests and embedded DSSE receipts; and
+- LureInvariant plans, evaluations, evidence-bundle manifests, in-toto
+  checkpoint/DSSE artifacts, and strict remediation comparisons.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -41,3 +43,10 @@ For combined portfolios and witnesses, the browser does not recompute source
 reports, verify the bound LureBoundary bundle, authenticate embedded receipt
 signatures, or establish a witness quorum. Use `lurescope agent-assurance verify`
 and `lurescope witness verify`/`quorum` with independently trusted public keys.
+
+For LureInvariant, the browser does not traverse the graph, evaluate temporal
+bounds, establish source completeness, authenticate bundle signatures, or
+recompute a remediation comparison. Use `lurescope invariant verify` and
+`lurescope invariant verify-comparison` with public keys obtained through a
+separately trusted channel. See the [complete evidence workflow and claims
+boundary](LUREINVARIANT_EVIDENCE.md).

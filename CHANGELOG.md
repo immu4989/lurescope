@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Added
+- Added LureInvariant evidence bundles that independently recompute LureBench
+  graph and temporal semantics, preserve exact plan/observation/evaluation bytes,
+  bind them in an in-toto checkpoint, and optionally authenticate canonical
+  checkpoint bytes with ECDSA P-256 DSSE.
+- Added strict before/after remediation comparison that requires the same system,
+  plan identity, invariants, acceptance thresholds, and source contract; reports
+  effective, ineffective, regressed, or inconclusive; and recomputes from both
+  original bundles. Added `lurescope invariant`, four public schemas, local
+  browser inspection, an end-to-end operator guide, and tamper tests.
 - Added LureBoundary preregistration and append-only assurance for autonomous-agent
   boundary-monitor evaluations. Plans bind the system, environment, model, suite,
   monitor, optional policy/controller artifacts, acceptance thresholds, human
@@ -42,6 +51,14 @@
   aggregate-only, and official-OSCAL tests.
 
 ### Security
+- Invariant bundle verification rejects duplicate keys, unknown fields and files,
+  unsafe permissions, symlinks, noncanonical JSON, digest or report substitution,
+  source-contract mismatch, altered semantics, signer/key substitution, and DSSE
+  payload/signature mismatch. A remediation cannot pass by weakening its checks,
+  and missing after-evidence is inconclusive.
+- LureScope records and authenticates typed evidence only; it does not collect
+  infrastructure, execute probes, apply remediation, enforce a boundary, or make
+  compliance, certification, safety, or authorization claims.
 - LureBoundary rejects unknown fields and artifacts, duplicate JSON keys and
   evaluation IDs, non-finite values, unsafe permissions, symbolic links, sequence
   gaps, report/metric/threshold substitution, noncanonical chain records,

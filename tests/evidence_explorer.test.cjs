@@ -325,6 +325,104 @@ test("combined portfolio and witness receipt stay explicit about browser trust",
   assert.match(receipt.warnings[0], /unsigned|not authenticated/i);
 });
 
+test("LureInvariant plan and evaluation expose bounded graph evidence", () => {
+  const plan = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1",
+    nodes: [{node_id: "agent"}, {node_id: "network"}],
+    edges: [{edge_id: "agent-network"}],
+    invariants: [{invariant_id: "no-egress"}],
+    sources: [{source_id: "topology"}],
+    acceptance: {maximum_violations: 0, allow_insufficient_evidence: false},
+    limitations: ["declared_inventory_and_operator_observations_only"],
+  });
+  assert.equal(plan.kind, "LureInvariant plan");
+  assert.equal(plan.metrics.find(item => item.label === "Invariants").value, "1");
+
+  const evaluation = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/agent-invariant-evaluation/v1",
+    plan: {plan_sha256: sha("a")},
+    observations: {observations_sha256: sha("b")},
+    summary: {
+      total_invariants: 4,
+      violated: 1,
+      not_observed_within_declared_boundary: 2,
+      insufficient_evidence: 1,
+      source_coverage: 0.5,
+      unknown_edges: 1,
+      verdict: "fail",
+    },
+    limitations: ["incomplete_sources_produce_insufficient_evidence"],
+  });
+  assert.equal(evaluation.kind, "LureInvariant evaluation");
+  assert.equal(evaluation.status, "fail");
+  assert.equal(evaluation.tone, "fail");
+  assert.equal(evaluation.metrics.find(item => item.label === "Source coverage").value, "50.0%");
+  assert.equal(evaluation.bindings.length, 2);
+});
+
+test("LureInvariant bundle and comparison retain claims boundaries", () => {
+  const bundle = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/invariant-evidence-bundle/v1",
+    bundle_id: "after-1",
+    system: {environment: "evaluation"},
+    overall_status: "pass",
+    authentication: {mode: "ecdsa-p256-dsse", signer_key_id: sha("1")},
+    evidence: [
+      {kind: "plan", file: "evidence/plan.json", sha256: sha("a"), verdict: "not_applicable"},
+      {kind: "observations", file: "evidence/observations.json", sha256: sha("b"), verdict: "not_applicable"},
+      {kind: "evaluation", file: "evidence/evaluation.json", sha256: sha("c"), verdict: "pass"},
+    ],
+    limitations: ["passing_is_not_proof_of_containment"],
+  });
+  assert.equal(bundle.kind, "LureInvariant evidence bundle");
+  assert.equal(bundle.status, "pass");
+  assert.equal(bundle.bindings.length, 4);
+  assert.match(bundle.warnings.join(" "), /trusted public key/i);
+
+  const comparison = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/invariant-remediation-comparison/v1",
+    contract_sha256: sha("d"),
+    before: {overall_status: "fail", manifest_sha256: sha("e"), statement_sha256: sha("f")},
+    after: {overall_status: "pass", manifest_sha256: sha("2"), statement_sha256: sha("3")},
+    summary: {resolved: 4, persistent: 0, new: 0, insufficient_after: 0, status: "effective"},
+    limitations: ["configuration_change_causality_is_not_proven"],
+  });
+  assert.equal(comparison.kind, "LureInvariant remediation comparison");
+  assert.equal(comparison.status, "effective");
+  assert.equal(comparison.tone, "warn");
+  assert.equal(comparison.bindings.length, 5);
+  assert.match(comparison.warnings.join(" "), /verify-comparison/i);
+});
+
+test("signed LureInvariant checkpoint never claims browser authentication", () => {
+  const checkpoint = {
+    _type: "https://in-toto.io/Statement/v1",
+    subject: [
+      {name: "bundle.json", digest: {sha256: sha("a")}},
+      {name: "evidence/plan.json", digest: {sha256: sha("b")}},
+      {name: "evidence/observations.json", digest: {sha256: sha("c")}},
+      {name: "evidence/evaluation.json", digest: {sha256: sha("d")}},
+    ],
+    predicateType: "https://github.com/immu4989/lurescope/spec/invariant-evidence-checkpoint/v1",
+    predicate: {
+      bundle_id: "after-1",
+      overall_status: "pass",
+      authentication_mode: "ecdsa-p256-dsse",
+      limitations: ["signed_evidence_authenticates_a_key_not_an_organization"],
+    },
+  };
+  const envelope = {
+    payloadType: "application/vnd.in-toto+json",
+    payload: Buffer.from(JSON.stringify(checkpoint), "utf8").toString("base64"),
+    signatures: [{keyid: sha("1"), sig: "AAAA"}],
+  };
+  const summary = explorer.summarizeArtifact(envelope);
+  assert.equal(summary.kind, "LureInvariant checkpoint");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.signature.authenticated, false);
+  assert.match(summary.warnings[0], /not cryptographically authenticated/i);
+});
+
 test("unsupported, malformed, and oversized evidence fails closed", () => {
   assert.throws(() => explorer.parseArtifact("not-json"), /not valid JSON/i);
   assert.throws(() => explorer.summarizeArtifact({schema: "unknown"}), /Unsupported evidence/);
