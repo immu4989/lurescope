@@ -33,6 +33,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
 **[Monitor deployment risk anytime →](docs/ANYTIME_MONITORING.md)** ·
 **[Assure autonomous-agent boundaries →](docs/AGENT_BOUNDARY_ASSURANCE.md)** ·
+**[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
 </div>
@@ -88,6 +89,14 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > 1.2.2 export passes the official NIST schema. It records response requirements
 > but never executes shutdown or enforcement.
 
+> **New — evidence that spans the monitor, sensors, identity graph, and response.**
+> [Combined agent assurance](docs/AGENT_ASSURANCE_PORTFOLIO.md) preserves exact
+> LureBoundary, LureCoverage, LureDelegation, and LureIR reports in one optional
+> P-256 DSSE-authenticated portfolio. BoundaryWatch applies anytime-valid drift
+> monitoring to scheduled synthetic probes; independent offline witness receipts
+> expose local-chain tail deletion; and OSCAL 1.2.2 export remains
+> observation-only. The workflow is vendor-neutral and executes no enforcement.
+
 ```bash
 lurebench boundary-eval --out boundary-evaluation.json
 lurescope boundary init --out ./agent-boundary-evidence \
@@ -97,6 +106,33 @@ lurescope boundary append ./agent-boundary-evidence boundary-evaluation.json \
   --evaluation-id release-candidate-1
 lurescope boundary verify ./agent-boundary-evidence
 ```
+
+Combine the four assurance surfaces, monitor scheduled canaries, and witness the
+latest checkpoint from a separately controlled key:
+
+```bash
+lurescope agent-assurance create \
+  --out ./agent-assurance --portfolio-id release-1 --system-id agent-platform \
+  --boundary-bundle ./agent-boundary-evidence \
+  --coverage-report coverage-evaluation.json \
+  --delegation-report delegation-evaluation.json \
+  --incident-response-report lureir-evaluation.json
+lurescope agent-assurance verify ./agent-assurance \
+  --boundary-bundle ./agent-boundary-evidence
+
+lurescope boundary-watch init --out ./boundary-watch \
+  --plan-id scheduled-probes-v1 --monitor-id vendor-monitor
+lurescope boundary-watch append ./boundary-watch --batch-id probe-window-1 \
+  --coverage-report coverage-evaluation.json \
+  --boundary-evaluation boundary-evaluation.json
+
+lurescope witness request ./agent-boundary-evidence --kind lureboundary \
+  --out witness-request.json
+```
+
+Follow the
+[portfolio, continuous-monitoring, OSCAL, and witness workflow](docs/AGENT_ASSURANCE_PORTFOLIO.md)
+for signing, quorum verification, statistical assumptions, and claims limits.
 
 Create an overall post-deployment monitor, then append one reviewed confusion
 matrix. Exit status `1` is a successfully recorded breach signal, while `2`

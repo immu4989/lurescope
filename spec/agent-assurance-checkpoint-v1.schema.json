@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/agent-assurance-checkpoint/v1",
+  "title": "LureScope combined assurance in-toto checkpoint v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"}, "subject": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object", "additionalProperties": false, "required": ["name", "digest"], "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 200}, "digest": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}}}},
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/agent-assurance-checkpoint/v1"},
+    "predicate": {"type": "object", "additionalProperties": false, "required": ["portfolio_id", "created_at", "boundary_checkpoint_statement_sha256", "overall_status", "authentication_mode", "limitations", "interpretation_boundary"], "properties": {"portfolio_id": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}, "boundary_checkpoint_statement_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "overall_status": {"enum": ["pass", "breach"]}, "authentication_mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]}, "limitations": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}}, "interpretation_boundary": {"type": "string"}}}
+  }
+}

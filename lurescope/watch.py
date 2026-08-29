@@ -940,6 +940,7 @@ def verify_monitor_bundle(
     previous_statement_sha = None
     key_ids: set[str] = set()
     seen_batch_ids: set[str] = set()
+    seen_source_commitments: set[str] = set()
     latest_states: List[Dict[str, Any]] = []
     family_status = "monitoring"
     for sequence in entry_sequences:
@@ -953,6 +954,11 @@ def verify_monitor_bundle(
         if batch_id in seen_batch_ids:
             raise ValueError(f"batch_id {batch_id!r} appears more than once")
         seen_batch_ids.add(batch_id)
+        source_commitment = entry["batch"]["source_commitment_sha256"]
+        if source_commitment is not None:
+            if source_commitment in seen_source_commitments:
+                raise ValueError("source commitment appears in more than one monitor batch")
+            seen_source_commitments.add(source_commitment)
         entry_sha = _sha256(entry_raw)
         expected_statement = _checkpoint_statement(
             plan, plan_sha, entry, entry_sha, previous_statement_sha
@@ -1044,6 +1050,12 @@ def append_monitor_batch(
             existing = _strict_json(_read_regular(existing_path), existing_path.name)
             if existing["batch"]["batch_id"] == batch_id:
                 raise ValueError(f"batch_id {batch_id!r} was already submitted")
+            if (
+                source_commitment_sha256 is not None
+                and existing["batch"]["source_commitment_sha256"]
+                == source_commitment_sha256
+            ):
+                raise ValueError("source commitment was already submitted")
         parsed_counts = sorted(
             (_validate_count(count.__dict__, f"count[{count.monitor_id}]") for count in counts),
             key=lambda item: str(item["monitor_id"]),

@@ -1504,6 +1504,327 @@ def _boundary(argv: Sequence[str]) -> int:
         return 2
 
 
+def _boundary_watch(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope boundary-watch",
+        description="Anytime-valid monitoring for disjoint scheduled boundary canary batches.",
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    init_parser = commands.add_parser("init")
+    init_parser.add_argument("--out", "-o", required=True)
+    init_parser.add_argument("--plan-id", required=True)
+    init_parser.add_argument("--monitor-id", required=True)
+    init_parser.add_argument("--monitor-artifact-sha256")
+    init_parser.add_argument("--coverage-manifest-id")
+    init_parser.add_argument("--coverage-manifest-sha256")
+    init_parser.add_argument("--probe-miss-limit", type=float, default=0.01)
+    init_parser.add_argument("--benign-false-alarm-limit", type=float, default=0.01)
+    init_parser.add_argument("--lineage-failure-limit", type=float, default=0.01)
+    init_parser.add_argument("--duplicate-delivery-limit", type=float, default=0.01)
+    init_parser.add_argument("--family-alpha", type=float, default=0.05)
+    init_parser.add_argument("--signer-public-key")
+
+    append_parser = commands.add_parser("append")
+    append_parser.add_argument("bundle")
+    append_parser.add_argument("--batch-id", required=True)
+    append_parser.add_argument("--coverage-report", required=True)
+    append_parser.add_argument("--boundary-evaluation", required=True)
+    append_parser.add_argument("--observed-at")
+    append_parser.add_argument("--signing-key")
+    append_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser("verify")
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "init":
+            from .boundary_watch import create_boundary_watch
+
+            signer = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            plan = create_boundary_watch(
+                Path(args.out),
+                plan_id=args.plan_id,
+                monitor_id=args.monitor_id,
+                monitor_artifact_sha256=args.monitor_artifact_sha256,
+                coverage_manifest_id=args.coverage_manifest_id,
+                coverage_manifest_sha256=args.coverage_manifest_sha256,
+                maximum_probe_miss_rate=args.probe_miss_limit,
+                maximum_benign_false_alarm_rate=args.benign_false_alarm_limit,
+                maximum_lineage_failure_rate=args.lineage_failure_limit,
+                maximum_duplicate_delivery_rate=args.duplicate_delivery_limit,
+                family_alpha=args.family_alpha,
+                signer_public_key_pem=signer,
+            )
+            print(
+                f"BOUNDARYWATCH PLAN CREATED: {plan['plan_id']} — {args.out}\n"
+                "boundary: only disjoint scheduled synthetic probe batches are eligible"
+            )
+            return 0
+        if args.command == "append":
+            from .boundary_watch import append_boundary_watch_batch
+
+            key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            entry = append_boundary_watch_batch(
+                Path(args.bundle),
+                batch_id=args.batch_id,
+                coverage_report=Path(args.coverage_report),
+                boundary_evaluation=Path(args.boundary_evaluation),
+                observed_at=args.observed_at,
+                signing_key_pem=key,
+            )
+            if args.json:
+                print(json.dumps(entry, indent=2, sort_keys=True))
+            else:
+                print(
+                    f"BOUNDARYWATCH BATCH {entry['sequence']} APPENDED: "
+                    f"{entry['family_status'].upper()} — {args.batch_id}"
+                )
+            return 1 if entry["family_status"] == "breach" else 0
+        from .watch import verify_monitor_bundle
+
+        key = Path(args.public_key).read_bytes() if args.public_key else None
+        result = verify_monitor_bundle(Path(args.bundle), public_key_pem=key)
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(
+                f"BOUNDARYWATCH VERIFIED: {result['family_status'].upper()} — "
+                f"{result['entry_count']} checkpoints"
+            )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! BoundaryWatch failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _agent_assurance(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope agent-assurance",
+        description="Create or verify a combined boundary, coverage, delegation, and IR portfolio.",
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    create_parser = commands.add_parser("create")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--portfolio-id", required=True)
+    create_parser.add_argument("--system-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        default="evaluation",
+    )
+    create_parser.add_argument("--boundary-bundle", required=True)
+    create_parser.add_argument("--boundary-public-key")
+    create_parser.add_argument("--coverage-report", required=True)
+    create_parser.add_argument("--delegation-report", required=True)
+    create_parser.add_argument("--incident-response-report", required=True)
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+
+    verify_parser = commands.add_parser("verify")
+    verify_parser.add_argument("portfolio")
+    verify_parser.add_argument("--boundary-bundle", required=True)
+    verify_parser.add_argument("--boundary-public-key")
+    verify_parser.add_argument("--portfolio-public-key")
+    verify_parser.add_argument("--json", action="store_true")
+    export_parser = commands.add_parser("export-oscal")
+    export_parser.add_argument("portfolio")
+    export_parser.add_argument("--boundary-bundle", required=True)
+    export_parser.add_argument("--boundary-public-key")
+    export_parser.add_argument("--portfolio-public-key")
+    export_parser.add_argument("--assessment-plan-href", required=True)
+    export_parser.add_argument("--out", "-o", required=True)
+    args = parser.parse_args(argv)
+    try:
+        from .agent_assurance import (
+            create_assurance_portfolio,
+            export_assurance_oscal,
+            verify_assurance_portfolio,
+        )
+
+        boundary_key = (
+            Path(args.boundary_public_key).read_bytes()
+            if args.boundary_public_key
+            else None
+        )
+        if args.command == "create":
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            portfolio = create_assurance_portfolio(
+                Path(args.out),
+                portfolio_id=args.portfolio_id,
+                system_id=args.system_id,
+                environment=args.environment,
+                boundary_bundle=Path(args.boundary_bundle),
+                boundary_public_key_pem=boundary_key,
+                coverage_report=Path(args.coverage_report),
+                delegation_report=Path(args.delegation_report),
+                incident_response_report=Path(args.incident_response_report),
+                signer_public_key_pem=signer_public,
+                signing_key_pem=signing_key,
+            )
+            print(
+                f"AGENT ASSURANCE PORTFOLIO: {portfolio['overall_status'].upper()} — "
+                f"{args.out}"
+            )
+            print("boundary: combined evidence is not certification or authorization")
+            return 0 if portfolio["overall_status"] == "pass" else 1
+        portfolio_key = (
+            Path(args.portfolio_public_key).read_bytes()
+            if args.portfolio_public_key
+            else None
+        )
+        if args.command == "export-oscal":
+            document = export_assurance_oscal(
+                Path(args.portfolio),
+                Path(args.out),
+                boundary_bundle=Path(args.boundary_bundle),
+                assessment_plan_href=args.assessment_plan_href,
+                boundary_public_key_pem=boundary_key,
+                portfolio_public_key_pem=portfolio_key,
+            )
+            status = document["assessment-results"]["results"][0]["props"][0][
+                "value"
+            ]
+            print(f"AGENT ASSURANCE OSCAL EXPORTED: {status.upper()} — {args.out}")
+            return 0
+        result = verify_assurance_portfolio(
+            Path(args.portfolio),
+            boundary_bundle=Path(args.boundary_bundle),
+            boundary_public_key_pem=boundary_key,
+            portfolio_public_key_pem=portfolio_key,
+        )
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(
+                f"AGENT ASSURANCE VERIFIED: {result['overall_status'].upper()} — "
+                f"sha256:{result['statement_sha256']}"
+            )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! Agent assurance failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _witness(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope witness",
+        description="Create and verify offline independent checkpoint witness receipts.",
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    request_parser = commands.add_parser("request")
+    request_parser.add_argument("bundle")
+    request_parser.add_argument("--kind", choices=("lureboundary", "lurewatch"), required=True)
+    request_parser.add_argument("--public-key")
+    request_parser.add_argument("--request-id")
+    request_parser.add_argument("--nonce")
+    request_parser.add_argument("--out", "-o", required=True)
+
+    issue_parser = commands.add_parser("issue")
+    issue_parser.add_argument("request")
+    issue_parser.add_argument("--witness-id", required=True)
+    issue_parser.add_argument("--signing-key", required=True)
+    issue_parser.add_argument("--out", "-o", required=True)
+
+    verify_parser = commands.add_parser("verify")
+    verify_parser.add_argument("request")
+    verify_parser.add_argument("receipt")
+    verify_parser.add_argument("--public-key", required=True)
+    verify_parser.add_argument("--bundle")
+    verify_parser.add_argument("--bundle-public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    quorum_parser = commands.add_parser("quorum")
+    quorum_parser.add_argument("request")
+    quorum_parser.add_argument("--receipt", action="append", required=True)
+    quorum_parser.add_argument("--public-key", action="append", required=True)
+    quorum_parser.add_argument("--minimum", type=int, required=True)
+    quorum_parser.add_argument("--bundle")
+    quorum_parser.add_argument("--bundle-public-key")
+    quorum_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        from .witness import (
+            create_witness_request,
+            issue_witness_receipt,
+            verify_witness_quorum,
+            verify_witness_receipt,
+            verify_witness_request_binding,
+        )
+
+        if (
+            args.command in {"verify", "quorum"}
+            and args.bundle_public_key
+            and not args.bundle
+        ):
+            raise ValueError("--bundle-public-key requires --bundle")
+
+        if args.command == "request":
+            key = Path(args.public_key).read_bytes() if args.public_key else None
+            request = create_witness_request(
+                Path(args.bundle),
+                Path(args.out),
+                bundle_kind=args.kind,
+                public_key_pem=key,
+                request_id=args.request_id,
+                nonce=args.nonce,
+            )
+            print(
+                f"WITNESS REQUEST CREATED: checkpoint "
+                f"sha256:{request['checkpoint_statement_sha256']} — {args.out}"
+            )
+            return 0
+        if args.command == "issue":
+            receipt = issue_witness_receipt(
+                Path(args.request),
+                Path(args.out),
+                witness_id=args.witness_id,
+                signing_key_pem=Path(args.signing_key).read_bytes(),
+            )
+            print(
+                f"WITNESS RECEIPT ISSUED: {receipt['witness']['witness_id']} — {args.out}"
+            )
+            return 0
+        if args.command == "verify":
+            result = verify_witness_receipt(
+                Path(args.request),
+                Path(args.receipt),
+                public_key_pem=Path(args.public_key).read_bytes(),
+            )
+        else:
+            result = verify_witness_quorum(
+                Path(args.request),
+                [Path(path) for path in args.receipt],
+                [Path(path).read_bytes() for path in args.public_key],
+                minimum_witnesses=args.minimum,
+            )
+        if args.bundle:
+            bundle_key = (
+                Path(args.bundle_public_key).read_bytes()
+                if args.bundle_public_key
+                else None
+            )
+            verify_witness_request_binding(
+                Path(args.request), Path(args.bundle), public_key_pem=bundle_key
+            )
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(
+                f"WITNESS VERIFIED: sha256:{result['checkpoint_statement_sha256']}"
+            )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! Witness workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -1536,6 +1857,12 @@ def main(argv=None) -> int:
         return _monitor(args[1:])
     if args and args[0] == "boundary":
         return _boundary(args[1:])
+    if args and args[0] == "boundary-watch":
+        return _boundary_watch(args[1:])
+    if args and args[0] == "agent-assurance":
+        return _agent_assurance(args[1:])
+    if args and args[0] == "witness":
+        return _witness(args[1:])
     return _serve(args)
 
 

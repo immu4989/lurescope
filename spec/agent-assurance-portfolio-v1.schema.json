@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/agent-assurance-portfolio/v1",
+  "title": "LureScope combined agent assurance portfolio v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "portfolio_id", "created_at", "producer", "system", "boundary", "evidence", "overall_status", "authentication", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/agent-assurance-portfolio/v1"}, "schema_version": {"const": 1}, "portfolio_id": {"$ref": "#/$defs/id"}, "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"type": "string", "minLength": 1, "maxLength": 64}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "boundary": {"type": "object", "additionalProperties": false, "required": ["plan_sha256", "checkpoint_sequence", "checkpoint_statement_sha256", "status", "authenticated"], "properties": {"plan_sha256": {"$ref": "#/$defs/digest"}, "checkpoint_sequence": {"type": "integer", "minimum": 1}, "checkpoint_statement_sha256": {"$ref": "#/$defs/digest"}, "status": {"enum": ["pass", "breach"]}, "authenticated": {"type": "boolean"}}},
+    "evidence": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["kind", "file", "schema", "sha256", "verdict"], "properties": {"kind": {"enum": ["coverage", "delegation", "incident_response"]}, "file": {"enum": ["evidence/coverage.json", "evidence/delegation.json", "evidence/incident-response.json"]}, "schema": {"type": "string", "format": "uri"}, "sha256": {"$ref": "#/$defs/digest"}, "verdict": {"enum": ["pass", "fail"]}}}},
+    "overall_status": {"enum": ["pass", "breach"]},
+    "authentication": {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]}, "signer_key_id": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"}}},
+    "limitations": {"$ref": "#/$defs/limitations"}, "interpretation_boundary": {"type": "string", "minLength": 100, "maxLength": 1000}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "limitations": {"const": ["portfolio_verification_requires_the_bound_lureboundary_bundle", "source_report_semantics_are_recomputed_but_source_execution_is_not_replayed", "signed_evidence_authenticates_a_key_not_an_organization_without_external_trust", "passing_is_not_proof_of_containment_safety_compliance_or_authorization"]}
+  }
+}

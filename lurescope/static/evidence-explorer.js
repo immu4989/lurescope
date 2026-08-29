@@ -20,6 +20,13 @@
   const LUREBOUNDARY_PLAN = "https://github.com/immu4989/lurescope/spec/lureboundary-plan/v1";
   const LUREBOUNDARY_ENTRY = "https://github.com/immu4989/lurescope/spec/lureboundary-entry/v1";
   const LUREBOUNDARY_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lureboundary-checkpoint/v1";
+  const COVERAGE_EVALUATION = "https://github.com/immu4989/lurebench/spec/agent-coverage-evaluation/v1";
+  const DELEGATION_EVALUATION = "https://github.com/immu4989/lurebench/spec/agent-delegation-evaluation/v1";
+  const IR_EVALUATION = "https://github.com/immu4989/lurebench/spec/lureir-evaluation/v1";
+  const AGENT_PORTFOLIO = "https://github.com/immu4989/lurescope/spec/agent-assurance-portfolio/v1";
+  const AGENT_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/agent-assurance-checkpoint/v1";
+  const WITNESS_REQUEST = "https://github.com/immu4989/lurescope/spec/checkpoint-witness-request/v1";
+  const WITNESS_RECEIPT = "https://github.com/immu4989/lurescope/spec/checkpoint-witness-receipt/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -357,6 +364,166 @@
     return summary;
   }
 
+  function coverageSummary(value, meta) {
+    const metrics = object(value.summary, "LureCoverage summary");
+    const manifest = object(value.manifest, "LureCoverage manifest binding");
+    const summary = base(
+      "LureCoverage evaluation",
+      "Boundary telemetry coverage",
+      "Payload-free canaries measuring delivery, duplication, ordering, lineage, and delay.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Route coverage", value: ratio(metrics.route_coverage)},
+      {label: "Probe delivery", value: ratio(metrics.probe_delivery_rate)},
+      {label: "Duplicate rate", value: ratio(metrics.duplicate_rate)},
+      {label: "Out-of-order", value: ratio(metrics.out_of_order_rate)},
+      {label: "Lineage continuity", value: ratio(metrics.lineage_continuity)},
+      {label: "Max delay", value: `${count(metrics.maximum_delivery_delay_ms)} ms`},
+    ];
+    summary.bindings = [
+      binding("Manifest", manifest.manifest_sha256),
+      binding("Canaries", value.canaries_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["typed metadata only", "canaries execute no agent action", "no event content or secrets"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function delegationSummary(value, meta) {
+    const metrics = object(value.summary, "LureDelegation summary");
+    const suite = object(value.suite, "LureDelegation suite binding");
+    const summary = base(
+      "LureDelegation evaluation",
+      "Agent identity and capability graph",
+      "Synthetic issuer, audience, scope, expiry, replay, tenant, subagent, and peer-trust scenarios.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Scenarios", value: count(metrics.total_scenarios)},
+      {label: "Recall", value: ratio(metrics.recall)},
+      {label: "Benign FPR", value: ratio(metrics.benign_false_positive_rate)},
+      {label: "Category accuracy", value: ratio(metrics.category_accuracy)},
+      {label: "Max delay", value: `${count(metrics.maximum_detection_delay_events)} event(s)`},
+    ];
+    summary.bindings = [binding("Suite", suite.suite_sha256)].filter(Boolean);
+    summary.privacy = ["synthetic identity metadata", "no tokens or credential values", "no prompts or payloads"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function irSummary(value, meta) {
+    const metrics = object(value.summary, "LureIR summary");
+    const suite = object(value.suite, "LureIR suite binding");
+    const responder = object(value.responder, "LureIR responder binding");
+    const summary = base(
+      "LureIR evaluation",
+      "Defanged incident-response readiness",
+      "Structured findings, evidence, timeline, containment-choice, and escalation scoring.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Cases", value: count(metrics.case_count)},
+      {label: "Fact recall", value: ratio(metrics.fact_recall)},
+      {label: "Fact precision", value: ratio(metrics.fact_precision)},
+      {label: "Evidence support", value: ratio(metrics.evidence_support_rate)},
+      {label: "Containment recall", value: ratio(metrics.containment_action_recall)},
+      {label: "Unsafe actions", value: ratio(metrics.unsafe_action_rate)},
+      {label: "Escalation", value: ratio(metrics.escalation_accuracy)},
+    ];
+    summary.bindings = [
+      binding("Suite", suite.suite_sha256),
+      binding("Response", responder.response_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["defanged event codes", "no exploit payloads", "containment codes are not executed"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function portfolioSummary(value, meta) {
+    const boundary = object(value.boundary, "portfolio boundary binding");
+    if (!Array.isArray(value.evidence) || value.evidence.length !== 3) {
+      throw new Error("Agent assurance portfolio must bind three evidence reports");
+    }
+    const summary = base(
+      "Agent assurance portfolio",
+      "Cross-bound agent assurance evidence",
+      "Boundary, coverage, delegation, and incident-response evidence bound into one checkpoint.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Boundary", value: String(boundary.status || "unknown")},
+      ...value.evidence.map(item => ({
+        label: String(item.kind || "evidence").replaceAll("_", " "),
+        value: String(item.verdict || "unknown"),
+      })),
+      {label: "Boundary checkpoint", value: count(boundary.checkpoint_sequence)},
+    ];
+    summary.bindings = [
+      binding("Boundary plan", boundary.plan_sha256),
+      binding("Boundary checkpoint", boundary.checkpoint_statement_sha256),
+      ...value.evidence.map(item => binding(String(item.kind || "Evidence"), item.sha256)),
+    ].filter(Boolean);
+    summary.privacy = ["privacy-minimized reports only", "no event content", "no prompts, commands, credentials, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function witnessRequestSummary(value, meta) {
+    const summary = base(
+      "Checkpoint witness request",
+      "External observation request",
+      "Digest-only request for an independent key to witness a chain checkpoint.",
+      meta,
+    );
+    summary.status = String(value.status || "unknown");
+    summary.tone = value.status === "breach" ? "fail" : "neutral";
+    summary.metrics = [
+      {label: "Bundle", value: String(value.bundle_kind || "unknown")},
+      {label: "Sequence", value: count(value.checkpoint_sequence)},
+      {label: "Request", value: String(value.request_id || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Plan", value.plan_sha256),
+      binding("Checkpoint", value.checkpoint_statement_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["checkpoint digest only", "no event content", "no secrets or model reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    return summary;
+  }
+
+  function witnessReceiptSummary(value, meta) {
+    const witness = object(value.witness, "witness identity");
+    const statement = object(value.statement, "witness statement");
+    const predicate = object(statement.predicate, "witness predicate");
+    const summary = base(
+      "Checkpoint witness receipt",
+      "Independent checkpoint observation",
+      "An offline DSSE-authenticated in-toto receipt for one checkpoint digest.",
+      meta,
+    );
+    summary.status = "Receipt present";
+    summary.metrics = [
+      {label: "Witness", value: String(witness.witness_id || "unknown")},
+      {label: "Bundle", value: String(predicate.bundle_kind || "unknown")},
+      {label: "Sequence", value: count(predicate.checkpoint_sequence)},
+      {label: "Observed status", value: String(predicate.status || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Witness key", witness.key_id),
+      binding("Request", predicate.request_sha256),
+      binding("Checkpoint", predicate.checkpoint_statement_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["checkpoint digest only", "no event content"];
+    summary.warnings = Array.isArray(value.limitations) ? value.limitations : [];
+    summary.signature = {label: "Embedded DSSE signature present", authenticated: false};
+    return summary;
+  }
+
   function statementSummary(statement, meta) {
     if (statement.predicateType === RECEIPT) return receiptSummary(statement, meta);
     if (statement.predicateType === AGGREGATE) return aggregateSummary(statement, meta);
@@ -451,6 +618,28 @@
       summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
       return summary;
     }
+    if (statement.predicateType === AGENT_CHECKPOINT) {
+      const predicate = object(statement.predicate, "agent assurance checkpoint predicate");
+      const summary = base(
+        "Agent assurance checkpoint",
+        "Combined assurance statement",
+        "An in-toto checkpoint binding the portfolio and three exact evidence reports.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Portfolio", value: String(predicate.portfolio_id || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = Array.isArray(statement.subject)
+        ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256)).filter(Boolean)
+        : [];
+      const boundary = binding("Boundary checkpoint", predicate.boundary_checkpoint_statement_sha256);
+      if (boundary) summary.bindings.push(boundary);
+      summary.privacy = ["privacy-minimized evidence only", "no event content"];
+      summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
+      return summary;
+    }
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
@@ -466,7 +655,13 @@
     else if (statement.schema === LUREBOUNDARY_EVALUATION) summary = boundaryEvaluationSummary(statement, meta);
     else if (statement.schema === LUREBOUNDARY_PLAN) summary = boundaryPlanSummary(statement, meta);
     else if (statement.schema === LUREBOUNDARY_ENTRY) summary = boundaryEntrySummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, or LureBoundary artifact.");
+    else if (statement.schema === COVERAGE_EVALUATION) summary = coverageSummary(statement, meta);
+    else if (statement.schema === DELEGATION_EVALUATION) summary = delegationSummary(statement, meta);
+    else if (statement.schema === IR_EVALUATION) summary = irSummary(statement, meta);
+    else if (statement.schema === AGENT_PORTFOLIO) summary = portfolioSummary(statement, meta);
+    else if (statement.schema === WITNESS_REQUEST) summary = witnessRequestSummary(statement, meta);
+    else if (statement.schema === WITNESS_RECEIPT) summary = witnessReceiptSummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

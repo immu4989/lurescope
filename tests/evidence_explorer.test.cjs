@@ -244,6 +244,87 @@ test("signed LureBoundary checkpoint never claims browser authentication", () =>
   assert.match(summary.warnings[0], /not cryptographically authenticated/i);
 });
 
+test("LureCoverage and LureDelegation expose operational assurance metrics", () => {
+  const coverage = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/agent-coverage-evaluation/v1",
+    manifest: {manifest_sha256: sha("a")},
+    canaries_sha256: sha("b"),
+    summary: {
+      route_coverage: 1,
+      probe_delivery_rate: 0.95,
+      duplicate_rate: 0.01,
+      out_of_order_rate: 0,
+      lineage_continuity: 0.99,
+      maximum_delivery_delay_ms: 25,
+      verdict: "pass",
+    },
+    limitations: ["coverage_applies_only_to_declared_routes"],
+  });
+  assert.equal(coverage.kind, "LureCoverage evaluation");
+  assert.equal(coverage.status, "pass");
+  assert.equal(coverage.metrics.find(item => item.label === "Probe delivery").value, "95.0%");
+  assert.equal(coverage.bindings.length, 2);
+
+  const delegation = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/agent-delegation-evaluation/v1",
+    suite: {suite_sha256: sha("c")},
+    summary: {
+      total_scenarios: 14,
+      recall: 1,
+      benign_false_positive_rate: 0,
+      category_accuracy: 1,
+      maximum_detection_delay_events: 0,
+      verdict: "pass",
+    },
+    limitations: ["synthetic_metadata_only"],
+  });
+  assert.equal(delegation.kind, "LureDelegation evaluation");
+  assert.equal(delegation.metrics.find(item => item.label === "Scenarios").value, "14");
+  assert.ok(delegation.privacy.includes("no tokens or credential values"));
+});
+
+test("combined portfolio and witness receipt stay explicit about browser trust", () => {
+  const portfolio = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/agent-assurance-portfolio/v1",
+    overall_status: "pass",
+    boundary: {
+      status: "pass",
+      checkpoint_sequence: 2,
+      plan_sha256: sha("a"),
+      checkpoint_statement_sha256: sha("b"),
+    },
+    evidence: [
+      {kind: "coverage", verdict: "pass", sha256: sha("c")},
+      {kind: "delegation", verdict: "pass", sha256: sha("d")},
+      {kind: "incident_response", verdict: "pass", sha256: sha("e")},
+    ],
+    limitations: ["passing_is_not_proof_of_containment"],
+  });
+  assert.equal(portfolio.kind, "Agent assurance portfolio");
+  assert.equal(portfolio.status, "pass");
+  assert.equal(portfolio.bindings.length, 5);
+
+  const receipt = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/checkpoint-witness-receipt/v1",
+    witness: {witness_id: "auditor-a", key_id: sha("f")},
+    statement: {
+      predicate: {
+        bundle_kind: "lureboundary",
+        checkpoint_sequence: 2,
+        status: "pass",
+        request_sha256: sha("1"),
+        checkpoint_statement_sha256: sha("2"),
+      },
+    },
+    dsse: {payloadType: "application/vnd.in-toto+json", payload: "", signatures: []},
+    limitations: ["receipt_proves_observation_by_a_key"],
+  });
+  assert.equal(receipt.kind, "Checkpoint witness receipt");
+  assert.match(receipt.signature.label, /DSSE signature present/i);
+  assert.equal(receipt.signature.authenticated, false);
+  assert.match(receipt.warnings[0], /unsigned|not authenticated/i);
+});
+
 test("unsupported, malformed, and oversized evidence fails closed", () => {
   assert.throws(() => explorer.parseArtifact("not-json"), /not valid JSON/i);
   assert.throws(() => explorer.summarizeArtifact({schema: "unknown"}), /Unsupported evidence/);

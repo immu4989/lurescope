@@ -15,6 +15,31 @@
   recall, benign false-positive rate, maximum detection delay, and category
   accuracy, validated against the vendored official NIST schema without findings
   or control-satisfaction claims.
+- Added combined agent-assurance portfolios that preserve exact LureCoverage,
+  LureDelegation, and LureIR reports, bind them to the latest independently
+  verified LureBoundary checkpoint, recompute source aggregates and verdicts,
+  derive a fail-closed overall status, and optionally authenticate one in-toto
+  statement with P-256 DSSE. Nested source fields use strict allowlists;
+  coverage ordering and delay verdicts, delegation alert/category/delay fields,
+  and LureIR containment recall are independently reconciled.
+- Added observation-only OSCAL 1.2.2 portfolio export with four digest-bound
+  `TEST` observations and no findings, validated against the vendored official
+  NIST schema.
+- Added BoundaryWatch, an adapter from completed, disjoint scheduled boundary
+  and coverage runs into a preregistered four-monitor LureWatch family for probe
+  misses, benign false alarms, lineage failures, and duplicate delivery. Entries
+  retain aggregate counts and a commitment to source reports, never events.
+  Appends enforce preregistered monitor/artifact/manifest bindings and reject a
+  source commitment that has already been counted.
+- Added offline independent checkpoint witnessing for LureBoundary and LureWatch:
+  canonical requests, P-256 DSSE-authenticated in-toto receipts, current-bundle
+  binding checks, and multi-witness quorum verification requiring distinct IDs
+  and signing keys. The format is explicitly SCITT-aligned rather than falsely
+  claiming RFC 9943 Transparency Service or Rekor inclusion.
+- Added `lurescope agent-assurance`, `boundary-watch`, and `witness` workflows;
+  strict portfolio, checkpoint, witness request, and witness receipt schemas;
+  an end-to-end operator guide; private permissions; and signed, tamper, quorum,
+  aggregate-only, and official-OSCAL tests.
 
 ### Security
 - LureBoundary rejects unknown fields and artifacts, duplicate JSON keys and
@@ -24,6 +49,11 @@
 - Response actions are immutable evidence fields with `action_executed: false`;
   LureScope never performs shutdown, revocation, network blocking, controller
   mutation, compliance determination, certification, or authorization.
+- Combined portfolio verification requires the original bound LureBoundary
+  bundle and rejects report-byte substitution, rewritten metrics or verdicts,
+  unexpected files, symlinks, unsafe permissions, noncanonical records, signer
+  substitution, and DSSE mismatch. Witness requests contain checkpoint digests
+  only and no events, prompts, commands, payloads, credentials, or reasoning.
 
 ## 0.11.0 — 2026-08-27
 

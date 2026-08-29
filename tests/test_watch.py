@@ -75,6 +75,7 @@ def _append(
     tn: int,
     fn: int,
     private_key: bytes | None = None,
+    source_commitment: str | None = None,
 ):
     return append_monitor_batch(
         path,
@@ -87,7 +88,8 @@ def _append(
         ),
         observed_at=CREATED,
         generated_at=CREATED,
-        source_commitment_sha256="c" * 64,
+        source_commitment_sha256=source_commitment
+        or hashlib.sha256(batch_id.encode()).hexdigest(),
         signing_key_pem=private_key,
     )
 
@@ -217,6 +219,16 @@ def test_monitor_fails_closed_on_tampering_duplicates_and_plan_changes(tmp_path)
     _append(bundle, "week-001", tp=95, fp=1, tn=99, fn=5)
     with pytest.raises(ValueError, match="already submitted"):
         _append(bundle, "week-001", tp=95, fp=1, tn=99, fn=5)
+    with pytest.raises(ValueError, match="source commitment was already submitted"):
+        _append(
+            bundle,
+            "week-002",
+            tp=95,
+            fp=1,
+            tn=99,
+            fn=5,
+            source_commitment=hashlib.sha256(b"week-001").hexdigest(),
+        )
     assert verify_monitor_bundle(bundle)["entry_count"] == 1
 
     entry_path = bundle / ENTRIES_DIRECTORY / "00000001.json"

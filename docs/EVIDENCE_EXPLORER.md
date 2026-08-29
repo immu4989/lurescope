@@ -11,7 +11,10 @@ page to inspect:
 - combined SCuBA assurance and drift-ledger statements;
 - LureWatch aggregate entries and in-toto checkpoint/DSSE artifacts; and
 - LureBoundary plans, LureBench evaluations, append-only entries, and
-  in-toto checkpoint/DSSE artifacts.
+  in-toto checkpoint/DSSE artifacts;
+- LureCoverage, LureDelegation, and LureIR evaluation reports;
+- combined agent-assurance portfolios and in-toto checkpoints; and
+- checkpoint witness requests and embedded DSSE receipts.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -33,3 +36,8 @@ For LureBoundary, browser inspection does not recompute confusion counts,
 metrics, detection delay, category accuracy, plan bindings, sticky breach state,
 or checkpoint links. Use `lurescope boundary verify` with the externally trusted
 public key when the plan is signed.
+
+For combined portfolios and witnesses, the browser does not recompute source
+reports, verify the bound LureBoundary bundle, authenticate embedded receipt
+signatures, or establish a witness quorum. Use `lurescope agent-assurance verify`
+and `lurescope witness verify`/`quorum` with independently trusted public keys.

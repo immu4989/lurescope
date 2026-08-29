@@ -137,6 +137,9 @@ The chain detects mutation, insertion, and reordering. Like any local append-onl
 log, it cannot independently detect deletion of its final entries when an
 attacker can replace the whole directory. Register the latest statement digest
 in a separately controlled transparency, records, ticketing, or release system.
+LureScope provides canonical offline witness requests, DSSE-authenticated
+receipts, current-bundle checks, and distinct-key quorum verification; follow the
+[combined assurance and witness workflow](AGENT_ASSURANCE_PORTFOLIO.md).
 
 ## Organizational use
 
