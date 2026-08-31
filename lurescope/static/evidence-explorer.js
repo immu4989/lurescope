@@ -32,6 +32,27 @@
   const INVARIANT_BUNDLE = "https://github.com/immu4989/lurescope/spec/invariant-evidence-bundle/v1";
   const INVARIANT_COMPARISON = "https://github.com/immu4989/lurescope/spec/invariant-remediation-comparison/v1";
   const INVARIANT_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/invariant-evidence-checkpoint/v1";
+  const RANGE_EVALUATION = "https://github.com/immu4989/lurebench/spec/lurerange-evaluation-v1";
+  const RANGE_BUNDLE = "https://github.com/immu4989/lurescope/spec/lurerange-evidence-bundle/v1";
+  const RANGE_COMPARISON = "https://github.com/immu4989/lurescope/spec/lurerange-remediation-comparison/v1";
+  const RANGE_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lurerange-evidence-checkpoint/v1";
+  const RUNTIME_EVALUATION = "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-evaluation-v1";
+  const RUNTIME_BUNDLE = "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-bundle/v1";
+  const RUNTIME_COMPARISON = "https://github.com/immu4989/lurescope/spec/runtime-mediation-remediation-comparison/v1";
+  const RUNTIME_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-checkpoint/v1";
+  const REVOKE_EVALUATION = "https://github.com/immu4989/lurebench/spec/lurerevoke-evaluation-v1";
+  const REVOKE_BUNDLE = "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-bundle/v1";
+  const REVOKE_COMPARISON = "https://github.com/immu4989/lurescope/spec/lurerevoke-remediation-comparison/v1";
+  const REVOKE_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-checkpoint/v1";
+  const REVOKE_REGISTRY = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1";
+  const REVOKE_REGISTRY_ENTRY = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-entry/v1";
+  const REVOKE_REGISTRY_HEAD = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-tree-head/v1";
+  const REVOKE_REGISTRY_INCLUSION = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-inclusion-proof/v1";
+  const REVOKE_REGISTRY_CONSISTENCY = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-consistency-proof/v1";
+  const REVOKE_REGISTRY_HEAD_COMPARISON = "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-head-comparison/v1";
+  const REVOKE_TOPOLOGY_AUDIT = "https://github.com/immu4989/lurebench/spec/lurerevoke-topology-audit/v1";
+  const REVOKE_OTEL_PROJECTION = "https://github.com/immu4989/lurebench/spec/lurerevoke-otel-projection/v1";
+  const REVOKE_DEPLOYMENT_GATE = "https://github.com/immu4989/lurescope/spec/lurerevoke-deployment-gate/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -563,6 +584,541 @@
     return summary;
   }
 
+  function rangeEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "LureRange evaluation summary");
+    const inputs = object(value.inputs, "LureRange input bindings");
+    const engine = object(value.engine, "LureRange engine declaration");
+    const summary = base(
+      "LureRange evaluation",
+      "Agent permit conformance",
+      "Offline policy decisions for authorization, isolation, credential, monitoring, and safe-stop controls.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Scenarios", value: count(metrics.total_scenarios)},
+      {label: "Violation control", value: ratio(metrics.violation_control_rate)},
+      {label: "Benign allow", value: ratio(metrics.benign_allow_rate)},
+      {label: "Reason accuracy", value: ratio(metrics.reason_accuracy)},
+      {label: "Safe-stop recall", value: ratio(metrics.safe_stop_recall)},
+      {label: "Engine", value: String(engine.engine_id || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Permit", inputs.permit_sha256),
+      binding("Range suite", inputs.range_suite_sha256),
+      binding("Engine artifact", engine.artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["typed synthetic metadata only", "no targets, URLs, payloads, credentials, prompts, commands, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    return summary;
+  }
+
+  function rangeBundleSummary(value, meta) {
+    const evidence = object(value.evidence, "LureRange evidence binding");
+    const authentication = object(value.authentication, "LureRange authentication declaration");
+    const engine = object(value.engine, "LureRange engine declaration");
+    const summary = base(
+      "LureRange evidence bundle",
+      "Tamper-evident permit checkpoint",
+      "Exact evaluation bytes with independently recomputable permit, suite, and metric bindings.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Bundle", value: String(value.bundle_id || "unknown")},
+      {label: "Environment", value: String(value.system && value.system.environment || "unknown")},
+      {label: "Engine", value: String(engine.engine_id || "unknown")},
+      {label: "Engine version", value: String(engine.engine_version || "unknown")},
+      {label: "Authentication", value: String(authentication.mode || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Evaluation", evidence.sha256),
+      binding("Permit", evidence.permit_sha256),
+      binding("Range suite", evidence.range_suite_sha256),
+      binding("Engine artifact", engine.artifact_sha256),
+      binding("Declared signer", authentication.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["typed synthetic policy metadata", "no live actions or model reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope range verify` with a trusted public key to authenticate and recompute this bundle.");
+    return summary;
+  }
+
+  function rangeComparisonSummary(value, meta) {
+    const metrics = object(value.summary, "LureRange comparison summary");
+    const contract = object(value.contract, "LureRange comparison contract");
+    const summary = base(
+      "LureRange remediation comparison",
+      "Before/after permit conformance",
+      "A strict comparison under an unchanged permit, range suite, acceptance contract, and engine identity.",
+      meta,
+    );
+    gateStatus(summary, metrics.status);
+    summary.metrics = [
+      {label: "Resolved", value: count(metrics.resolved)},
+      {label: "Persistent", value: count(metrics.persistent)},
+      {label: "New", value: count(metrics.new)},
+      {label: "Before", value: String(value.before && value.before.overall_status || "unknown")},
+      {label: "After", value: String(value.after && value.after.overall_status || "unknown")},
+      {label: "Engine", value: String(contract.engine_id || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Permit", contract.permit_sha256),
+      binding("Range suite", contract.range_suite_sha256),
+      binding("Before manifest", value.before && value.before.manifest_sha256),
+      binding("After manifest", value.after && value.after.manifest_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["scenario identifiers, statuses, counts, and digests only"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope range verify-comparison` to recompute this result from both bundles.");
+    return summary;
+  }
+
+  function runtimeEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "runtime mediation summary");
+    const trace = object(value.trace, "runtime trace");
+    const summary = base(
+      "Runtime mediation evaluation",
+      "Receipt × sensor reconciliation",
+      "Typed authorization receipts reconciled with independently submitted effect observations.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Requests", value: count(metrics.total_requests)},
+      {label: "Decision accuracy", value: ratio(metrics.decision_accuracy)},
+      {label: "Reason accuracy", value: ratio(metrics.reason_accuracy)},
+      {label: "Receipt coverage", value: ratio(metrics.mediation_coverage_rate)},
+      {label: "Point coverage", value: ratio(metrics.mediation_point_coverage_rate)},
+      {label: "Control bypass", value: count(metrics.control_bypass_count)},
+      {label: "Unmediated", value: count(metrics.unmediated_count)},
+      {label: "Unknown", value: count(metrics.unknown_count)},
+    ];
+    summary.bindings = [
+      binding("Trace", value.trace_sha256),
+      binding("Runtime profile", trace.profile_sha256),
+      binding("Permit", trace.profile && trace.profile.permit_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["typed metadata only", "no action content, tokens, credentials, prompts, commands, URLs, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    return summary;
+  }
+
+  function runtimeBundleSummary(value, meta) {
+    const evidence = object(value.evidence, "runtime evidence binding");
+    const authentication = object(value.authentication, "runtime authentication declaration");
+    const policy = object(value.policy, "runtime policy identity");
+    const profile = object(value.profile, "runtime profile binding");
+    const summary = base(
+      "Runtime mediation evidence bundle",
+      "Tamper-evident runtime checkpoint",
+      "Independent receipt-chain, sensor-binding, and reconciliation evidence over exact bytes.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Bundle", value: String(value.bundle_id || "unknown")},
+      {label: "Environment", value: String(value.system && value.system.environment || "unknown")},
+      {label: "Policy engine", value: String(policy.engine_id || "unknown")},
+      {label: "Policy version", value: String(policy.engine_version || "unknown")},
+      {label: "Authentication", value: String(authentication.mode || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Evaluation", evidence.sha256),
+      binding("Trace", evidence.trace_sha256),
+      binding("Runtime profile", profile.profile_sha256),
+      binding("Permit", profile.permit_sha256),
+      binding("Declared signer", authentication.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["typed runtime metadata", "no action content or secret values"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope runtime verify` with a trusted public key to authenticate and recompute this bundle.");
+    return summary;
+  }
+
+  function runtimeComparisonSummary(value, meta) {
+    const metrics = object(value.summary, "runtime comparison summary");
+    const contract = object(value.contract, "runtime comparison contract");
+    const summary = base(
+      "Runtime mediation remediation comparison",
+      "Before/after runtime evidence",
+      "A strict comparison under an unchanged profile, permit, acceptance contract, system, and policy engine identity.",
+      meta,
+    );
+    gateStatus(summary, metrics.status);
+    summary.metrics = [
+      {label: "Resolved", value: count(metrics.resolved)},
+      {label: "Persistent", value: count(metrics.persistent)},
+      {label: "New", value: count(metrics.new)},
+      {label: "Before", value: String(value.before && value.before.overall_status || "unknown")},
+      {label: "After", value: String(value.after && value.after.overall_status || "unknown")},
+      {label: "Policy engine", value: String(contract.policy_engine_id || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Runtime profile", contract.profile_sha256),
+      binding("Permit", contract.permit_sha256),
+      binding("Before manifest", value.before && value.before.manifest_sha256),
+      binding("After manifest", value.after && value.after.manifest_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["correlation identifiers, statuses, counts, and digests only"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope runtime verify-comparison` to recompute this result from both bundles.");
+    return summary;
+  }
+
+  function revocationEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "LureRevoke evaluation summary");
+    const run = object(value.run, "LureRevoke receiver run");
+    const receiver = object(run.implementation, "LureRevoke receiver identity");
+    const summary = base(
+      "LureRevoke evaluation",
+      "Distributed revocation convergence",
+      "Typed continuous-access signal delivery and access attenuation across declared policy nodes.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Delivery coverage", value: ratio(metrics.delivery_coverage_rate)},
+      {label: "p95 convergence", value: `${count(metrics.p95_convergence_ms)} ms`},
+      {label: "Maximum convergence", value: `${count(metrics.maximum_convergence_ms)} ms`},
+      {label: "Deadline misses", value: count(metrics.deadline_miss_count)},
+      {label: "Post-deadline allows", value: count(metrics.post_deadline_allow_count)},
+      {label: "Collateral blocks", value: count(metrics.collateral_block_count)},
+      {label: "Revoked block recall", value: ratio(metrics.revoked_block_recall)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Plan", value.plan_sha256),
+      binding("Receiver run", value.run_sha256),
+      binding("Receiver artifact", receiver.artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["opaque subjects and relative timing", "no SETs, tokens, credentials, targets, payloads, prompts, URLs, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    return summary;
+  }
+
+  function revocationBundleSummary(value, meta) {
+    const evidence = object(value.evidence, "LureRevoke evidence binding");
+    const authentication = object(value.authentication, "LureRevoke authentication declaration");
+    const receiver = object(value.receiver, "LureRevoke receiver identity");
+    const metrics = object(value.summary, "LureRevoke bound summary");
+    const summary = base(
+      "LureRevoke evidence bundle",
+      "Tamper-evident convergence checkpoint",
+      "Exact independently recomputable revocation evidence with an optional external-key signature.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Delivery coverage", value: ratio(metrics.delivery_coverage_rate)},
+      {label: "p95 convergence", value: `${count(metrics.p95_convergence_ms)} ms`},
+      {label: "Deadline misses", value: count(metrics.deadline_miss_count)},
+      {label: "Post-deadline allows", value: count(metrics.post_deadline_allow_count)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+      {label: "Authentication", value: String(authentication.mode || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Evaluation", evidence.sha256),
+      binding("Receiver run", evidence.run_sha256),
+      binding("Plan", value.plan && value.plan.plan_sha256),
+      binding("Receiver artifact", receiver.artifact_sha256),
+      binding("Declared signer", authentication.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["opaque subjects and aggregate metrics", "no security tokens or action content"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke verify` with a trusted public key to authenticate and independently recompute this bundle.");
+    return summary;
+  }
+
+  function revocationComparisonSummary(value, meta) {
+    const metrics = object(value.summary, "LureRevoke comparison summary");
+    const contract = object(value.contract, "LureRevoke comparison contract");
+    const deltas = object(value.metric_deltas, "LureRevoke metric deltas");
+    const summary = base(
+      "LureRevoke remediation comparison",
+      "Before/after revocation convergence",
+      "A strict comparison under an unchanged plan, system, environment, and receiver identity.",
+      meta,
+    );
+    gateStatus(summary, metrics.status);
+    summary.metrics = [
+      {label: "Resolved", value: count(metrics.resolved)},
+      {label: "Persistent", value: count(metrics.persistent)},
+      {label: "New", value: count(metrics.new)},
+      {label: "Before", value: String(value.before && value.before.overall_status || "unknown")},
+      {label: "After", value: String(value.after && value.after.overall_status || "unknown")},
+      {label: "Coverage Δ", value: ratio(deltas.delivery_coverage_rate_delta)},
+      {label: "p95 convergence Δ", value: deltas.p95_convergence_ms_delta === null ? "Not comparable" : `${count(deltas.p95_convergence_ms_delta)} ms`},
+      {label: "Receiver", value: String(contract.receiver_name || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Plan", contract.plan_sha256),
+      binding("Before manifest", value.before && value.before.manifest_sha256),
+      binding("Before checkpoint", value.before && value.before.statement_sha256),
+      binding("After manifest", value.after && value.after.manifest_sha256),
+      binding("After checkpoint", value.after && value.after.statement_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["opaque failure identifiers, aggregate deltas, statuses, and digests only"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke verify-comparison` with both source bundles and trusted public keys before relying on this result.");
+    return summary;
+  }
+
+  function revocationRegistrySummary(value, meta) {
+    const policy = object(value.registration_policy, "LureRevoke registry policy");
+    const summary = base(
+      "LureRevoke registry",
+      "Append-only revocation evidence policy",
+      "A fixed admission policy and external-key identity for a signed privacy-minimized Merkle history.",
+      meta,
+    );
+    summary.status = "Policy inspected";
+    summary.metrics = [
+      {label: "Registry", value: String(value.registry_id || "unknown")},
+      {label: "System", value: String(policy.system_id || "unknown")},
+      {label: "Environment", value: String(policy.environment || "unknown")},
+      {label: "Receiver", value: String(policy.receiver_name || "unknown")},
+      {label: "Authenticated bundles", value: policy.require_authenticated_bundle === true ? "required" : "not declared"},
+      {label: "Hash profile", value: String(value.hash_profile || "unknown")},
+    ];
+    summary.bindings = [binding("Registry signer", value.signer_key_id)].filter(Boolean);
+    summary.privacy = ["registration policy and key digest only"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke registry-verify` with the external public key; this browser does not inspect registry entries or signatures.");
+    return summary;
+  }
+
+  function revocationRegistryEntrySummary(value, meta) {
+    const receiver = object(value.receiver, "LureRevoke registry receiver");
+    const evidence = object(value.evidence, "LureRevoke registered evidence");
+    const summary = base(
+      "LureRevoke registry entry",
+      "Privacy-minimized checkpoint registration",
+      "One ordered digest-only registration from a signed revocation evidence bundle.",
+      meta,
+    );
+    gateStatus(summary, evidence.overall_status);
+    summary.metrics = [
+      {label: "Sequence", value: count(value.sequence)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+      {label: "Receiver version", value: String(receiver.version || "unknown")},
+      {label: "Evidence status", value: String(evidence.overall_status || "unknown")},
+      {label: "Registered", value: String(value.registered_at || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Previous entry", value.previous_entry_sha256),
+      binding("Manifest", evidence.manifest_sha256),
+      binding("Checkpoint", evidence.checkpoint_sha256),
+      binding("Plan", evidence.plan_sha256),
+      binding("Receiver run", evidence.run_sha256),
+      binding("Bundle signer", receiver.bundle_signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["digests, status, time, and receiver version only", "no revocation evaluation, subjects, events, or observations"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    return summary;
+  }
+
+  function revocationRegistryInclusionSummary(value, meta) {
+    const config = object(value.registry_config, "LureRevoke inclusion-proof registry config");
+    const entry = object(value.entry, "LureRevoke inclusion-proof entry");
+    const evidence = object(entry.evidence, "LureRevoke inclusion-proof evidence");
+    const receiver = object(entry.receiver, "LureRevoke inclusion-proof receiver");
+    const path = Array.isArray(value.inclusion_path_sha256)
+      ? value.inclusion_path_sha256 : [];
+    const summary = base(
+      "LureRevoke registry inclusion proof",
+      "Portable authenticated registry membership",
+      "One privacy-minimized registration, its RFC 9162-style audit path, and the signed tree head it resolves to.",
+      meta,
+    );
+    summary.status = "Proof inspected";
+    summary.metrics = [
+      {label: "Registry", value: String(config.registry_id || "unknown")},
+      {label: "Sequence", value: count(value.sequence)},
+      {label: "Tree size", value: count(value.tree_size)},
+      {label: "Path nodes", value: count(path.length)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+      {label: "Evidence status", value: String(evidence.overall_status || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Entry", value.entry_sha256),
+      binding("Leaf", value.leaf_sha256),
+      binding("Merkle root", value.root_sha256),
+      binding("Registry signer", config.signer_key_id),
+      binding("Manifest", evidence.manifest_sha256),
+      binding("Checkpoint", evidence.checkpoint_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["one digest-only registry entry", "no revocation evaluation, subjects, events, observations, or sibling entries"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke registry-verify-inclusion` with the external public key; this browser does not authenticate the embedded DSSE or recompute the audit path.");
+    return summary;
+  }
+
+  function revocationRegistryConsistencySummary(value, meta) {
+    const config = object(value.registry_config, "LureRevoke consistency-proof registry config");
+    const path = Array.isArray(value.consistency_path_sha256)
+      ? value.consistency_path_sha256 : [];
+    const summary = base(
+      "LureRevoke registry consistency proof",
+      "Portable authenticated append-only evidence",
+      "Two signed tree heads and the RFC 9162-style Merkle path linking the earlier prefix to the later tree.",
+      meta,
+    );
+    summary.status = "Proof inspected";
+    summary.metrics = [
+      {label: "Registry", value: String(config.registry_id || "unknown")},
+      {label: "First tree", value: count(value.first_tree_size)},
+      {label: "Second tree", value: count(value.second_tree_size)},
+      {label: "New leaves", value: count(Number(value.second_tree_size || 0) - Number(value.first_tree_size || 0))},
+      {label: "Path nodes", value: count(path.length)},
+    ];
+    summary.bindings = [
+      binding("First Merkle root", value.first_root_sha256),
+      binding("Second Merkle root", value.second_root_sha256),
+      binding("Registry signer", config.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["Merkle nodes and signed tree heads only", "no registry entries, revocation evaluations, subjects, events, or observations"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke registry-verify-consistency` with the external public key; this browser does not authenticate either DSSE or recompute the consistency path.");
+    return summary;
+  }
+
+  function revocationRegistryHeadComparisonSummary(value, meta) {
+    const config = object(value.registry_config, "LureRevoke head-comparison registry config");
+    const result = object(value.summary, "LureRevoke head-comparison summary");
+    const summary = base(
+      "LureRevoke registry head comparison",
+      "Authenticated split-view check",
+      "Two exchanged signed tree heads compared for identity, same-size conflict, or a required consistency proof.",
+      meta,
+    );
+    summary.status = String(result.status || "unknown").replaceAll("_", " ");
+    summary.tone = result.status === "identical"
+      ? "pass" : result.status === "equivocation" ? "fail" : "warn";
+    summary.metrics = [
+      {label: "Registry", value: String(config.registry_id || "unknown")},
+      {label: "First tree", value: count(result.first_tree_size)},
+      {label: "Second tree", value: count(result.second_tree_size)},
+      {label: "Same size", value: String(Boolean(result.same_tree_size))},
+      {label: "Same root", value: String(Boolean(result.same_root))},
+      {label: "Same statement", value: String(Boolean(result.same_statement))},
+    ];
+    summary.bindings = [
+      binding("First Merkle root", result.first_root_sha256),
+      binding("First statement", result.first_statement_sha256),
+      binding("Second Merkle root", result.second_root_sha256),
+      binding("Second statement", result.second_statement_sha256),
+      binding("Registry signer", config.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["signed tree-head metadata and digests only", "no registry entries or revocation evaluations"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke registry-verify-head-comparison`; this browser does not authenticate either signature or establish global non-equivocation.");
+    return summary;
+  }
+
+  function revocationTopologySummary(value, meta) {
+    const metrics = object(value.summary, "LureRevoke topology summary");
+    const inputs = object(value.inputs, "LureRevoke topology inputs");
+    const summary = base(
+      "LureRevoke topology audit",
+      "Declared revocation-surface coverage",
+      "An independently recomputable mapping from revocation nodes to every declared runtime mediation point.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Point coverage", value: ratio(metrics.mediation_point_coverage_rate)},
+      {label: "Covered", value: `${count(metrics.covered_mediation_point_count)} / ${count(metrics.required_mediation_point_count)}`},
+      {label: "Missing", value: count(metrics.missing_mediation_point_count)},
+      {label: "Unmapped nodes", value: count(metrics.unmapped_node_count)},
+    ];
+    summary.bindings = [
+      binding("Revocation plan", inputs.revocation_plan_sha256),
+      binding("Runtime profile", inputs.runtime_profile_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["declared node, action, and sensor identifiers plus exact input digests"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke verify-topology`; this browser does not recompute either input contract or the mapping.");
+    return summary;
+  }
+
+  function revocationOtelProjectionSummary(value, meta) {
+    const inputs = object(value.inputs, "LureRevoke OpenTelemetry inputs");
+    const source = object(inputs.otel_log_export, "LureRevoke OpenTelemetry source export");
+    const run = object(value.run, "LureRevoke OpenTelemetry projected run");
+    const clock = object(value.clock_boundary, "LureRevoke OpenTelemetry clock boundary");
+    const summary = base(
+      "LureRevoke OpenTelemetry projection",
+      "Body-free operational telemetry bridge",
+      "An independently recomputable projection from strict OpenTelemetry log-model records to a LureRevoke run.",
+      meta,
+    );
+    summary.status = "Projection inspected";
+    summary.metrics = [
+      {label: "Records", value: count(Array.isArray(source.records) ? source.records.length : 0)},
+      {label: "Signals", value: count(Array.isArray(run.signal_observations) ? run.signal_observations.length : 0)},
+      {label: "Access decisions", value: count(Array.isArray(run.access_observations) ? run.access_observations.length : 0)},
+      {label: "Receiver", value: String(source.receiver && source.receiver.name || "unknown")},
+      {label: "Benchmark clock", value: String(clock.benchmark_time_field || "unknown")},
+      {label: "Collector time scored", value: clock.observed_timestamp_used_for_benchmark_timing === false ? "no" : "unknown"},
+    ];
+    summary.bindings = [
+      binding("Revocation plan", inputs.revocation_plan_sha256),
+      binding("OTel source export", inputs.otel_log_export_sha256),
+      binding("Projected run", value.run_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["no log Body", "opaque declared identifiers and digests only", "no raw subjects, tokens, credentials, prompts, payloads, or targets"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke verify-otel`; this browser does not recompute the source projection or establish telemetry completeness, clock synchronization, or causality.");
+    return summary;
+  }
+
+  function revocationDeploymentGateSummary(value, meta) {
+    const system = object(value.system, "LureRevoke deployment-gate system");
+    const contract = object(value.contract, "LureRevoke deployment-gate contract");
+    const policy = object(value.policy, "LureRevoke deployment-gate policy");
+    const sources = object(value.sources, "LureRevoke deployment-gate sources");
+    const topology = object(sources.topology_audit, "LureRevoke topology source");
+    const projection = object(sources.otel_projection, "LureRevoke telemetry source");
+    const evidence = object(sources.revocation_evidence, "LureRevoke signed evidence source");
+    if (!Array.isArray(value.checks) || value.checks.length !== 10) {
+      throw new Error("LureRevoke deployment gate must contain ten checks");
+    }
+    const summary = base(
+      "LureRevoke deployment gate",
+      "Cross-artifact revocation release decision",
+      "One recomputable decision binding declared topology coverage, body-free telemetry, and authenticated convergence evidence to the same exact contract.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "System", value: String(system.system_id || "unknown")},
+      {label: "Environment", value: String(system.environment || "unknown")},
+      {label: "Topology", value: String(topology.verdict || "unknown")},
+      {label: "Coverage", value: `${count(topology.covered_mediation_point_count)} / ${count(topology.required_mediation_point_count)}`},
+      {label: "Telemetry records", value: count(projection.record_count)},
+      {label: "Signed evaluation", value: String(evidence.overall_status || "unknown")},
+      {label: "Convergence", value: `${count(policy.declared_convergence_ms)} / ${count(policy.maximum_allowed_convergence_ms)} ms`},
+      {label: "Run accepted from", value: String(policy.minimum_run_generated_at || "unknown")},
+      {label: "Expected receiver", value: String(policy.expected_receiver_name || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Revocation plan", contract.plan_sha256),
+      binding("Receiver run", contract.run_sha256),
+      binding("Topology audit", topology.sha256),
+      binding("Telemetry projection", projection.sha256),
+      binding("Telemetry source", projection.source_export_sha256),
+      binding("Evidence manifest", evidence.manifest_sha256),
+      binding("Evidence checkpoint", evidence.checkpoint_sha256),
+      binding("Evidence signer", evidence.signer_key_id),
+      binding("Expected receiver artifact", policy.expected_receiver_artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["body-free telemetry projection", "opaque identifiers and exact digests only", "no raw subjects, credentials, prompts, payloads, targets, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope revoke verify-gate` with all three exact sources and a trusted public key; this browser does not recompute the gate or authenticate its evidence bundle.");
+    return summary;
+  }
+
   function portfolioSummary(value, meta) {
     const boundary = object(value.boundary, "portfolio boundary binding");
     if (!Array.isArray(value.evidence) || value.evidence.length !== 3) {
@@ -780,6 +1336,112 @@
       summary.warnings = Array.isArray(predicate.limitations) ? predicate.limitations : [];
       return summary;
     }
+    if (statement.predicateType === RANGE_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureRange checkpoint predicate");
+      const summary = base(
+        "LureRange checkpoint",
+        "Exact permit-conformance evidence binding",
+        "An in-toto checkpoint binding a LureRange manifest and evaluation report.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Bundle", value: String(predicate.bundle_id || "unknown")},
+        {label: "Engine", value: String(predicate.engine_id || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = [
+        ...(Array.isArray(statement.subject)
+          ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256))
+          : []),
+        binding("Permit", predicate.permit_sha256),
+        binding("Range suite", predicate.range_suite_sha256),
+      ].filter(Boolean);
+      summary.privacy = ["typed synthetic policy metadata", "no live actions, targets, credentials, or reasoning"];
+      summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
+      return summary;
+    }
+    if (statement.predicateType === RUNTIME_CHECKPOINT) {
+      const predicate = object(statement.predicate, "runtime mediation checkpoint predicate");
+      const summary = base(
+        "Runtime mediation checkpoint",
+        "Exact runtime evidence binding",
+        "An in-toto checkpoint binding a runtime manifest, exact evaluation, profile, permit, and policy identity.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Bundle", value: String(predicate.bundle_id || "unknown")},
+        {label: "Policy engine", value: String(predicate.policy_engine_id || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = [
+        ...(Array.isArray(statement.subject)
+          ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256))
+          : []),
+        binding("Runtime profile", predicate.profile_sha256),
+        binding("Permit", predicate.permit_sha256),
+        binding("Trace", predicate.trace_sha256),
+      ].filter(Boolean);
+      summary.privacy = ["typed runtime metadata", "no action content, tokens, secrets, or reasoning"];
+      summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
+      return summary;
+    }
+    if (statement.predicateType === REVOKE_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureRevoke checkpoint predicate");
+      const summary = base(
+        "LureRevoke checkpoint",
+        "Exact revocation evidence binding",
+        "An in-toto checkpoint binding a revocation manifest, evaluation, plan, run, and receiver identity.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Bundle", value: String(predicate.bundle_id || "unknown")},
+        {label: "Receiver", value: String(predicate.receiver_name || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = [
+        ...(Array.isArray(statement.subject)
+          ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256))
+          : []),
+        binding("Plan", predicate.plan_sha256),
+        binding("Receiver run", predicate.run_sha256),
+      ].filter(Boolean);
+      summary.privacy = ["opaque subjects, relative timing, statuses, counts, and digests only"];
+      summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
+      return summary;
+    }
+    if (statement.predicateType === REVOKE_REGISTRY_HEAD) {
+      const predicate = object(statement.predicate, "LureRevoke registry tree-head predicate");
+      const summary = base(
+        "LureRevoke registry tree head",
+        "Authenticated Merkle-history commitment",
+        "An in-toto statement committing one complete ordered registry prefix to a Merkle root.",
+        meta,
+      );
+      summary.status = "Tree head inspected";
+      summary.metrics = [
+        {label: "Registry", value: String(predicate.registry_id || "unknown")},
+        {label: "Tree size", value: count(predicate.tree_size)},
+        {label: "Hash profile", value: String(predicate.hash_profile || "unknown")},
+        {label: "Registered", value: String(predicate.registered_at || "unknown")},
+      ];
+      summary.bindings = [
+        ...(Array.isArray(statement.subject)
+          ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256))
+          : []),
+        binding("Merkle root", predicate.root_sha256),
+        binding("Latest entry", predicate.latest_entry_sha256),
+        binding("Previous tree head", predicate.previous_tree_head_sha256),
+        binding("Registry config", predicate.config_sha256),
+        binding("Registry signer", predicate.signer_key_id),
+      ].filter(Boolean);
+      summary.privacy = ["Merkle and artifact digests, sequence, and time only"];
+      summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
+      summary.warnings.push("The browser does not authenticate DSSE, recompute the Merkle tree, or detect rollback. Use the registry verifier and a retained head.");
+      return summary;
+    }
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
@@ -805,7 +1467,24 @@
     else if (statement.schema === INVARIANT_EVALUATION) summary = invariantEvaluationSummary(statement, meta);
     else if (statement.schema === INVARIANT_BUNDLE) summary = invariantBundleSummary(statement, meta);
     else if (statement.schema === INVARIANT_COMPARISON) summary = invariantComparisonSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, coverage, delegation, LureIR, portfolio, or witness artifact.");
+    else if (statement.schema === RANGE_EVALUATION) summary = rangeEvaluationSummary(statement, meta);
+    else if (statement.schema === RANGE_BUNDLE) summary = rangeBundleSummary(statement, meta);
+    else if (statement.schema === RANGE_COMPARISON) summary = rangeComparisonSummary(statement, meta);
+    else if (statement.schema === RUNTIME_EVALUATION) summary = runtimeEvaluationSummary(statement, meta);
+    else if (statement.schema === RUNTIME_BUNDLE) summary = runtimeBundleSummary(statement, meta);
+    else if (statement.schema === RUNTIME_COMPARISON) summary = runtimeComparisonSummary(statement, meta);
+    else if (statement.schema === REVOKE_EVALUATION) summary = revocationEvaluationSummary(statement, meta);
+    else if (statement.schema === REVOKE_BUNDLE) summary = revocationBundleSummary(statement, meta);
+    else if (statement.schema === REVOKE_COMPARISON) summary = revocationComparisonSummary(statement, meta);
+    else if (statement.schema === REVOKE_REGISTRY) summary = revocationRegistrySummary(statement, meta);
+    else if (statement.schema === REVOKE_REGISTRY_ENTRY) summary = revocationRegistryEntrySummary(statement, meta);
+    else if (statement.schema === REVOKE_REGISTRY_INCLUSION) summary = revocationRegistryInclusionSummary(statement, meta);
+    else if (statement.schema === REVOKE_REGISTRY_CONSISTENCY) summary = revocationRegistryConsistencySummary(statement, meta);
+    else if (statement.schema === REVOKE_REGISTRY_HEAD_COMPARISON) summary = revocationRegistryHeadComparisonSummary(statement, meta);
+    else if (statement.schema === REVOKE_TOPOLOGY_AUDIT) summary = revocationTopologySummary(statement, meta);
+    else if (statement.schema === REVOKE_OTEL_PROJECTION) summary = revocationOtelProjectionSummary(statement, meta);
+    else if (statement.schema === REVOKE_DEPLOYMENT_GATE) summary = revocationDeploymentGateSummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

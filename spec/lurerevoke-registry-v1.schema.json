@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1",
+  "title": "LureRevoke signed transparency registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "registry_id", "created_at", "producer", "registration_policy", "hash_profile", "signer_key_id", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1"},
+    "schema_version": {"const": 1},
+    "registry_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"$ref": "#/$defs/id"}}},
+    "registration_policy": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment", "receiver_name", "require_authenticated_bundle"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}, "receiver_name": {"$ref": "#/$defs/id"}, "require_authenticated_bundle": {"const": true}}},
+    "hash_profile": {"const": "rfc9162-sha256-merkle-tree"},
+    "signer_key_id": {"$ref": "#/$defs/digest"},
+    "limitations": {"$ref": "#/$defs/limitations"},
+    "interpretation_boundary": {"$ref": "#/$defs/interpretation"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "limitations": {"const": ["registry_contains_checkpoint_digests_status_time_and_receiver_version_metadata_only", "signed_tree_heads_detect_mutation_deletion_or_reordering_within_the_available_history", "tail_deletion_requires_a_previously_retained_or_independently_witnessed_tree_head", "registration_does_not_prove_event_observation_receiver_clock_or_enforcement_authenticity", "registry_is_not_an_rfc9943_transparency_service_rfc9942_vds_or_compliance_claim"]},
+    "interpretation": {"const": "A valid registry proves that its available registration records form the ordered Merkle history committed by each authenticated tree head. A separately retained tree head can detect rollback. Registration does not prove the underlying revocation evidence is complete, deployed, or authentic beyond its bundle key."}
+  }
+}

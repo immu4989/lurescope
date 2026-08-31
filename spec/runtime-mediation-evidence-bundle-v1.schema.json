@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-bundle/v1",
+  "title": "LureScope runtime mediation evidence bundle manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "bundle_id", "created_at", "producer", "system", "profile", "policy", "evidence", "overall_status", "authentication", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-bundle/v1"},
+    "schema_version": {"const": 1},
+    "bundle_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"type": "string", "minLength": 1, "maxLength": 40}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "profile": {"type": "object", "additionalProperties": false, "required": ["profile_id", "profile_version", "profile_sha256", "permit_sha256"], "properties": {"profile_id": {"$ref": "#/$defs/id"}, "profile_version": {"$ref": "#/$defs/id"}, "profile_sha256": {"$ref": "#/$defs/digest"}, "permit_sha256": {"$ref": "#/$defs/digest"}}},
+    "policy": {"$ref": "#/$defs/policy"},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["file", "schema", "sha256", "trace_sha256"], "properties": {"file": {"const": "evidence/runtime-evaluation.json"}, "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-evaluation-v1"}, "sha256": {"$ref": "#/$defs/digest"}, "trace_sha256": {"$ref": "#/$defs/digest"}}},
+    "overall_status": {"enum": ["pass", "fail"]},
+    "authentication": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "unsigned"}, "signer_key_id": {"type": "null"}}},
+      {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "ecdsa-p256-dsse"}, "signer_key_id": {"$ref": "#/$defs/digest"}}}
+    ]},
+    "limitations": {"const": ["profile_trace_receipts_sensor_bindings_and_metrics_are_independently_recomputed", "a_signature_authenticates_a_key_not_a_policy_engine_sensor_or_organization", "submitted_sensor_metadata_is_not_proof_that_every_effect_or_bypass_was_observed", "passing_is_not_containment_compliance_certification_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "LureScope independently recomputed the typed runtime trace, receipt chain, sensor bindings, and reconciliation metrics, then bound their exact bytes. This is evidence integrity, not proof of complete mediation, sensor truth, containment, compliance, or authorization."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "policy": {"type": "object", "additionalProperties": false, "required": ["engine_id", "engine_version", "engine_artifact_sha256"], "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "engine_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}}
+  }
+}

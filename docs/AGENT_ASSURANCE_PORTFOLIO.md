@@ -140,7 +140,10 @@ controller, sensor route, population, or schedule change requires a new plan.
 ## Independent offline witnesses
 
 Local hash chains cannot independently reveal deletion of their newest entries.
-Export the current checkpoint to a separately controlled witness:
+Export the current LureBoundary, LureWatch, or signed LureRevoke checkpoint to a
+separately controlled witness. Choose `lureboundary`, `lurewatch`, or
+`lurerevoke` for `--kind`; LureRevoke also requires `--public-key` for its
+external bundle-signing key:
 
 ```bash
 lurescope witness request ./boundary-bundle \

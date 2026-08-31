@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerange-evidence-bundle/v1",
+  "title": "LureScope LureRange evidence bundle manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "bundle_id", "created_at", "producer", "system", "engine", "evidence", "overall_status", "authentication", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerange-evidence-bundle/v1"},
+    "schema_version": {"const": 1},
+    "bundle_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"type": "string", "minLength": 1, "maxLength": 40}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "engine": {"type": "object", "additionalProperties": false, "required": ["engine_id", "engine_version", "artifact_sha256"], "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}},
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file", "schema", "sha256", "permit_sha256", "range_suite_sha256"],
+      "properties": {"file": {"const": "evidence/lurerange-evaluation.json"}, "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerange-evaluation-v1"}, "sha256": {"$ref": "#/$defs/digest"}, "permit_sha256": {"$ref": "#/$defs/digest"}, "range_suite_sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "authentication": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "unsigned"}, "signer_key_id": {"type": "null"}}},
+        {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "ecdsa-p256-dsse"}, "signer_key_id": {"$ref": "#/$defs/digest"}}}
+      ]
+    },
+    "limitations": {"const": ["permit_suite_expectations_and_metrics_are_independently_recomputed_from_exact_report_bytes", "signed_evidence_authenticates_a_key_not_an_engine_or_organization_without_external_trust", "the_bundle_does_not_attest_that_the_named_engine_produced_the_preserved_decisions", "passing_is_not_containment_safety_compliance_certification_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "This bundle proves exact byte binding, schema validation, and independent recomputation of the declared LurePermit/LureRange expectations and metrics. It does not prove runtime mediation, source-engine identity, containment, safety, compliance, or authorization."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

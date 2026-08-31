@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-checkpoint/v1",
+  "title": "LureScope runtime mediation in-toto checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [
+      {"$ref": "#/$defs/subject", "properties": {"name": {"const": "bundle.json"}}},
+      {"$ref": "#/$defs/subject", "properties": {"name": {"const": "evidence/runtime-evaluation.json"}}}
+    ], "items": false},
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/runtime-mediation-evidence-checkpoint/v1"},
+    "predicate": {"type": "object", "additionalProperties": false, "required": ["bundle_id", "created_at", "system_id", "profile_sha256", "permit_sha256", "policy_engine_id", "trace_sha256", "overall_status", "authentication_mode", "limitations", "interpretation_boundary"], "properties": {
+      "bundle_id": {"$ref": "#/$defs/portable_id"}, "created_at": {"type": "string", "format": "date-time"}, "system_id": {"$ref": "#/$defs/id"}, "profile_sha256": {"$ref": "#/$defs/digest"}, "permit_sha256": {"$ref": "#/$defs/digest"}, "policy_engine_id": {"$ref": "#/$defs/id"}, "trace_sha256": {"$ref": "#/$defs/digest"}, "overall_status": {"enum": ["pass", "fail"]}, "authentication_mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]},
+      "limitations": {"const": ["profile_trace_receipts_sensor_bindings_and_metrics_are_independently_recomputed", "a_signature_authenticates_a_key_not_a_policy_engine_sensor_or_organization", "submitted_sensor_metadata_is_not_proof_that_every_effect_or_bypass_was_observed", "passing_is_not_containment_compliance_certification_or_deployment_authorization"]},
+      "interpretation_boundary": {"const": "LureScope independently recomputed the typed runtime trace, receipt chain, sensor bindings, and reconciliation metrics, then bound their exact bytes. This is evidence integrity, not proof of complete mediation, sensor truth, containment, compliance, or authorization."}
+    }}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "subject": {"type": "object", "additionalProperties": false, "required": ["name", "digest"], "properties": {"name": {"type": "string"}, "digest": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {"sha256": {"$ref": "#/$defs/digest"}}}}}
+  }
+}

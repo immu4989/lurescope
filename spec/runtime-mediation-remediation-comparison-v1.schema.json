@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/runtime-mediation-remediation-comparison/v1",
+  "title": "LureScope runtime mediation remediation comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "comparison_id", "created_at", "producer", "system_id", "profile_id", "contract", "before", "after", "resolved_correlation_ids", "persistent_failure_ids", "new_failure_ids", "summary", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/runtime-mediation-remediation-comparison/v1"}, "schema_version": {"const": 1}, "comparison_id": {"$ref": "#/$defs/portable_id"}, "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"type": "string", "minLength": 1, "maxLength": 40}}},
+    "system_id": {"$ref": "#/$defs/id"}, "profile_id": {"$ref": "#/$defs/id"},
+    "contract": {"type": "object", "additionalProperties": false, "required": ["profile_sha256", "permit_sha256", "policy_engine_id"], "properties": {"profile_sha256": {"$ref": "#/$defs/digest"}, "permit_sha256": {"$ref": "#/$defs/digest"}, "policy_engine_id": {"$ref": "#/$defs/id"}}},
+    "before": {"$ref": "#/$defs/bundle"}, "after": {"$ref": "#/$defs/bundle"},
+    "resolved_correlation_ids": {"$ref": "#/$defs/ids"}, "persistent_failure_ids": {"$ref": "#/$defs/ids"}, "new_failure_ids": {"$ref": "#/$defs/ids"},
+    "summary": {"type": "object", "additionalProperties": false, "required": ["resolved", "persistent", "new", "status"], "properties": {"resolved": {"$ref": "#/$defs/count"}, "persistent": {"$ref": "#/$defs/count"}, "new": {"$ref": "#/$defs/count"}, "status": {"enum": ["effective", "regressed", "ineffective", "unchanged_pass"]}}},
+    "limitations": {"const": ["comparison_requires_the_same_system_profile_permit_acceptance_and_policy_engine_identity", "effective_means_a_failing_before_trace_changed_to_pass_under_the_same_evidence_contract", "configuration_change_causality_deployment_and_unrepresented_behavior_are_not_proven", "comparison_is_not_enforcement_compliance_certification_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "A comparison preserves a same-contract change in submitted runtime evidence. It does not prove remediation causality, deployment, complete observation, or control satisfaction."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "count": {"type": "integer", "minimum": 0, "maximum": 512},
+    "ids": {"type": "array", "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "bundle": {"type": "object", "additionalProperties": false, "required": ["bundle_id", "manifest_sha256", "statement_sha256", "policy_version", "generated_at", "overall_status", "authenticated"], "properties": {"bundle_id": {"$ref": "#/$defs/portable_id"}, "manifest_sha256": {"$ref": "#/$defs/digest"}, "statement_sha256": {"$ref": "#/$defs/digest"}, "policy_version": {"$ref": "#/$defs/id"}, "generated_at": {"type": "string", "format": "date-time"}, "overall_status": {"enum": ["pass", "fail"]}, "authenticated": {"type": "boolean"}}}
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-entry/v1",
+  "title": "LureRevoke transparency registration entry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "registry_id", "sequence", "registered_at", "previous_entry_sha256", "system", "receiver", "evidence", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-entry/v1"},
+    "schema_version": {"const": 1},
+    "registry_id": {"$ref": "#/$defs/portable_id"},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "registered_at": {"type": "string", "format": "date-time"},
+    "previous_entry_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "receiver": {"type": "object", "additionalProperties": false, "required": ["name", "version", "artifact_sha256", "bundle_signer_key_id"], "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "bundle_signer_key_id": {"$ref": "#/$defs/digest"}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["manifest_sha256", "checkpoint_sha256", "plan_sha256", "run_sha256", "evaluation_generated_at", "overall_status"], "properties": {"manifest_sha256": {"$ref": "#/$defs/digest"}, "checkpoint_sha256": {"$ref": "#/$defs/digest"}, "plan_sha256": {"$ref": "#/$defs/digest"}, "run_sha256": {"$ref": "#/$defs/digest"}, "evaluation_generated_at": {"type": "string", "format": "date-time"}, "overall_status": {"enum": ["pass", "fail"]}}},
+    "privacy": {"const": {"contains_revocation_evaluation": false, "contains_subject_or_event_identifiers": false, "contains_tokens_credentials_prompts_payloads_or_targets": false}},
+    "limitations": {"$ref": "#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "limitations": {"const": ["registry_contains_checkpoint_digests_status_time_and_receiver_version_metadata_only", "signed_tree_heads_detect_mutation_deletion_or_reordering_within_the_available_history", "tail_deletion_requires_a_previously_retained_or_independently_witnessed_tree_head", "registration_does_not_prove_event_observation_receiver_clock_or_enforcement_authenticity", "registry_is_not_an_rfc9943_transparency_service_rfc9942_vds_or_compliance_claim"]}
+  }
+}

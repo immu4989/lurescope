@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerange-evidence-checkpoint/v1",
+  "title": "LureScope LureRange evidence in-toto checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "bundle.json"}}},
+        {"$ref": "#/$defs/subject", "properties": {"name": {"const": "evidence/lurerange-evaluation.json"}}}
+      ],
+      "items": false
+    },
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/lurerange-evidence-checkpoint/v1"},
+    "predicate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bundle_id", "created_at", "system_id", "engine_id", "overall_status", "permit_sha256", "range_suite_sha256", "authentication_mode", "limitations", "interpretation_boundary"],
+      "properties": {
+        "bundle_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "system_id": {"$ref": "#/$defs/id"}, "engine_id": {"$ref": "#/$defs/id"},
+        "overall_status": {"enum": ["pass", "fail"]}, "permit_sha256": {"$ref": "#/$defs/digest"}, "range_suite_sha256": {"$ref": "#/$defs/digest"},
+        "authentication_mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]},
+        "limitations": {"const": ["permit_suite_expectations_and_metrics_are_independently_recomputed_from_exact_report_bytes", "signed_evidence_authenticates_a_key_not_an_engine_or_organization_without_external_trust", "the_bundle_does_not_attest_that_the_named_engine_produced_the_preserved_decisions", "passing_is_not_containment_safety_compliance_certification_or_deployment_authorization"]},
+        "interpretation_boundary": {"const": "This bundle proves exact byte binding, schema validation, and independent recomputation of the declared LurePermit/LureRange expectations and metrics. It does not prove runtime mediation, source-engine identity, containment, safety, compliance, or authorization."}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "subject": {"type": "object", "additionalProperties": false, "required": ["name", "digest"], "properties": {"name": {"type": "string"}, "digest": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {"sha256": {"$ref": "#/$defs/digest"}}}}}
+  }
+}

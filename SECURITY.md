@@ -44,6 +44,10 @@ otherwise.
 - SCuBA bridge acceptance of a contradictory or unsupported report, cross-artifact
   rebinding, DSSE bypass, or leakage of tenant identity, raw provider settings,
   requirements, details, comments, or remediation annotations into minimized output.
+- Independent LurePermit, LureRange, runtime, LureInvariant, or LureRevoke
+  verification accepting contradictory inputs, altered byte bindings, forged or
+  wrong-key DSSE, replayed registry state, incomplete topology/probe coverage,
+  weakened deployment policy, stale evidence, or privacy-boundary violations.
 
 ## What is not a vulnerability
 
@@ -73,6 +77,15 @@ echo the submitted text to the authenticated caller, and enabled LLM-backed
 operations send it to the explicitly configured provider.
 
 The container runs as a normal user and needs no privileged capabilities.
+
+Repository-wide CODEOWNERS coverage is included, but it has no enforcement
+effect by itself. Enable branch or ruleset protection that requires code-owner
+review, and protect `.github/workflows/`, local actions, trust material, and
+deployment-gate policy from unilateral changes. Pin external actions and this
+repository's deployment-gate action to reviewed full commit SHAs.
+Release builds are deliberately separated from the job that receives OIDC
+attestation and GitHub Release write authority, reducing the privilege available
+to package build backends.
 
 `POST /proof/email` deliberately creates unsigned statements only and never
 loads or accepts a private key. Sign reviewed evidence offline or through your

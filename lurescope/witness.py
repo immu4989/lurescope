@@ -1,4 +1,4 @@
-"""Offline external witnesses for LureBoundary and LureWatch checkpoints.
+"""Offline external witnesses for LureBoundary, LureWatch, and LureRevoke.
 
 Witness receipts close the local hash-chain tail-deletion gap by proving that an
 independent key observed a particular checkpoint.  The portable format uses an
@@ -26,6 +26,7 @@ from .boundary import (
     public_key_id,
     verify_boundary_bundle,
 )
+from .revocation import verify_revocation_bundle
 from .watch import verify_monitor_bundle
 
 REQUEST_SCHEMA = "https://github.com/immu4989/lurescope/spec/checkpoint-witness-request/v1"
@@ -42,7 +43,7 @@ _LIMITATIONS = [
     "receipt_proves_observation_by_a_key_not_log_inclusion_or_organization_identity",
     "witness_independence_key_custody_and_timestamp_accuracy_require_external_governance",
     "offline_receipt_is_scitt_aligned_but_not_an_rfc9943_transparency_service_receipt",
-    "checkpoint_integrity_is_not_proof_of_containment_safety_compliance_or_authorization",
+    "checkpoint_integrity_is_not_proof_of_containment_revocation_enforcement_compliance_or_authorization",
 ]
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$")
 _DIGEST = re.compile(r"^[a-f0-9]{64}$")
@@ -160,7 +161,7 @@ def _validate_request(value: Any) -> Dict[str, Any]:
     if request["schema"] != REQUEST_SCHEMA or request["schema_version"] != 1:
         raise ValueError("unsupported witness request")
     _parse_timestamp(request["created_at"], "witness request created_at")
-    if request["bundle_kind"] not in {"lureboundary", "lurewatch"}:
+    if request["bundle_kind"] not in {"lureboundary", "lurewatch", "lurerevoke"}:
         raise ValueError("witness request bundle_kind is unsupported")
     for key in ("plan_sha256", "checkpoint_statement_sha256"):
         value_digest = request[key]
@@ -174,7 +175,11 @@ def _validate_request(value: Any) -> Dict[str, Any]:
         raise ValueError("witness request checkpoint_sequence must be positive")
     _identifier(request["request_id"], "witness request request_id")
     expected_statuses = (
-        {"pass", "breach"} if request["bundle_kind"] == "lureboundary" else {"monitoring", "breach"}
+        {"pass", "breach"}
+        if request["bundle_kind"] == "lureboundary"
+        else {"monitoring", "breach"}
+        if request["bundle_kind"] == "lurewatch"
+        else {"pass", "fail"}
     )
     if request["status"] not in expected_statuses:
         raise ValueError("witness request status is invalid for its bundle kind")
@@ -204,8 +209,18 @@ def _binding(bundle: Path, kind: str, public_key_pem: Optional[bytes]) -> Dict[s
     elif kind == "lurewatch":
         result = verify_monitor_bundle(bundle, public_key_pem=public_key_pem)
         status = result["family_status"]
+    elif kind == "lurerevoke":
+        result = verify_revocation_bundle(bundle, public_key_pem=public_key_pem)
+        if not result["authenticated"]:
+            raise ValueError("witnessing LureRevoke requires a signed bundle and external key")
+        return {
+            "plan_sha256": result["report"]["plan_sha256"],
+            "checkpoint_sequence": 1,
+            "checkpoint_statement_sha256": result["statement_sha256"],
+            "status": result["overall_status"],
+        }
     else:
-        raise ValueError("bundle kind must be lureboundary or lurewatch")
+        raise ValueError("bundle kind must be lureboundary, lurewatch, or lurerevoke")
     if result["latest_sequence"] < 1 or result["latest_statement_sha256"] is None:
         raise ValueError("witnessing requires at least one checkpoint")
     return {

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-deployment-gate/v1",
+  "title": "Cross-artifact LureRevoke deployment gate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "gate_id", "created_at", "producer", "system", "policy", "contract", "sources", "checks", "overall_status", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-deployment-gate/v1"},
+    "schema_version": {"const": 1},
+    "gate_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"$ref": "#/$defs/id"}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "policy": {"type": "object", "additionalProperties": false, "required": ["maximum_allowed_convergence_ms", "declared_convergence_ms", "minimum_run_generated_at", "expected_system_id", "expected_environment", "expected_receiver_name", "expected_receiver_artifact_sha256"], "properties": {"maximum_allowed_convergence_ms": {"type": "integer", "minimum": 1, "maximum": 600000}, "declared_convergence_ms": {"type": "integer", "minimum": 1, "maximum": 600000}, "minimum_run_generated_at": {"type": "string", "format": "date-time"}, "expected_system_id": {"$ref": "#/$defs/id"}, "expected_environment": {"enum": ["development", "evaluation", "staging", "production"]}, "expected_receiver_name": {"$ref": "#/$defs/id"}, "expected_receiver_artifact_sha256": {"$ref": "#/$defs/digest"}}},
+    "contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["plan_sha256", "run_sha256", "receiver"],
+      "properties": {
+        "plan_sha256": {"$ref": "#/$defs/digest"},
+        "run_sha256": {"$ref": "#/$defs/digest"},
+        "receiver": {"type": "object", "additionalProperties": false, "required": ["name", "version", "artifact_sha256"], "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}}
+      }
+    },
+    "sources": {
+      "type": "object", "additionalProperties": false,
+      "required": ["topology_audit", "otel_projection", "revocation_evidence"],
+      "properties": {
+        "topology_audit": {"type": "object", "additionalProperties": false, "required": ["sha256", "verdict", "covered_mediation_point_count", "required_mediation_point_count"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "verdict": {"enum": ["pass", "fail"]}, "covered_mediation_point_count": {"type": "integer", "minimum": 0, "maximum": 32}, "required_mediation_point_count": {"type": "integer", "minimum": 1, "maximum": 32}}},
+        "otel_projection": {"type": "object", "additionalProperties": false, "required": ["sha256", "source_export_sha256", "record_count"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "source_export_sha256": {"$ref": "#/$defs/digest"}, "record_count": {"type": "integer", "minimum": 1, "maximum": 20480}}},
+        "revocation_evidence": {"type": "object", "additionalProperties": false, "required": ["manifest_sha256", "checkpoint_sha256", "signer_key_id", "overall_status"], "properties": {"manifest_sha256": {"$ref": "#/$defs/digest"}, "checkpoint_sha256": {"$ref": "#/$defs/digest"}, "signer_key_id": {"$ref": "#/$defs/digest"}, "overall_status": {"enum": ["pass", "fail"]}}}
+      }
+    },
+    "checks": {
+      "type": "array", "minItems": 10, "maxItems": 10,
+      "prefixItems": [
+        {"$ref": "#/$defs/topology_check"},
+        {"$ref": "#/$defs/preregistration_check"},
+        {"$ref": "#/$defs/probe_coverage_check"},
+        {"$ref": "#/$defs/strict_acceptance_check"},
+        {"$ref": "#/$defs/deadline_policy_check"},
+        {"$ref": "#/$defs/freshness_policy_check"},
+        {"$ref": "#/$defs/deployment_identity_check"},
+        {"$ref": "#/$defs/projection_check"},
+        {"$ref": "#/$defs/authentication_check"},
+        {"$ref": "#/$defs/acceptance_check"}
+      ],
+      "items": false
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "limitations": {"const": ["gate_reconciles_declared_topology_telemetry_projection_and_signed_evaluation_only", "a_pass_does_not_prove_topology_discovery_telemetry_completeness_clock_sync_or_enforcement", "source_signature_authenticates_a_key_not_a_receiver_node_operator_or_organization", "external_policy_values_are_caller_supplied_and_require_separately_governed_authorization", "topology_preregistration_uses_declared_timestamps_and_requires_external_clock_assurance", "gate_does_not_establish_causality_interoperability_compliance_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "Pass means a complete declared topology based on a runtime profile dated no later than the run, an independently recomputed body-free telemetry projection, and an authenticated passing revocation evaluation bind the same exact plan, run, system, and receiver contract while satisfying caller-supplied deployment identity, freshness, and deadline policy. It does not authenticate that policy or establish trusted time, observation completeness, deployment, causality, or enforcement authenticity."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "topology_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "declared_topology_complete"}, "status": {"enum": ["pass", "fail"]}}},
+    "preregistration_check": {"const": {"check_id": "runtime_topology_preregistered", "status": "pass"}},
+    "probe_coverage_check": {"const": {"check_id": "probe_phase_coverage_complete", "status": "pass"}},
+    "strict_acceptance_check": {"const": {"check_id": "strict_acceptance_thresholds", "status": "pass"}},
+    "deadline_policy_check": {"const": {"check_id": "convergence_deadline_within_policy", "status": "pass"}},
+    "freshness_policy_check": {"const": {"check_id": "run_freshness_matches_policy", "status": "pass"}},
+    "deployment_identity_check": {"const": {"check_id": "deployment_identity_matches_policy", "status": "pass"}},
+    "projection_check": {"const": {"check_id": "telemetry_projection_recomputed", "status": "pass"}},
+    "authentication_check": {"const": {"check_id": "source_bundle_authenticated", "status": "pass"}},
+    "acceptance_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "revocation_acceptance_met"}, "status": {"enum": ["pass", "fail"]}}}
+  }
+}

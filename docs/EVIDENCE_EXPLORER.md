@@ -16,7 +16,17 @@ page to inspect:
 - combined agent-assurance portfolios and in-toto checkpoints; and
 - checkpoint witness requests and embedded DSSE receipts; and
 - LureInvariant plans, evaluations, evidence-bundle manifests, in-toto
-  checkpoint/DSSE artifacts, and strict remediation comparisons.
+  checkpoint/DSSE artifacts, and strict remediation comparisons; and
+- LureRange evaluations, evidence-bundle manifests, in-toto checkpoint/DSSE
+  artifacts, and strict permit-remediation comparisons; and
+- LurePermit runtime evaluations, runtime-mediation bundle manifests, in-toto
+  checkpoint/DSSE artifacts, and strict runtime-remediation comparisons; and
+- LureRevoke evaluations, signed evidence-bundle manifests, in-toto
+  checkpoint/DSSE artifacts, strict same-plan remediation comparisons, and
+  privacy-minimized registry configs, entries, signed Merkle tree heads, and
+  portable inclusion and consistency proofs, dual-head split-view comparisons,
+  runtime-topology coverage audits, body-free OpenTelemetry projections, and
+  cross-artifact deployment gates.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -50,3 +60,37 @@ recompute a remediation comparison. Use `lurescope invariant verify` and
 `lurescope invariant verify-comparison` with public keys obtained through a
 separately trusted channel. See the [complete evidence workflow and claims
 boundary](LUREINVARIANT_EVIDENCE.md).
+
+For LureRange, the browser does not independently derive policy expectations,
+recompute metrics, authenticate a checkpoint, or establish that a named engine
+produced the decisions. Use `lurescope range verify` and
+`lurescope range verify-comparison` with public keys obtained through a
+separately trusted channel. See the [complete LurePermit evidence workflow and
+claims boundary](LUREPERMIT_EVIDENCE.md).
+
+For runtime-mediation evidence, the browser displays request and mediation-point
+coverage, bypass/unmediated/unknown counts, profile/permit/trace digests, policy
+identity, and the claims boundary. It does not validate the receipt chain,
+authenticate SPIFFE/OAuth declarations or sensors, recompute reconciliation, or
+verify DSSE. Use `lurescope runtime verify` with a separately trusted public key.
+See the [signed runtime evidence workflow](RUNTIME_MEDIATION_EVIDENCE.md).
+
+For LureRevoke evidence, the browser displays delivery coverage, p95/maximum
+convergence, deadline misses, post-deadline allows, collateral blocks, receiver
+identity, exact plan/run/evaluation bindings, and before/after failure counts
+and metric deltas. It does not independently derive signal dispositions or
+access expectations, recompute a comparison from its source bundles, or
+authenticate the signature, recompute a registry's Merkle history, detect
+rollback without an external retained head, or establish transmitter, receiver,
+clock, node, observation, or enforcement authenticity. Use the applicable
+`lurescope revoke verify`, `verify-comparison`, `verify-topology`, `verify-otel`,
+`verify-gate`, `registry-verify`, `registry-verify-inclusion`,
+`registry-verify-consistency`, or `registry-verify-head-comparison` command. Gate
+verification additionally requires the exact sources, external policy, and a
+separately trusted bundle key. See the
+[signed LureRevoke evidence workflow](LUREREVOKE_EVIDENCE.md).
+
+For a deployment gate, the browser shows the declared and policy convergence
+limits, minimum accepted run timestamp, deployment identity, receiver artifact,
+and all source bindings. It does not authenticate the caller-supplied policy or
+recompute any of the ten checks.

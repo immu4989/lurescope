@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-bundle/v1",
+  "title": "LureScope LureRevoke evidence bundle manifest v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "bundle_id", "created_at", "producer", "system", "plan", "receiver", "evidence", "summary", "overall_status", "authentication", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-bundle/v1"},
+    "schema_version": {"const": 1},
+    "bundle_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"$ref": "#/$defs/id"}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "plan": {"type": "object", "additionalProperties": false, "required": ["plan_id", "plan_sha256"], "properties": {"plan_id": {"$ref": "#/$defs/id"}, "plan_sha256": {"$ref": "#/$defs/digest"}}},
+    "receiver": {"$ref": "#/$defs/receiver"},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["file", "schema", "sha256", "run_sha256"], "properties": {"file": {"const": "evidence/revocation-evaluation.json"}, "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerevoke-evaluation-v1"}, "sha256": {"$ref": "#/$defs/digest"}, "run_sha256": {"$ref": "#/$defs/digest"}}},
+    "summary": {"type": "object", "additionalProperties": false, "required": ["delivery_coverage_rate", "p95_convergence_ms", "maximum_convergence_ms", "deadline_miss_count", "post_deadline_allow_count", "collateral_block_count", "revoked_block_recall"], "properties": {"delivery_coverage_rate": {"$ref": "#/$defs/rate"}, "p95_convergence_ms": {"$ref": "#/$defs/nullable_ms"}, "maximum_convergence_ms": {"$ref": "#/$defs/nullable_ms"}, "deadline_miss_count": {"$ref": "#/$defs/count"}, "post_deadline_allow_count": {"$ref": "#/$defs/count"}, "collateral_block_count": {"$ref": "#/$defs/count"}, "revoked_block_recall": {"$ref": "#/$defs/rate"}}},
+    "overall_status": {"enum": ["pass", "fail"]},
+    "authentication": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "unsigned"}, "signer_key_id": {"type": "null"}}},
+      {"type": "object", "additionalProperties": false, "required": ["mode", "signer_key_id"], "properties": {"mode": {"const": "ecdsa-p256-dsse"}, "signer_key_id": {"$ref": "#/$defs/digest"}}}
+    ]},
+    "limitations": {"const": ["plan_run_signal_dispositions_decisions_and_metrics_are_independently_recomputed", "a_signature_authenticates_a_key_not_a_transmitter_receiver_node_or_organization", "submitted_observations_do_not_prove_complete_event_or_access_path_coverage", "passing_is_not_caep_interoperability_zero_trust_compliance_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "LureScope independently recomputed the declared revocation delivery, convergence, signal dispositions, and access outcomes and bound their exact bytes. This is evidence integrity, not proof of transmitter, receiver, clock, observation, or enforcement authenticity."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "count": {"type": "integer", "minimum": 0, "maximum": 4096},
+    "nullable_ms": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 86400000}, {"type": "null"}]},
+    "receiver": {"type": "object", "additionalProperties": false, "required": ["name", "version", "artifact_sha256"], "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}}
+  }
+}

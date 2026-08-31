@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-inclusion-proof/v1",
+  "title": "Portable authenticated LureRevoke registry inclusion proof v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "registry_config", "tree_size", "leaf_index", "sequence", "entry", "entry_sha256", "leaf_sha256", "inclusion_path_sha256", "root_sha256", "tree_head_statement", "tree_head_dsse", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-inclusion-proof/v1"},
+    "schema_version": {"const": 1},
+    "registry_config": {"$ref": "#/$defs/config"},
+    "tree_size": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "leaf_index": {"type": "integer", "minimum": 0, "maximum": 9999},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "entry": {"$ref": "#/$defs/entry"},
+    "entry_sha256": {"$ref": "#/$defs/digest"},
+    "leaf_sha256": {"$ref": "#/$defs/digest"},
+    "inclusion_path_sha256": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/digest"}},
+    "root_sha256": {"$ref": "#/$defs/digest"},
+    "tree_head_statement": {"$ref": "#/$defs/tree_head"},
+    "tree_head_dsse": {"$ref": "#/$defs/dsse"},
+    "limitations": {"$ref": "#/$defs/proof_limitations"},
+    "interpretation_boundary": {"$ref": "#/$defs/proof_interpretation"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "portable_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "registry_limitations": {"const": ["registry_contains_checkpoint_digests_status_time_and_receiver_version_metadata_only", "signed_tree_heads_detect_mutation_deletion_or_reordering_within_the_available_history", "tail_deletion_requires_a_previously_retained_or_independently_witnessed_tree_head", "registration_does_not_prove_event_observation_receiver_clock_or_enforcement_authenticity", "registry_is_not_an_rfc9943_transparency_service_rfc9942_vds_or_compliance_claim"]},
+    "registry_interpretation": {"const": "A valid registry proves that its available registration records form the ordered Merkle history committed by each authenticated tree head. A separately retained tree head can detect rollback. Registration does not prove the underlying revocation evidence is complete, deployed, or authentic beyond its bundle key."},
+    "proof_limitations": {"const": ["proof_authenticates_inclusion_of_one_privacy_minimized_entry_in_one_signed_tree_head", "proof_does_not_disclose_other_registry_entries_or_the_revocation_evaluation", "proof_does_not_establish_global_non_equivocation_or_append_only_consistency", "proof_does_not_prove_event_observation_receiver_clock_or_enforcement_authenticity", "proof_is_not_an_rfc9943_receipt_rfc9942_vds_or_compliance_claim"]},
+    "proof_interpretation": {"const": "A valid proof establishes that the exact privacy-minimized entry is a leaf in the RFC 9162-style Merkle tree committed by the embedded authenticated tree head. It does not establish consistency with another tree head, global non-equivocation, or the truth and completeness of the underlying revocation observations."},
+    "config": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "schema_version", "registry_id", "created_at", "producer", "registration_policy", "hash_profile", "signer_key_id", "limitations", "interpretation_boundary"],
+      "properties": {
+        "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1"},
+        "schema_version": {"const": 1},
+        "registry_id": {"$ref": "#/$defs/portable_id"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"$ref": "#/$defs/id"}}},
+        "registration_policy": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment", "receiver_name", "require_authenticated_bundle"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}, "receiver_name": {"$ref": "#/$defs/id"}, "require_authenticated_bundle": {"const": true}}},
+        "hash_profile": {"const": "rfc9162-sha256-merkle-tree"},
+        "signer_key_id": {"$ref": "#/$defs/digest"},
+        "limitations": {"$ref": "#/$defs/registry_limitations"},
+        "interpretation_boundary": {"$ref": "#/$defs/registry_interpretation"}
+      }
+    },
+    "entry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "schema_version", "registry_id", "sequence", "registered_at", "previous_entry_sha256", "system", "receiver", "evidence", "privacy", "limitations"],
+      "properties": {
+        "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-entry/v1"},
+        "schema_version": {"const": 1},
+        "registry_id": {"$ref": "#/$defs/portable_id"},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "registered_at": {"type": "string", "format": "date-time"},
+        "previous_entry_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+        "receiver": {"type": "object", "additionalProperties": false, "required": ["name", "version", "artifact_sha256", "bundle_signer_key_id"], "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "bundle_signer_key_id": {"$ref": "#/$defs/digest"}}},
+        "evidence": {"type": "object", "additionalProperties": false, "required": ["manifest_sha256", "checkpoint_sha256", "plan_sha256", "run_sha256", "evaluation_generated_at", "overall_status"], "properties": {"manifest_sha256": {"$ref": "#/$defs/digest"}, "checkpoint_sha256": {"$ref": "#/$defs/digest"}, "plan_sha256": {"$ref": "#/$defs/digest"}, "run_sha256": {"$ref": "#/$defs/digest"}, "evaluation_generated_at": {"type": "string", "format": "date-time"}, "overall_status": {"enum": ["pass", "fail"]}}},
+        "privacy": {"const": {"contains_revocation_evaluation": false, "contains_subject_or_event_identifiers": false, "contains_tokens_credentials_prompts_payloads_or_targets": false}},
+        "limitations": {"$ref": "#/$defs/registry_limitations"}
+      }
+    },
+    "tree_head": {
+      "type": "object", "additionalProperties": false,
+      "required": ["_type", "subject", "predicateType", "predicate"],
+      "properties": {
+        "_type": {"const": "https://in-toto.io/Statement/v1"},
+        "subject": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "digest"], "properties": {"name": {"const": "entry.json"}, "digest": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {"sha256": {"$ref": "#/$defs/digest"}}}}}},
+        "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-tree-head/v1"},
+        "predicate": {"type": "object", "additionalProperties": false, "required": ["registry_id", "tree_size", "root_sha256", "latest_entry_sha256", "previous_tree_head_sha256", "config_sha256", "registered_at", "hash_profile", "signer_key_id", "limitations", "interpretation_boundary"], "properties": {"registry_id": {"$ref": "#/$defs/portable_id"}, "tree_size": {"type": "integer", "minimum": 1, "maximum": 10000}, "root_sha256": {"$ref": "#/$defs/digest"}, "latest_entry_sha256": {"$ref": "#/$defs/digest"}, "previous_tree_head_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "config_sha256": {"$ref": "#/$defs/digest"}, "registered_at": {"type": "string", "format": "date-time"}, "hash_profile": {"const": "rfc9162-sha256-merkle-tree"}, "signer_key_id": {"$ref": "#/$defs/digest"}, "limitations": {"$ref": "#/$defs/registry_limitations"}, "interpretation_boundary": {"$ref": "#/$defs/registry_interpretation"}}}
+      }
+    },
+    "dsse": {
+      "type": "object", "additionalProperties": false,
+      "required": ["payloadType", "payload", "signatures"],
+      "properties": {
+        "payloadType": {"const": "application/vnd.in-toto+json"},
+        "payload": {"type": "string", "contentEncoding": "base64", "minLength": 4},
+        "signatures": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["keyid", "sig"], "properties": {"keyid": {"$ref": "#/$defs/digest"}, "sig": {"type": "string", "contentEncoding": "base64", "minLength": 8}}}}
+      }
+    }
+  }
+}

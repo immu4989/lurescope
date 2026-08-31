@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-tree-head/v1",
+  "title": "LureRevoke signed registry tree head v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "digest"],
+        "properties": {
+          "name": {"const": "entry.json"},
+          "digest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sha256"],
+            "properties": {"sha256": {"$ref": "#/$defs/digest"}}
+          }
+        }
+      }
+    },
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-tree-head/v1"},
+    "predicate": {"type": "object", "additionalProperties": false, "required": ["registry_id", "tree_size", "root_sha256", "latest_entry_sha256", "previous_tree_head_sha256", "config_sha256", "registered_at", "hash_profile", "signer_key_id", "limitations", "interpretation_boundary"], "properties": {"registry_id": {"$ref": "#/$defs/portable_id"}, "tree_size": {"type": "integer", "minimum": 1, "maximum": 10000}, "root_sha256": {"$ref": "#/$defs/digest"}, "latest_entry_sha256": {"$ref": "#/$defs/digest"}, "previous_tree_head_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "config_sha256": {"$ref": "#/$defs/digest"}, "registered_at": {"type": "string", "format": "date-time"}, "hash_profile": {"const": "rfc9162-sha256-merkle-tree"}, "signer_key_id": {"$ref": "#/$defs/digest"}, "limitations": {"$ref": "#/$defs/limitations"}, "interpretation_boundary": {"$ref": "#/$defs/interpretation"}}}
+  },
+  "$defs": {
+    "portable_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "limitations": {"const": ["registry_contains_checkpoint_digests_status_time_and_receiver_version_metadata_only", "signed_tree_heads_detect_mutation_deletion_or_reordering_within_the_available_history", "tail_deletion_requires_a_previously_retained_or_independently_witnessed_tree_head", "registration_does_not_prove_event_observation_receiver_clock_or_enforcement_authenticity", "registry_is_not_an_rfc9943_transparency_service_rfc9942_vds_or_compliance_claim"]},
+    "interpretation": {"const": "A valid registry proves that its available registration records form the ordered Merkle history committed by each authenticated tree head. A separately retained tree head can detect rollback. Registration does not prove the underlying revocation evidence is complete, deployed, or authentic beyond its bundle key."}
+  }
+}

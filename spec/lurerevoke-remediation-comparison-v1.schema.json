@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-remediation-comparison/v1",
+  "title": "LureScope LureRevoke remediation comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "comparison_id",
+    "created_at",
+    "producer",
+    "system",
+    "contract",
+    "before",
+    "after",
+    "resolved_failure_ids",
+    "persistent_failure_ids",
+    "new_failure_ids",
+    "metric_deltas",
+    "summary",
+    "limitations",
+    "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurescope/spec/lurerevoke-remediation-comparison/v1"
+    },
+    "schema_version": {"const": 1},
+    "comparison_id": {"$ref": "#/$defs/portable_id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_id", "environment"],
+      "properties": {
+        "system_id": {"$ref": "#/$defs/id"},
+        "environment": {"enum": ["development", "evaluation", "staging", "production"]}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_id", "plan_sha256", "receiver_name"],
+      "properties": {
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_sha256": {"$ref": "#/$defs/digest"},
+        "receiver_name": {"$ref": "#/$defs/id"}
+      }
+    },
+    "before": {"$ref": "#/$defs/bundle_reference"},
+    "after": {"$ref": "#/$defs/bundle_reference"},
+    "resolved_failure_ids": {"$ref": "#/$defs/failure_ids"},
+    "persistent_failure_ids": {"$ref": "#/$defs/failure_ids"},
+    "new_failure_ids": {"$ref": "#/$defs/failure_ids"},
+    "metric_deltas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delivery_coverage_rate_delta",
+        "p95_convergence_ms_delta",
+        "maximum_convergence_ms_delta",
+        "deadline_miss_count_delta",
+        "post_deadline_allow_count_delta",
+        "collateral_block_count_delta",
+        "revoked_block_recall_delta",
+        "pre_event_allow_rate_delta",
+        "signal_disposition_accuracy_delta",
+        "incorrect_decision_count_delta",
+        "incorrect_reason_count_delta"
+      ],
+      "properties": {
+        "delivery_coverage_rate_delta": {"$ref": "#/$defs/rate_delta"},
+        "p95_convergence_ms_delta": {"$ref": "#/$defs/time_delta"},
+        "maximum_convergence_ms_delta": {"$ref": "#/$defs/time_delta"},
+        "deadline_miss_count_delta": {"$ref": "#/$defs/count_delta"},
+        "post_deadline_allow_count_delta": {"$ref": "#/$defs/count_delta"},
+        "collateral_block_count_delta": {"$ref": "#/$defs/count_delta"},
+        "revoked_block_recall_delta": {"$ref": "#/$defs/rate_delta"},
+        "pre_event_allow_rate_delta": {"$ref": "#/$defs/rate_delta"},
+        "signal_disposition_accuracy_delta": {"$ref": "#/$defs/rate_delta"},
+        "incorrect_decision_count_delta": {"$ref": "#/$defs/count_delta"},
+        "incorrect_reason_count_delta": {"$ref": "#/$defs/count_delta"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolved", "persistent", "new", "status"],
+      "properties": {
+        "resolved": {"$ref": "#/$defs/count"},
+        "persistent": {"$ref": "#/$defs/count"},
+        "new": {"$ref": "#/$defs/count"},
+        "status": {"enum": ["effective", "regressed", "ineffective", "unchanged_pass"]}
+      }
+    },
+    "limitations": {
+      "const": [
+        "comparison_requires_identical_plan_system_environment_and_receiver_identity_contracts",
+        "effective_means_a_failing_before_evaluation_changed_to_pass_under_the_same_plan",
+        "configuration_change_causality_deployment_and_unrepresented_behavior_are_not_proven",
+        "comparison_is_not_enforcement_compliance_certification_or_deployment_authorization"
+      ]
+    },
+    "interpretation_boundary": {
+      "const": "An effective comparison means the same revocation plan, system, environment, and receiver identity changed from fail to pass in submitted evidence. It does not prove causality, deployment, complete observation, or enforcement."
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "portable_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]*$"
+    },
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 20480},
+    "count_delta": {"type": "integer", "minimum": -20480, "maximum": 20480},
+    "rate_delta": {"type": "number", "minimum": -1, "maximum": 1},
+    "time_delta": {
+      "type": ["integer", "null"],
+      "minimum": -86400000,
+      "maximum": 86400000
+    },
+    "failure_ids": {
+      "type": "array",
+      "maxItems": 20480,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/portable_id"}
+    },
+    "bundle_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_id",
+        "manifest_sha256",
+        "statement_sha256",
+        "run_sha256",
+        "receiver_version",
+        "receiver_artifact_sha256",
+        "generated_at",
+        "overall_status",
+        "authenticated"
+      ],
+      "properties": {
+        "bundle_id": {"$ref": "#/$defs/portable_id"},
+        "manifest_sha256": {"$ref": "#/$defs/digest"},
+        "statement_sha256": {"$ref": "#/$defs/digest"},
+        "run_sha256": {"$ref": "#/$defs/digest"},
+        "receiver_version": {"$ref": "#/$defs/id"},
+        "receiver_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+        },
+        "generated_at": {"type": "string", "format": "date-time"},
+        "overall_status": {"enum": ["pass", "fail"]},
+        "authenticated": {"type": "boolean"}
+      }
+    }
+  }
+}

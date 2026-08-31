@@ -3,6 +3,145 @@
 ## Unreleased
 
 ### Added
+- Added independent LureRevoke evidence. LureScope revalidates CAEP-shaped
+  event metadata, opaque subjects, receiver observations, signal digests,
+  duplicate/invalid dispositions, access decisions, and every convergence,
+  coverage, leakage, collateral-denial, and verdict metric without importing
+  LureBench revocation code.
+- Added `lurescope revoke create`, `verify`, `export-oscal`, and `export-sarif`;
+  optional P-256 DSSE-authenticated in-toto checkpoints; three public schemas;
+  official-schema-validated observation-only OSCAL 1.2.2; SARIF 2.1.0 failure
+  export; exact canonical private bundles; and an operator guide with explicit
+  signal, clock, observation, enforcement, and compliance boundaries.
+- Added canonical `lurescope revoke compare` and `verify-comparison` workflows.
+  They require the exact same plan and acceptance thresholds, system,
+  environment, and receiver name; require newer after evidence; independently
+  verify optional signatures from both source bundles; bind both manifests,
+  checkpoints, and runs; classify resolved, persistent, and new
+  delivery/probe/disposition failures; and expose exact after-minus-before
+  metric deltas through a public schema and the browser Evidence Explorer.
+- Extended offline checkpoint witnessing and distinct-key quorum verification
+  to signed LureRevoke bundles. Witness requests bind only plan/checkpoint
+  digests, status, sequence, and a nonce; unsigned revocation evidence is
+  refused. The documentation maps this narrowly to RFC 9943 accountability
+  concepts while explicitly disclaiming COSE Receipts, RFC 9942 VDS proofs,
+  Transparency Service operation, public-log inclusion, or evidence authenticity.
+- Added a signed append-only LureRevoke registry for repeated campaigns. It
+  enforces one system/environment/receiver registration policy, admits only
+  authenticated bundles, rejects digest replay and non-monotonic evaluation
+  time, publishes entries atomically, chains entries and tree heads, computes
+  RFC 9162 domain-separated SHA-256 Merkle roots incrementally, authenticates
+  every prefix with P-256 DSSE, and detects rollback/conflict against an
+  externally retained tree head. Five public schemas and CLI workflows are
+  explicit that this is not an RFC 9943 service, RFC 9942 VDS, CT log, or proof
+  of global non-equivocation.
+- Added portable authenticated LureRevoke registry inclusion proofs. The
+  generator exports one privacy-minimized entry, the shortest RFC 9162 audit
+  path, registry policy, and exact signed tree head; the standalone verifier
+  recomputes the path and authenticates DSSE without the rest of the registry.
+  A self-contained public schema, CLI create/verify commands, browser
+  inspection, exhaustive unbalanced-tree tests, and explicit consistency and
+  non-equivocation limitations are included.
+- Added portable authenticated registry consistency proofs between historical
+  signed heads. The generator discloses no entries; the standalone verifier
+  authenticates both DSSE heads and implements RFC 9162's prefix-consistency
+  algorithm. Exhaustive tests cover every prefix pair through 17-leaf
+  unbalanced trees, with schema, CLI, browser, tamper, and adjacent-chain checks.
+- Added an independent interoperability regression that reproduces all four
+  inclusion paths and all three consistency paths in RFC 9162's named
+  seven-leaf example, preventing a mutually consistent generator/verifier pair
+  from silently agreeing on non-standard proof ordering.
+- Hardened registry crash recovery by staging append artifacts in a private
+  sibling directory rather than inside the strict committed-entry namespace.
+  An abrupt pre-rename process death can no longer poison verification of an
+  otherwise valid registry with an orphan `.pending` directory.
+- Added authenticated dual-head comparison for observer gossip. It classifies
+  identical heads, preserves two valid same-size conflicting statements as
+  portable equivocation evidence, and refuses to infer consistency for
+  different sizes. Create/verify CLI commands, a public schema, browser
+  inspection, distinct exit status, and real forked-registry tests are included.
+- Added `lurescope revoke verify-topology`, an implementation-independent
+  verifier for LureBench's LureRevoke/LurePermit scope audit, plus browser
+  inspection. It revalidates both embedded contracts and exact digests and
+  recomputes every point/action/sensor/node mapping, replica count, missing and
+  unmapped set, coverage metric, and verdict without importing LureBench.
+- Added `lurescope revoke verify-otel`, an independent verifier for LureBench's
+  body-free OpenTelemetry-to-LureRevoke projection, plus browser inspection. It
+  rejects bodies and unknown attributes and recomputes receiver/resource/node/
+  probe bindings, trace-context uniqueness, timing boundaries, exact source and
+  run digests, privacy exclusions, and canonical output without importing the
+  producer implementation.
+- Added `lurescope revoke gate` and `verify-gate`, a cross-artifact deployment
+  decision that independently verifies and binds one topology audit, body-free
+  OpenTelemetry projection, and authenticated evidence bundle to the same exact
+  plan, run, system, and receiver. The strict public schema records every source
+  digest and refuses unsigned, mismatched, stale, noncanonical, or altered
+  inputs while retaining explicit deployment and enforcement limitations.
+  Regression tests construct independently valid artifacts from different
+  campaigns and receiver runs to prove cross-artifact substitution is rejected,
+  rather than testing only malformed input. The gate also rejects a runtime
+  topology first declared after the receiver run, while explicitly treating
+  that chronology as a declared-clock assertion rather than trusted time.
+  Gate creation and verification require an expected signer key ID in addition
+  to the public-key file, preventing a substituted bundle and matching attacker
+  key from becoming a new trust root by accident.
+  A full-coverage invariant additionally requires pre-event,
+  propagation-window, post-deadline, and unrelated-subject controls for every
+  event/node pair, rejecting sparse plans even when their thresholds permit it.
+  Availability controls must be globally unrelated to every campaign subject,
+  so one event's revoked subject cannot masquerade as another event's control.
+  The independent core plan validator enforces the same invariant before any
+  evaluation, projection, bundle, or gate is accepted.
+  A non-configurable deployment floor requires all four rate metrics to equal
+  one and all three failure budgets to equal zero, preventing threshold
+  dilution while leaving the declared convergence deadline deployment-specific.
+  Gate creation and verification therefore require an external maximum allowed
+  convergence value and reject a plan whose declared deadline exceeds it; the
+  same protected-policy input is mandatory in the composite action.
+  A mandatory external minimum run timestamp also rejects replay of
+  stale-but-authentic campaigns without depending on the verifier's wall clock.
+  External deployment policy now also pins system, environment, receiver name,
+  and a mandatory receiver artifact digest, closing staging-to-production and
+  wrong-build substitution paths.
+- Added a reusable, fail-closed GitHub composite action for the deployment
+  gate. It installs the verifier from the action's pinned source revision,
+  accepts the trust key only as an external path, avoids direct user-input shell
+  interpolation, and is regression-tested for immutable action dependencies.
+- Added repository-wide CODEOWNERS coverage so protected branches can require
+  maintainer review for code, schemas, workflows, and local actions. Executable
+  workflow-security tests reject mutable action references, absent top-level
+  permission boundaries, and `pull_request_target` triggers. Release uploads
+  now fail on existing assets instead of silently replacing files under a tag,
+  same-tag release runs are serialized, every checkout disables persisted Git
+  credentials, and every job has a
+  regression-enforced execution timeout. Python build backends now run in an
+  unprivileged job; a separate job downloads the immutable artifact before
+  receiving OIDC attestation and release-write authority.
+- Added a repository-wide Markdown link regression so expanding operator and
+  evidence guides cannot silently ship broken local navigation.
+- Added the citation, Code of Conduct, and Security Policy to the LureScope
+  source distribution, with a packaging regression preventing their omission.
+- Added independent LurePermit runtime-mediation evidence. LureScope revalidates
+  the profile, permit, exact requests, SPIFFE declarations, mediation mapping,
+  chained receipts, policy identity, and sensor bindings, then recomputes all
+  effective, bypassed, unmediated, unknown, and incomplete classifications,
+  coverage rates, counts, and the verdict without importing LureBench runtime
+  code.
+- Added `lurescope runtime create`, `verify`, `compare`,
+  `verify-comparison`, `export-oscal`, and `export-sarif`; optional ECDSA P-256
+  DSSE checkpoints; same-contract remediation comparison; four public schemas;
+  observation-only OSCAL 1.2.2 validated against NIST's official schema; SARIF
+  2.1.0 for non-effective outcomes; browser Evidence Explorer support; and a
+  complete operator guide.
+- Added independently verified LurePermit/LureRange evidence bundles. LureScope
+  revalidates the embedded permit and suite, independently derives all expected
+  decisions, recomputes per-scenario results and aggregate metrics, preserves
+  exact canonical evaluation bytes, and optionally authenticates an in-toto
+  checkpoint with ECDSA P-256 DSSE.
+- Added `lurescope range create`, `verify`, `compare`, and
+  `verify-comparison`; strict fail-to-pass remediation comparison under an
+  unchanged permit, suite, acceptance, system, and engine identity; four public
+  schemas; browser Evidence Explorer support; and an end-to-end operator guide.
 - Added LureInvariant evidence bundles that independently recompute LureBench
   graph and temporal semantics, preserve exact plan/observation/evaluation bytes,
   bind them in an in-toto checkpoint, and optionally authenticate canonical
@@ -51,6 +190,12 @@
   aggregate-only, and official-OSCAL tests.
 
 ### Security
+- LureRange bundle verification rejects unsafe permissions, symlinks,
+  unexpected files, duplicate keys, noncanonical JSON, unsupported fields,
+  changed suite expectations, report or digest substitution, rewritten metrics
+  or verdicts, weakened comparison contracts, signer/key substitution, and DSSE
+  payload/signature mismatch. Typed inputs have no content, target, URL,
+  credential-value, command, payload, or reasoning fields.
 - Invariant bundle verification rejects duplicate keys, unknown fields and files,
   unsafe permissions, symlinks, noncanonical JSON, digest or report substitution,
   source-contract mismatch, altered semantics, signer/key substitution, and DSSE

@@ -40,9 +40,7 @@ def _input_messages(
     if max_messages < 1 or max_messages > MAX_BATCH_MESSAGES:
         raise ValueError(f"max_messages must be between 1 and {MAX_BATCH_MESSAGES}")
     if max_total_bytes < 1 or max_total_bytes > MAX_BATCH_INPUT_BYTES:
-        raise ValueError(
-            f"max_total_bytes must be between 1 and {MAX_BATCH_INPUT_BYTES}"
-        )
+        raise ValueError(f"max_total_bytes must be between 1 and {MAX_BATCH_INPUT_BYTES}")
 
     sources: List[Tuple[str, Optional[Path]]] = []
     for value in inputs:
@@ -55,9 +53,7 @@ def _input_messages(
             if path.is_dir():
                 pattern = "**/*.eml" if recursive else "*.eml"
                 sources.extend(
-                    (str(item), item)
-                    for item in sorted(path.glob(pattern))
-                    if item.is_file()
+                    (str(item), item) for item in sorted(path.glob(pattern)) if item.is_file()
                 )
             elif path.is_file():
                 sources.append((str(path), path))
@@ -73,9 +69,7 @@ def _input_messages(
     # Oversized files are read only to MAX_EMAIL_BYTES + 1 so the parser can emit
     # a per-message EmailTooLarge result without allocating the complete file.
     bounded_sizes = [
-        MAX_EMAIL_BYTES + 1
-        if path is None
-        else min(path.stat().st_size, MAX_EMAIL_BYTES + 1)
+        MAX_EMAIL_BYTES + 1 if path is None else min(path.stat().st_size, MAX_EMAIL_BYTES + 1)
         for _, path in sources
     ]
     if sum(bounded_sizes) > max_total_bytes:
@@ -140,9 +134,7 @@ def _triage(argv: Sequence[str]) -> int:
     failures = 0
     for source, raw in messages:
         try:
-            result = triage_email(
-                raw, detector_name=args.detector, threshold=args.threshold
-            )
+            result = triage_email(raw, detector_name=args.detector, threshold=args.threshold)
             if args.json:
                 payload = {"source": source, **result.as_dict()}
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -175,17 +167,18 @@ def _inbox(argv: Sequence[str]) -> int:
     parser.add_argument("--detector", default="tfidf-logreg")
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument(
-        "--privacy", choices=("salted-commitment", "correlatable"),
+        "--privacy",
+        choices=("salted-commitment", "correlatable"),
         default="salted-commitment",
         help="salted-commitment blocks direct hash matching; correlatable exposes raw SHA-256",
     )
     parser.add_argument("--nonce", help="verifier challenge shared by this batch")
-    parser.add_argument(
-        "--issuer", help="issuer label; authenticated only when proofs are signed"
-    )
+    parser.add_argument("--issuer", help="issuer label; authenticated only when proofs are signed")
     parser.add_argument("--signing-key", help="unencrypted ECDSA P-256 private PEM key")
     parser.add_argument(
-        "--max-messages", type=int, default=1000,
+        "--max-messages",
+        type=int,
+        default=1000,
         help="fail before processing when the inbox exceeds this limit (maximum 1000)",
     )
     args = parser.parse_args(argv)
@@ -216,10 +209,7 @@ def _inbox(argv: Sequence[str]) -> int:
 
     for item in run.items:
         if item.status == "processed":
-            print(
-                f"[{item.risk_tier.upper()}] {item.source} -> "
-                f"{item.case_id} ({item.proof_file})"
-            )
+            print(f"[{item.risk_tier.upper()}] {item.source} -> {item.case_id} ({item.proof_file})")
         else:
             print(
                 f"[ERROR] {item.source} -> {item.case_id}: {item.error}",
@@ -241,7 +231,8 @@ def _proof(argv: Sequence[str]) -> int:
     parser.add_argument("--detector", default="tfidf-logreg")
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument(
-        "--privacy", choices=("salted-commitment", "correlatable"),
+        "--privacy",
+        choices=("salted-commitment", "correlatable"),
         default="salted-commitment",
         help="salted-commitment blocks direct hash matching; correlatable exposes raw SHA-256",
     )
@@ -257,8 +248,13 @@ def _proof(argv: Sequence[str]) -> int:
 
         signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
         proof = create_email_proof(
-            raw, args.detector, args.threshold, privacy_profile=args.privacy,
-            nonce=args.nonce, issuer=args.issuer, signing_key_pem=signing_key,
+            raw,
+            args.detector,
+            args.threshold,
+            privacy_profile=args.privacy,
+            nonce=args.nonce,
+            issuer=args.issuer,
+            signing_key_pem=signing_key,
         )
         Path(args.out).write_text(dumps_proof(proof), encoding="utf-8")
     except (OSError, ValueError) as exc:
@@ -416,10 +412,7 @@ def _shadow(argv: Sequence[str]) -> int:
                 threshold=args.threshold,
                 policy_id=args.policy_id,
             )
-            print(
-                f"created {target} for {plan['plan_id']}; "
-                f"sha256:{pilot_plan_sha256(target)}"
-            )
+            print(f"created {target} for {plan['plan_id']}; sha256:{pilot_plan_sha256(target)}")
             return 0
         if args.shadow_command == "run":
             from .shadow import run_shadow_inbox
@@ -448,17 +441,11 @@ def _shadow(argv: Sequence[str]) -> int:
         if args.shadow_command == "label":
             from .shadow import append_analyst_label
 
-            event = append_analyst_label(
-                Path(args.bundle), args.case_id, args.label, args.reason
-            )
+            event = append_analyst_label(Path(args.bundle), args.case_id, args.label, args.reason)
             print(
                 f"labeled {event['case_id']} as {event['label']} "
                 f"({event['reason_code']}); refreshed aggregate reports"
-                + (
-                    " and Pilot Gate"
-                    if (Path(args.bundle) / "pilot-plan.json").exists()
-                    else ""
-                )
+                + (" and Pilot Gate" if (Path(args.bundle) / "pilot-plan.json").exists() else "")
             )
             return 0
 
@@ -654,9 +641,7 @@ def _lureeval(argv: Sequence[str]) -> int:
 def _assurance(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="lurescope assurance",
-        description=(
-            "Create and export a privacy-minimized Federal Email Assurance Profile."
-        ),
+        description=("Create and export a privacy-minimized Federal Email Assurance Profile."),
     )
     commands = parser.add_subparsers(dest="assurance_command", required=True)
 
@@ -724,9 +709,7 @@ def _assurance(argv: Sequence[str]) -> int:
         help="verify a combined SCuBA and Shadow Inbox assurance bundle",
     )
     verify_scuba_parser.add_argument("bundle", help="combined assurance directory")
-    verify_scuba_parser.add_argument(
-        "--public-key", help="trusted ECDSA P-256 public PEM key"
-    )
+    verify_scuba_parser.add_argument("--public-key", help="trusted ECDSA P-256 public PEM key")
     verify_scuba_parser.add_argument(
         "--require-signature",
         action="store_true",
@@ -844,10 +827,7 @@ def _assurance(argv: Sequence[str]) -> int:
                 (Path(args.out) / "assurance-profile.json").read_bytes()
             ).hexdigest()
             print(f"register assurance-profile.json sha256:{profile_digest}")
-            print(
-                "register pilot-plan.json sha256:"
-                f"{profile['artifacts']['pilot_plan']['sha256']}"
-            )
+            print(f"register pilot-plan.json sha256:{profile['artifacts']['pilot_plan']['sha256']}")
             print(
                 "register oscal-assessment-plan.json sha256:"
                 f"{profile['artifacts']['oscal_assessment_plan']['sha256']}"
@@ -872,10 +852,7 @@ def _assurance(argv: Sequence[str]) -> int:
                 f"wrote {evidence['integrity']['candidate_poam_count']} candidate POA&M "
                 f"items in {args.out}"
             )
-            print(
-                "source ScubaGear report sha256:"
-                f"{evidence['source']['report_sha256']}"
-            )
+            print(f"source ScubaGear report sha256:{evidence['source']['report_sha256']}")
             return 0 if gate_verdict == "pass" else 1
 
         if args.assurance_command == "verify-scuba":
@@ -901,19 +878,13 @@ def _assurance(argv: Sequence[str]) -> int:
                     Path(args.source_public_key) if args.source_public_key else None
                 ),
                 before_source_public_key=(
-                    Path(args.before_source_public_key)
-                    if args.before_source_public_key
-                    else None
+                    Path(args.before_source_public_key) if args.before_source_public_key else None
                 ),
                 after_source_public_key=(
-                    Path(args.after_source_public_key)
-                    if args.after_source_public_key
-                    else None
+                    Path(args.after_source_public_key) if args.after_source_public_key else None
                 ),
                 require_source_signatures=args.require_source_signatures,
-                previous_drift=(
-                    Path(args.previous_drift) if args.previous_drift else None
-                ),
+                previous_drift=(Path(args.previous_drift) if args.previous_drift else None),
             )
             drift = result["drift"]
             print(
@@ -932,9 +903,7 @@ def _assurance(argv: Sequence[str]) -> int:
                 Path(args.drift),
                 public_key=Path(args.public_key) if args.public_key else None,
                 require_signature=args.require_signature,
-                previous_drift=(
-                    Path(args.previous_drift) if args.previous_drift else None
-                ),
+                previous_drift=(Path(args.previous_drift) if args.previous_drift else None),
                 previous_public_key=(
                     Path(args.previous_public_key) if args.previous_public_key else None
                 ),
@@ -945,14 +914,10 @@ def _assurance(argv: Sequence[str]) -> int:
                     Path(args.source_public_key) if args.source_public_key else None
                 ),
                 before_source_public_key=(
-                    Path(args.before_source_public_key)
-                    if args.before_source_public_key
-                    else None
+                    Path(args.before_source_public_key) if args.before_source_public_key else None
                 ),
                 after_source_public_key=(
-                    Path(args.after_source_public_key)
-                    if args.after_source_public_key
-                    else None
+                    Path(args.after_source_public_key) if args.after_source_public_key else None
                 ),
                 require_source_signatures=args.require_source_signatures,
             )
@@ -980,7 +945,8 @@ def _verify(argv: Sequence[str]) -> int:
     parser.add_argument("proof", help=".lureproof.json path")
     parser.add_argument("--public-key", help="trusted ECDSA P-256 public PEM key")
     parser.add_argument(
-        "--require-signature", action="store_true",
+        "--require-signature",
+        action="store_true",
         help="fail unless a signature authenticates against --public-key",
     )
     args = parser.parse_args(argv)
@@ -1055,7 +1021,8 @@ def _policy(argv: Sequence[str]) -> int:
         description="Validate and inspect a LureBench decision policy without serving the API.",
     )
     parser.add_argument(
-        "path", nargs="?",
+        "path",
+        nargs="?",
         help="policy JSON path; omit to inspect LURESCOPE_POLICY_PATH",
     )
     args = parser.parse_args(argv)
@@ -1074,9 +1041,7 @@ def _policy(argv: Sequence[str]) -> int:
 def _operational_pilot(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="lurescope pilot",
-        description=(
-            "Create or reverify the offline synthetic operational evidence bundle."
-        ),
+        description=("Create or reverify the offline synthetic operational evidence bundle."),
     )
     commands = parser.add_subparsers(dest="pilot_command", required=True)
     run_parser = commands.add_parser(
@@ -1105,8 +1070,7 @@ def _operational_pilot(argv: Sequence[str]) -> int:
             action = "CREATED" if args.pilot_command == "run" else "VERIFIED"
             print(f"OPERATIONAL PILOT {action}: PASS — {target}")
             print(
-                "boundary: synthetic offline workflow proof; "
-                "not deployment or compliance evidence"
+                "boundary: synthetic offline workflow proof; not deployment or compliance evidence"
             )
         return 0
     except (
@@ -1537,14 +1501,13 @@ def _boundary_watch(argv: Sequence[str]) -> int:
     verify_parser.add_argument("bundle")
     verify_parser.add_argument("--public-key")
     verify_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
             from .boundary_watch import create_boundary_watch
 
-            signer = (
-                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
-            )
+            signer = Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             plan = create_boundary_watch(
                 Path(args.out),
                 plan_id=args.plan_id,
@@ -1646,9 +1609,7 @@ def _agent_assurance(argv: Sequence[str]) -> int:
         )
 
         boundary_key = (
-            Path(args.boundary_public_key).read_bytes()
-            if args.boundary_public_key
-            else None
+            Path(args.boundary_public_key).read_bytes() if args.boundary_public_key else None
         )
         if args.command == "create":
             signer_public = (
@@ -1668,16 +1629,11 @@ def _agent_assurance(argv: Sequence[str]) -> int:
                 signer_public_key_pem=signer_public,
                 signing_key_pem=signing_key,
             )
-            print(
-                f"AGENT ASSURANCE PORTFOLIO: {portfolio['overall_status'].upper()} — "
-                f"{args.out}"
-            )
+            print(f"AGENT ASSURANCE PORTFOLIO: {portfolio['overall_status'].upper()} — {args.out}")
             print("boundary: combined evidence is not certification or authorization")
             return 0 if portfolio["overall_status"] == "pass" else 1
         portfolio_key = (
-            Path(args.portfolio_public_key).read_bytes()
-            if args.portfolio_public_key
-            else None
+            Path(args.portfolio_public_key).read_bytes() if args.portfolio_public_key else None
         )
         if args.command == "export-oscal":
             document = export_assurance_oscal(
@@ -1688,9 +1644,7 @@ def _agent_assurance(argv: Sequence[str]) -> int:
                 boundary_public_key_pem=boundary_key,
                 portfolio_public_key_pem=portfolio_key,
             )
-            status = document["assessment-results"]["results"][0]["props"][0][
-                "value"
-            ]
+            status = document["assessment-results"]["results"][0]["props"][0]["value"]
             print(f"AGENT ASSURANCE OSCAL EXPORTED: {status.upper()} — {args.out}")
             return 0
         result = verify_assurance_portfolio(
@@ -1720,7 +1674,9 @@ def _witness(argv: Sequence[str]) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     request_parser = commands.add_parser("request")
     request_parser.add_argument("bundle")
-    request_parser.add_argument("--kind", choices=("lureboundary", "lurewatch"), required=True)
+    request_parser.add_argument(
+        "--kind", choices=("lureboundary", "lurewatch", "lurerevoke"), required=True
+    )
     request_parser.add_argument("--public-key")
     request_parser.add_argument("--request-id")
     request_parser.add_argument("--nonce")
@@ -1758,11 +1714,7 @@ def _witness(argv: Sequence[str]) -> int:
             verify_witness_request_binding,
         )
 
-        if (
-            args.command in {"verify", "quorum"}
-            and args.bundle_public_key
-            and not args.bundle
-        ):
+        if args.command in {"verify", "quorum"} and args.bundle_public_key and not args.bundle:
             raise ValueError("--bundle-public-key requires --bundle")
 
         if args.command == "request":
@@ -1787,9 +1739,7 @@ def _witness(argv: Sequence[str]) -> int:
                 witness_id=args.witness_id,
                 signing_key_pem=Path(args.signing_key).read_bytes(),
             )
-            print(
-                f"WITNESS RECEIPT ISSUED: {receipt['witness']['witness_id']} — {args.out}"
-            )
+            print(f"WITNESS RECEIPT ISSUED: {receipt['witness']['witness_id']} — {args.out}")
             return 0
         if args.command == "verify":
             result = verify_witness_receipt(
@@ -1806,9 +1756,7 @@ def _witness(argv: Sequence[str]) -> int:
             )
         if args.bundle:
             bundle_key = (
-                Path(args.bundle_public_key).read_bytes()
-                if args.bundle_public_key
-                else None
+                Path(args.bundle_public_key).read_bytes() if args.bundle_public_key else None
             )
             verify_witness_request_binding(
                 Path(args.request), Path(args.bundle), public_key_pem=bundle_key
@@ -1816,9 +1764,7 @@ def _witness(argv: Sequence[str]) -> int:
         if args.json:
             print(json.dumps(result, indent=2, sort_keys=True))
         else:
-            print(
-                f"WITNESS VERIFIED: sha256:{result['checkpoint_statement_sha256']}"
-            )
+            print(f"WITNESS VERIFIED: sha256:{result['checkpoint_statement_sha256']}")
         return 0
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"! Witness workflow failed: {exc}", file=sys.stderr)
@@ -1879,6 +1825,7 @@ def _invariant(argv: Sequence[str]) -> int:
     comparison_parser.add_argument("--before-public-key")
     comparison_parser.add_argument("--after-public-key")
     comparison_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
 
     try:
@@ -1901,9 +1848,7 @@ def _invariant(argv: Sequence[str]) -> int:
         )
         if args.command == "create":
             public_key = (
-                Path(args.signer_public_key).read_bytes()
-                if args.signer_public_key
-                else None
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
             signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
             result = create_invariant_bundle(
@@ -1923,9 +1868,7 @@ def _invariant(argv: Sequence[str]) -> int:
             public_key = Path(args.public_key).read_bytes() if args.public_key else None
             verified = verify_invariant_bundle(Path(args.bundle), public_key_pem=public_key)
             result = {
-                key: value
-                for key, value in verified.items()
-                if key not in {"plan", "evaluation"}
+                key: value for key, value in verified.items() if key not in {"plan", "evaluation"}
             }
             status = result["overall_status"]
             label = "INVARIANT BUNDLE VERIFIED"
@@ -1960,6 +1903,785 @@ def _invariant(argv: Sequence[str]) -> int:
         return 0 if status in {"pass", "effective"} else 1
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"! Invariant evidence workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _range_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope range",
+        description=(
+            "Preserve, authenticate, and compare independently recomputed "
+            "LurePermit/LureRange conformance evidence."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    create_parser = commands.add_parser(
+        "create", help="create a private evidence bundle from a LureRange evaluation"
+    )
+    create_parser.add_argument("--evaluation", required=True)
+    create_parser.add_argument("--bundle-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="verify a bundle and independently recompute suite semantics and metrics"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    compare_parser = commands.add_parser(
+        "compare", help="compare before/after bundles under an identical conformance contract"
+    )
+    compare_parser.add_argument("before")
+    compare_parser.add_argument("after")
+    compare_parser.add_argument("--comparison-id", required=True)
+    compare_parser.add_argument("--before-public-key")
+    compare_parser.add_argument("--after-public-key")
+    compare_parser.add_argument("--out", "-o", required=True)
+    compare_parser.add_argument("--json", action="store_true")
+
+    comparison_parser = commands.add_parser(
+        "verify-comparison", help="recompute a comparison from both source bundles"
+    )
+    comparison_parser.add_argument("comparison")
+    comparison_parser.add_argument("before")
+    comparison_parser.add_argument("after")
+    comparison_parser.add_argument("--before-public-key")
+    comparison_parser.add_argument("--after-public-key")
+    comparison_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        from .permit import (
+            compare_range_bundles,
+            create_range_bundle,
+            verify_range_bundle,
+            verify_range_comparison,
+        )
+
+        before_key = (
+            Path(args.before_public_key).read_bytes()
+            if getattr(args, "before_public_key", None)
+            else None
+        )
+        after_key = (
+            Path(args.after_public_key).read_bytes()
+            if getattr(args, "after_public_key", None)
+            else None
+        )
+        if args.command == "create":
+            public_key = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = create_range_bundle(
+                Path(args.out),
+                bundle_id=args.bundle_id,
+                environment=args.environment,
+                evaluation=Path(args.evaluation),
+                signer_public_key_pem=public_key,
+                signing_key_pem=signing_key,
+            )
+            status = result["overall_status"]
+            label = "LURERANGE BUNDLE CREATED"
+            destination = args.out
+        elif args.command == "verify":
+            public_key = Path(args.public_key).read_bytes() if args.public_key else None
+            verified = verify_range_bundle(Path(args.bundle), public_key_pem=public_key)
+            result = {key: value for key, value in verified.items() if key != "report"}
+            status = result["overall_status"]
+            label = "LURERANGE BUNDLE VERIFIED"
+            destination = args.bundle
+        elif args.command == "compare":
+            result = compare_range_bundles(
+                Path(args.before),
+                Path(args.after),
+                Path(args.out),
+                comparison_id=args.comparison_id,
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["summary"]["status"]
+            label = "LURERANGE REMEDIATION COMPARED"
+            destination = args.out
+        else:
+            result = verify_range_comparison(
+                Path(args.comparison),
+                Path(args.before),
+                Path(args.after),
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["status"]
+            label = "LURERANGE REMEDIATION VERIFIED"
+            destination = args.comparison
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(f"{label}: {status.upper()} — {destination}")
+            print("boundary: conformance evidence only; no runtime action or containment claim")
+        return 0 if status in {"pass", "effective", "unchanged_pass"} else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureRange evidence workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _runtime_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope runtime",
+        description=(
+            "Independently recompute, preserve, authenticate, compare, and export "
+            "LurePermit runtime-mediation evidence."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    create_parser = commands.add_parser(
+        "create", help="create a private bundle from a canonical runtime evaluation"
+    )
+    create_parser.add_argument("--evaluation", required=True)
+    create_parser.add_argument("--bundle-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="verify a bundle and independently recompute all runtime metrics"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    compare_parser = commands.add_parser(
+        "compare", help="compare before/after bundles under an unchanged runtime contract"
+    )
+    compare_parser.add_argument("before")
+    compare_parser.add_argument("after")
+    compare_parser.add_argument("--comparison-id", required=True)
+    compare_parser.add_argument("--before-public-key")
+    compare_parser.add_argument("--after-public-key")
+    compare_parser.add_argument("--out", "-o", required=True)
+    compare_parser.add_argument("--json", action="store_true")
+
+    comparison_parser = commands.add_parser(
+        "verify-comparison", help="recompute a comparison from both source bundles"
+    )
+    comparison_parser.add_argument("comparison")
+    comparison_parser.add_argument("before")
+    comparison_parser.add_argument("after")
+    comparison_parser.add_argument("--before-public-key")
+    comparison_parser.add_argument("--after-public-key")
+    comparison_parser.add_argument("--json", action="store_true")
+
+    oscal_parser = commands.add_parser(
+        "export-oscal", help="export observation-only OSCAL 1.2.2 Assessment Results"
+    )
+    oscal_parser.add_argument("bundle")
+    oscal_parser.add_argument("--assessment-plan-href", required=True)
+    oscal_parser.add_argument("--public-key")
+    oscal_parser.add_argument("--out", "-o", required=True)
+    oscal_parser.add_argument("--json", action="store_true")
+
+    sarif_parser = commands.add_parser(
+        "export-sarif", help="export non-effective runtime outcomes as SARIF 2.1.0"
+    )
+    sarif_parser.add_argument("bundle")
+    sarif_parser.add_argument("--public-key")
+    sarif_parser.add_argument("--out", "-o", required=True)
+    sarif_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(argv)
+    try:
+        from .runtime import (
+            compare_runtime_bundles,
+            create_runtime_bundle,
+            export_runtime_oscal,
+            export_runtime_sarif,
+            verify_runtime_bundle,
+            verify_runtime_comparison,
+        )
+
+        before_key = (
+            Path(args.before_public_key).read_bytes()
+            if getattr(args, "before_public_key", None)
+            else None
+        )
+        after_key = (
+            Path(args.after_public_key).read_bytes()
+            if getattr(args, "after_public_key", None)
+            else None
+        )
+        public_key = (
+            Path(args.public_key).read_bytes() if getattr(args, "public_key", None) else None
+        )
+        if args.command == "create":
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = create_runtime_bundle(
+                Path(args.out),
+                bundle_id=args.bundle_id,
+                environment=args.environment,
+                evaluation=Path(args.evaluation),
+                signer_public_key_pem=signer_public,
+                signing_key_pem=signing_key,
+            )
+            status = result["overall_status"]
+            label, destination = "RUNTIME BUNDLE CREATED", args.out
+        elif args.command == "verify":
+            verified = verify_runtime_bundle(Path(args.bundle), public_key_pem=public_key)
+            result = {key: value for key, value in verified.items() if key != "report"}
+            status = result["overall_status"]
+            label, destination = "RUNTIME BUNDLE VERIFIED", args.bundle
+        elif args.command == "compare":
+            result = compare_runtime_bundles(
+                Path(args.before),
+                Path(args.after),
+                Path(args.out),
+                comparison_id=args.comparison_id,
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["summary"]["status"]
+            label, destination = "RUNTIME REMEDIATION COMPARED", args.out
+        elif args.command == "verify-comparison":
+            result = verify_runtime_comparison(
+                Path(args.comparison),
+                Path(args.before),
+                Path(args.after),
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["status"]
+            label, destination = "RUNTIME REMEDIATION VERIFIED", args.comparison
+        elif args.command == "export-oscal":
+            result = export_runtime_oscal(
+                Path(args.bundle),
+                Path(args.out),
+                assessment_plan_href=args.assessment_plan_href,
+                public_key_pem=public_key,
+            )
+            status = "written"
+            label, destination = "RUNTIME OSCAL EXPORTED", args.out
+        else:
+            result = export_runtime_sarif(
+                Path(args.bundle), Path(args.out), public_key_pem=public_key
+            )
+            status = "written"
+            label, destination = "RUNTIME SARIF EXPORTED", args.out
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(f"{label}: {status.upper()} — {destination}")
+            print(
+                "boundary: evidence integrity only; no action execution, complete-observation, "
+                "or compliance claim"
+            )
+        return 0 if status in {"pass", "effective", "unchanged_pass", "written"} else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! Runtime evidence workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _revocation_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope revoke",
+        description=(
+            "Independently recompute, bind, sign, and export LureRevoke convergence evidence."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    create_parser = commands.add_parser("create", help="create a private evidence bundle")
+    create_parser.add_argument("--evaluation", required=True)
+    create_parser.add_argument("--bundle-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="verify exact bytes, independent metrics, and optional signature"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    topology_parser = commands.add_parser(
+        "verify-topology", help="independently recompute a revocation/runtime scope audit"
+    )
+    topology_parser.add_argument("audit")
+    topology_parser.add_argument("--json", action="store_true")
+
+    otel_parser = commands.add_parser(
+        "verify-otel", help="independently recompute a body-free OpenTelemetry projection"
+    )
+    otel_parser.add_argument("projection")
+    otel_parser.add_argument("--json", action="store_true")
+
+    gate_parser = commands.add_parser(
+        "gate", help="bind topology, body-free telemetry, and signed convergence evidence"
+    )
+    gate_parser.add_argument("topology_audit")
+    gate_parser.add_argument("otel_projection")
+    gate_parser.add_argument("bundle")
+    gate_parser.add_argument("--bundle-public-key", required=True)
+    gate_parser.add_argument("--expected-bundle-key-id", required=True)
+    gate_parser.add_argument("--maximum-allowed-convergence-ms", type=int, required=True)
+    gate_parser.add_argument("--minimum-run-generated-at", required=True)
+    gate_parser.add_argument("--expected-system-id", required=True)
+    gate_parser.add_argument(
+        "--expected-environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    gate_parser.add_argument("--expected-receiver-name", required=True)
+    gate_parser.add_argument("--expected-receiver-artifact-sha256", required=True)
+    gate_parser.add_argument("--gate-id", required=True)
+    gate_parser.add_argument("--created-at")
+    gate_parser.add_argument("--out", "-o", required=True)
+    gate_parser.add_argument("--json", action="store_true")
+
+    verify_gate_parser = commands.add_parser(
+        "verify-gate", help="recompute a deployment gate from all three exact sources"
+    )
+    verify_gate_parser.add_argument("gate")
+    verify_gate_parser.add_argument("topology_audit")
+    verify_gate_parser.add_argument("otel_projection")
+    verify_gate_parser.add_argument("bundle")
+    verify_gate_parser.add_argument("--bundle-public-key", required=True)
+    verify_gate_parser.add_argument("--expected-bundle-key-id", required=True)
+    verify_gate_parser.add_argument("--maximum-allowed-convergence-ms", type=int, required=True)
+    verify_gate_parser.add_argument("--minimum-run-generated-at", required=True)
+    verify_gate_parser.add_argument("--expected-system-id", required=True)
+    verify_gate_parser.add_argument(
+        "--expected-environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    verify_gate_parser.add_argument("--expected-receiver-name", required=True)
+    verify_gate_parser.add_argument("--expected-receiver-artifact-sha256", required=True)
+    verify_gate_parser.add_argument("--json", action="store_true")
+
+    compare_parser = commands.add_parser(
+        "compare", help="compare before/after bundles under an identical revocation plan"
+    )
+    compare_parser.add_argument("before")
+    compare_parser.add_argument("after")
+    compare_parser.add_argument("--comparison-id", required=True)
+    compare_parser.add_argument("--before-public-key")
+    compare_parser.add_argument("--after-public-key")
+    compare_parser.add_argument("--out", "-o", required=True)
+    compare_parser.add_argument("--json", action="store_true")
+
+    comparison_parser = commands.add_parser(
+        "verify-comparison", help="recompute a comparison from both exact source bundles"
+    )
+    comparison_parser.add_argument("comparison")
+    comparison_parser.add_argument("before")
+    comparison_parser.add_argument("after")
+    comparison_parser.add_argument("--before-public-key")
+    comparison_parser.add_argument("--after-public-key")
+    comparison_parser.add_argument("--json", action="store_true")
+
+    registry_init = commands.add_parser(
+        "registry-init", help="initialize a signed same-system revocation history"
+    )
+    registry_init.add_argument("--registry-id", required=True)
+    registry_init.add_argument("--system-id", required=True)
+    registry_init.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    registry_init.add_argument("--receiver-name", required=True)
+    registry_init.add_argument("--signer-public-key", required=True)
+    registry_init.add_argument("--out", "-o", required=True)
+    registry_init.add_argument("--json", action="store_true")
+
+    registry_append = commands.add_parser(
+        "registry-append", help="verify and append a signed LureRevoke bundle"
+    )
+    registry_append.add_argument("registry")
+    registry_append.add_argument("bundle")
+    registry_append.add_argument("--registry-public-key", required=True)
+    registry_append.add_argument("--registry-signing-key", required=True)
+    registry_append.add_argument("--bundle-public-key", required=True)
+    registry_append.add_argument("--registered-at")
+    registry_append.add_argument("--json", action="store_true")
+
+    registry_verify = commands.add_parser(
+        "registry-verify", help="recompute Merkle history and authenticate every tree head"
+    )
+    registry_verify.add_argument("registry")
+    registry_verify.add_argument("--registry-public-key", required=True)
+    registry_verify.add_argument("--trusted-head-statement")
+    registry_verify.add_argument("--trusted-head-dsse")
+    registry_verify.add_argument("--json", action="store_true")
+
+    registry_prove = commands.add_parser(
+        "registry-prove-inclusion",
+        help="export one entry with a portable authenticated Merkle inclusion proof",
+    )
+    registry_prove.add_argument("registry")
+    registry_prove.add_argument("--sequence", type=int, required=True)
+    registry_prove.add_argument("--tree-size", type=int)
+    registry_prove.add_argument("--registry-public-key", required=True)
+    registry_prove.add_argument("--out", "-o", required=True)
+    registry_prove.add_argument("--json", action="store_true")
+
+    registry_verify_inclusion = commands.add_parser(
+        "registry-verify-inclusion",
+        help="verify a portable entry proof without receiving the full registry",
+    )
+    registry_verify_inclusion.add_argument("proof")
+    registry_verify_inclusion.add_argument("--registry-public-key", required=True)
+    registry_verify_inclusion.add_argument("--json", action="store_true")
+
+    registry_consistency = commands.add_parser(
+        "registry-prove-consistency",
+        help="export an authenticated proof that a later tree extends an earlier tree",
+    )
+    registry_consistency.add_argument("registry")
+    registry_consistency.add_argument("--first-tree-size", type=int, required=True)
+    registry_consistency.add_argument("--second-tree-size", type=int)
+    registry_consistency.add_argument("--registry-public-key", required=True)
+    registry_consistency.add_argument("--out", "-o", required=True)
+    registry_consistency.add_argument("--json", action="store_true")
+
+    registry_verify_consistency = commands.add_parser(
+        "registry-verify-consistency",
+        help="verify two signed heads and their portable append-only proof",
+    )
+    registry_verify_consistency.add_argument("proof")
+    registry_verify_consistency.add_argument("--registry-public-key", required=True)
+    registry_verify_consistency.add_argument("--json", action="store_true")
+
+    registry_compare_heads = commands.add_parser(
+        "registry-compare-heads",
+        help="authenticate two exchanged heads and detect same-size equivocation",
+    )
+    registry_compare_heads.add_argument("--registry-config", required=True)
+    registry_compare_heads.add_argument("--first-statement", required=True)
+    registry_compare_heads.add_argument("--first-dsse", required=True)
+    registry_compare_heads.add_argument("--second-statement", required=True)
+    registry_compare_heads.add_argument("--second-dsse", required=True)
+    registry_compare_heads.add_argument("--registry-public-key", required=True)
+    registry_compare_heads.add_argument("--out", "-o", required=True)
+    registry_compare_heads.add_argument("--json", action="store_true")
+
+    registry_verify_heads = commands.add_parser(
+        "registry-verify-head-comparison",
+        help="recompute a portable dual-head comparison and both signatures",
+    )
+    registry_verify_heads.add_argument("comparison")
+    registry_verify_heads.add_argument("--registry-public-key", required=True)
+    registry_verify_heads.add_argument("--json", action="store_true")
+
+    oscal_parser = commands.add_parser(
+        "export-oscal", help="export observation-only OSCAL 1.2.2 Assessment Results"
+    )
+    oscal_parser.add_argument("bundle")
+    oscal_parser.add_argument("--assessment-plan-href", required=True)
+    oscal_parser.add_argument("--public-key")
+    oscal_parser.add_argument("--out", "-o", required=True)
+    oscal_parser.add_argument("--json", action="store_true")
+
+    sarif_parser = commands.add_parser(
+        "export-sarif", help="export revocation failures as SARIF 2.1.0"
+    )
+    sarif_parser.add_argument("bundle")
+    sarif_parser.add_argument("--public-key")
+    sarif_parser.add_argument("--out", "-o", required=True)
+    sarif_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(argv)
+    try:
+        from .revocation import (
+            compare_revocation_bundles,
+            create_revocation_bundle,
+            export_revocation_oscal,
+            export_revocation_sarif,
+            verify_revocation_bundle,
+            verify_revocation_comparison,
+        )
+        from .revocation_registry import (
+            append_revocation_registry,
+            compare_revocation_tree_heads,
+            create_revocation_consistency_proof,
+            create_revocation_inclusion_proof,
+            create_revocation_registry,
+            verify_revocation_consistency_proof,
+            verify_revocation_head_comparison,
+            verify_revocation_inclusion_proof,
+            verify_revocation_registry,
+        )
+        from .revocation_topology import load_revocation_topology_audit
+
+        public_key = (
+            Path(args.public_key).read_bytes() if getattr(args, "public_key", None) else None
+        )
+        before_key = (
+            Path(args.before_public_key).read_bytes()
+            if getattr(args, "before_public_key", None)
+            else None
+        )
+        after_key = (
+            Path(args.after_public_key).read_bytes()
+            if getattr(args, "after_public_key", None)
+            else None
+        )
+        if args.command == "verify-topology":
+            report = load_revocation_topology_audit(Path(args.audit))
+            result = {
+                "valid": True,
+                "revocation_plan_sha256": report["inputs"]["revocation_plan_sha256"],
+                "runtime_profile_sha256": report["inputs"]["runtime_profile_sha256"],
+                "summary": report["summary"],
+                "limitations": report["limitations"],
+            }
+            status = report["summary"]["verdict"]
+            label, destination = "LUREREVOKE TOPOLOGY VERIFIED", args.audit
+        elif args.command == "verify-otel":
+            from .revocation_otel import load_otel_revocation_projection
+
+            report = load_otel_revocation_projection(Path(args.projection))
+            result = {
+                "valid": True,
+                "plan_sha256": report["inputs"]["revocation_plan_sha256"],
+                "otel_log_export_sha256": report["inputs"]["otel_log_export_sha256"],
+                "run_sha256": report["run_sha256"],
+                "record_count": len(report["inputs"]["otel_log_export"]["records"]),
+                "limitations": report["limitations"],
+            }
+            status = "verified"
+            label, destination = "LUREREVOKE OTEL VERIFIED", args.projection
+        elif args.command == "gate":
+            from .revocation_gate import create_revocation_deployment_gate
+
+            result = create_revocation_deployment_gate(
+                Path(args.topology_audit),
+                Path(args.otel_projection),
+                Path(args.bundle),
+                Path(args.out),
+                gate_id=args.gate_id,
+                bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
+                expected_bundle_key_id=args.expected_bundle_key_id,
+                maximum_allowed_convergence_ms=args.maximum_allowed_convergence_ms,
+                minimum_run_generated_at=args.minimum_run_generated_at,
+                expected_system_id=args.expected_system_id,
+                expected_environment=args.expected_environment,
+                expected_receiver_name=args.expected_receiver_name,
+                expected_receiver_artifact_sha256=args.expected_receiver_artifact_sha256,
+                created_at=args.created_at,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREREVOKE DEPLOYMENT GATE CREATED", args.out
+        elif args.command == "verify-gate":
+            from .revocation_gate import verify_revocation_deployment_gate
+
+            result = verify_revocation_deployment_gate(
+                Path(args.gate),
+                Path(args.topology_audit),
+                Path(args.otel_projection),
+                Path(args.bundle),
+                bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
+                expected_bundle_key_id=args.expected_bundle_key_id,
+                maximum_allowed_convergence_ms=args.maximum_allowed_convergence_ms,
+                minimum_run_generated_at=args.minimum_run_generated_at,
+                expected_system_id=args.expected_system_id,
+                expected_environment=args.expected_environment,
+                expected_receiver_name=args.expected_receiver_name,
+                expected_receiver_artifact_sha256=args.expected_receiver_artifact_sha256,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREREVOKE DEPLOYMENT GATE VERIFIED", args.gate
+        elif args.command == "create":
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = create_revocation_bundle(
+                Path(args.out),
+                bundle_id=args.bundle_id,
+                environment=args.environment,
+                evaluation=Path(args.evaluation),
+                signer_public_key_pem=signer_public,
+                signing_key_pem=signing_key,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREREVOKE BUNDLE CREATED", args.out
+        elif args.command == "verify":
+            verified = verify_revocation_bundle(Path(args.bundle), public_key_pem=public_key)
+            result = {key: value for key, value in verified.items() if key != "report"}
+            status = result["overall_status"]
+            label, destination = "LUREREVOKE BUNDLE VERIFIED", args.bundle
+        elif args.command == "compare":
+            result = compare_revocation_bundles(
+                Path(args.before),
+                Path(args.after),
+                Path(args.out),
+                comparison_id=args.comparison_id,
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["summary"]["status"]
+            label, destination = "LUREREVOKE REMEDIATION COMPARED", args.out
+        elif args.command == "verify-comparison":
+            result = verify_revocation_comparison(
+                Path(args.comparison),
+                Path(args.before),
+                Path(args.after),
+                before_public_key_pem=before_key,
+                after_public_key_pem=after_key,
+            )
+            status = result["status"]
+            label, destination = "LUREREVOKE REMEDIATION VERIFIED", args.comparison
+        elif args.command == "registry-init":
+            result = create_revocation_registry(
+                Path(args.out),
+                registry_id=args.registry_id,
+                system_id=args.system_id,
+                environment=args.environment,
+                receiver_name=args.receiver_name,
+                signer_public_key_pem=Path(args.signer_public_key).read_bytes(),
+            )
+            status = "initialized"
+            label, destination = "LUREREVOKE REGISTRY INITIALIZED", args.out
+        elif args.command == "registry-append":
+            result = append_revocation_registry(
+                Path(args.registry),
+                Path(args.bundle),
+                registry_public_key_pem=Path(args.registry_public_key).read_bytes(),
+                registry_signing_key_pem=Path(args.registry_signing_key).read_bytes(),
+                bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
+                registered_at=args.registered_at,
+            )
+            status = "appended"
+            label, destination = "LUREREVOKE REGISTRY APPENDED", args.registry
+        elif args.command == "registry-verify":
+            result = verify_revocation_registry(
+                Path(args.registry),
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+                trusted_head_statement=(
+                    Path(args.trusted_head_statement) if args.trusted_head_statement else None
+                ),
+                trusted_head_dsse=(
+                    Path(args.trusted_head_dsse) if args.trusted_head_dsse else None
+                ),
+            )
+            status = "verified"
+            label, destination = "LUREREVOKE REGISTRY VERIFIED", args.registry
+        elif args.command == "registry-prove-inclusion":
+            result = create_revocation_inclusion_proof(
+                Path(args.registry),
+                Path(args.out),
+                sequence=args.sequence,
+                tree_size=args.tree_size,
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = "written"
+            label, destination = "LUREREVOKE INCLUSION PROOF CREATED", args.out
+        elif args.command == "registry-verify-inclusion":
+            result = verify_revocation_inclusion_proof(
+                Path(args.proof),
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = "verified"
+            label, destination = "LUREREVOKE INCLUSION PROOF VERIFIED", args.proof
+        elif args.command == "registry-prove-consistency":
+            result = create_revocation_consistency_proof(
+                Path(args.registry),
+                Path(args.out),
+                first_tree_size=args.first_tree_size,
+                second_tree_size=args.second_tree_size,
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = "written"
+            label, destination = "LUREREVOKE CONSISTENCY PROOF CREATED", args.out
+        elif args.command == "registry-verify-consistency":
+            result = verify_revocation_consistency_proof(
+                Path(args.proof),
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = "verified"
+            label, destination = "LUREREVOKE CONSISTENCY PROOF VERIFIED", args.proof
+        elif args.command == "registry-compare-heads":
+            result = compare_revocation_tree_heads(
+                Path(args.registry_config),
+                Path(args.first_statement),
+                Path(args.first_dsse),
+                Path(args.second_statement),
+                Path(args.second_dsse),
+                Path(args.out),
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = result["summary"]["status"]
+            label, destination = "LUREREVOKE TREE HEADS COMPARED", args.out
+        elif args.command == "registry-verify-head-comparison":
+            result = verify_revocation_head_comparison(
+                Path(args.comparison),
+                public_key_pem=Path(args.registry_public_key).read_bytes(),
+            )
+            status = result["summary"]["status"]
+            label, destination = "LUREREVOKE TREE HEAD COMPARISON VERIFIED", args.comparison
+        elif args.command == "export-oscal":
+            result = export_revocation_oscal(
+                Path(args.bundle),
+                Path(args.out),
+                assessment_plan_href=args.assessment_plan_href,
+                public_key_pem=public_key,
+            )
+            status = "written"
+            label, destination = "LUREREVOKE OSCAL EXPORTED", args.out
+        else:
+            result = export_revocation_sarif(
+                Path(args.bundle), Path(args.out), public_key_pem=public_key
+            )
+            status = "written"
+            label, destination = "LUREREVOKE SARIF EXPORTED", args.out
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(f"{label}: {status.upper()} — {destination}")
+            print(
+                "boundary: evidence integrity only; no signal, receiver, clock, enforcement, "
+                "or compliance authenticity claim"
+            )
+        return (
+            0
+            if status
+            in {
+                "pass",
+                "effective",
+                "unchanged_pass",
+                "written",
+                "initialized",
+                "appended",
+                "verified",
+                "identical",
+            }
+            else 1
+        )
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureRevoke evidence workflow failed: {exc}", file=sys.stderr)
         return 2
 
 
@@ -2003,6 +2725,12 @@ def main(argv=None) -> int:
         return _witness(args[1:])
     if args and args[0] == "invariant":
         return _invariant(args[1:])
+    if args and args[0] == "range":
+        return _range_evidence(args[1:])
+    if args and args[0] == "runtime":
+        return _runtime_evidence(args[1:])
+    if args and args[0] == "revoke":
+        return _revocation_evidence(args[1:])
     return _serve(args)
 
 

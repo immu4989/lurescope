@@ -11,7 +11,16 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Imran Ahamed" }]
-keywords = ["fraud", "phishing", "detection", "adversarial", "api", "security"]
+keywords = [
+  "fraud",
+  "phishing",
+  "detection",
+  "adversarial",
+  "api",
+  "security",
+  "agent-security",
+  "signed-evidence",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-head-comparison/v1",
+  "title": "Authenticated LureRevoke registry tree-head comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "registry_config", "first", "second", "summary", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-head-comparison/v1"},
+    "schema_version": {"const": 1},
+    "registry_config": {"$ref": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1"},
+    "first": {"$ref": "#/$defs/authenticated_head"},
+    "second": {"$ref": "#/$defs/authenticated_head"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_tree_size", "first_root_sha256", "first_statement_sha256", "second_tree_size", "second_root_sha256", "second_statement_sha256", "same_tree_size", "same_root", "same_statement", "status"],
+      "properties": {
+        "first_tree_size": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "first_root_sha256": {"$ref": "#/$defs/digest"},
+        "first_statement_sha256": {"$ref": "#/$defs/digest"},
+        "second_tree_size": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "second_root_sha256": {"$ref": "#/$defs/digest"},
+        "second_statement_sha256": {"$ref": "#/$defs/digest"},
+        "same_tree_size": {"type": "boolean"},
+        "same_root": {"type": "boolean"},
+        "same_statement": {"type": "boolean"},
+        "status": {"enum": ["identical", "equivocation", "different_sizes_consistency_not_evaluated"]}
+      }
+    },
+    "limitations": {"const": ["comparison_authenticates_only_the_two_presented_heads_under_one_registry_key", "same_size_different_statements_are_equivocation_evidence_not_attribution_of_cause", "different_tree_sizes_require_a_separate_consistency_proof", "unpresented_conflicting_heads_and_global_non_equivocation_are_not_established", "comparison_does_not_prove_underlying_revocation_observation_or_enforcement_authenticity"]},
+    "interpretation_boundary": {"const": "Identical means both authenticated envelopes carry the same canonical tree-head statement. Equivocation means the same registry key authenticated different statements for the same tree size. Different sizes are deliberately inconclusive until a consistency proof is verified."}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "authenticated_head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tree_head_statement", "tree_head_dsse"],
+      "properties": {
+        "tree_head_statement": {"$ref": "https://github.com/immu4989/lurescope/spec/lurerevoke-registry-tree-head/v1"},
+        "tree_head_dsse": {"$ref": "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-dsse/v1"}
+      }
+    }
+  }
+}

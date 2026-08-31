@@ -17,6 +17,9 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
 ![LureInvariant](https://img.shields.io/badge/LureInvariant-signed_before_·_after_evidence-7b61ff)
+![LureRange](https://img.shields.io/badge/LureRange-independent_signed_conformance-7b61ff)
+![Runtime evidence](https://img.shields.io/badge/runtime-receipts_×_sensors_×_DSSE-7b61ff)
+![LureRevoke](https://img.shields.io/badge/LureRevoke-convergence_×_CAEP_×_DSSE-7b61ff)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
@@ -35,6 +38,9 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Monitor deployment risk anytime →](docs/ANYTIME_MONITORING.md)** ·
 **[Assure autonomous-agent boundaries →](docs/AGENT_BOUNDARY_ASSURANCE.md)** ·
 **[Verify cross-layer invariants →](docs/LUREINVARIANT_EVIDENCE.md)** ·
+**[Sign agent-permit conformance →](docs/LUREPERMIT_EVIDENCE.md)** ·
+**[Sign runtime-mediation evidence →](docs/RUNTIME_MEDIATION_EVIDENCE.md)** ·
+**[Verify revocation convergence →](docs/LUREREVOKE_EVIDENCE.md)** ·
 **[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -51,6 +57,65 @@ python -m pip install lurescope
 `.eml` to privacy-minimized LureProof and offline Splunk/Sentinel payloads.
 
 Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the easy part, and it hides the two questions that actually decide whether a detector survives production: **does it still fire when an attacker perturbs the message, and can a defense you'd actually deploy get the catch back?** LureScope answers all three. Paste a message, get a fraud score, apply an attack a real fraudster would run (`homoglyph`, `leet`, paraphrase), then flip on input normalization and see whether the detector recovers — or whether the attack was never typographic to begin with.
+
+> **New — prove that an authorization decision matched the observed effect.**
+> [Runtime mediation evidence](docs/RUNTIME_MEDIATION_EVIDENCE.md) independently
+> revalidates LurePermit profiles, exact requests, chained receipts, policy
+> identity, and sensor bindings; recomputes effective, bypassed, unmediated,
+> unknown, and incomplete outcomes; signs an in-toto checkpoint with optional
+> P-256 DSSE; compares same-contract remediation; and exports observation-only
+> OSCAL 1.2.2 and SARIF 2.1.0. It does not claim complete mediation or sensor
+> truth.
+
+> **New — independently verify distributed revocation convergence.**
+> [LureRevoke evidence](docs/LUREREVOKE_EVIDENCE.md) re-derives valid,
+> duplicate, and invalid signal dispositions; event/node delivery coverage;
+> p95/maximum convergence; deadline misses; post-deadline access leakage; and
+> collateral denial without importing LureBench's implementation. Exact bytes
+> can be authenticated with P-256 DSSE and exported as observation-only OSCAL
+> 1.2.2 or SARIF 2.1.0. Strict before/after comparisons reject changed plans,
+> thresholds, systems, environments, or receiver identity and bind exact metric
+> deltas from independently verifiable source bundles. It does not claim SET,
+> receiver, clock, enforcement, causality, or CAEP interoperability authenticity.
+> Independent witness/quorum receipts can additionally prove that separately
+> governed keys observed a signed checkpoint without receiving its evidence.
+> A signed append-only registry rejects replay and policy drift, commits every
+> privacy-minimized registration to an RFC 9162-style Merkle root, and detects
+> rollback when checked against an independently retained tree head.
+> Portable authenticated inclusion proofs let an auditor verify one registered
+> checkpoint without receiving the full history or underlying evaluation.
+> Authenticated consistency proofs show that a later signed head preserves the
+> complete earlier prefix while disclosing no registry entries.
+> Portable dual-head comparisons turn two valid same-size but different signed
+> statements into explicit split-view/equivocation evidence.
+> LureScope also independently recomputes LureBench's cross-control topology
+> audit so a missing runtime mediation point cannot be hidden by altered counts
+> or a self-reported pass.
+> It also independently verifies body-free OpenTelemetry-to-LureRevoke
+> projections, including topology, trace-context uniqueness, timing boundaries,
+> privacy exclusions, and exact source/run byte commitments.
+> A strict deployment gate then binds the topology audit, telemetry projection,
+> and authenticated evaluation to one exact plan, run, system, and receiver,
+> requires all four probe phases at every event/node pair, and prevents
+> individually valid artifacts from different campaigns being mixed.
+> Its acceptance floor is fixed at complete coverage and accuracy with zero
+> deadline misses, access leakage, or collateral denial; only the deadline is
+> deployment-defined.
+> A protected minimum run timestamp also rejects replay of stale but otherwise
+> valid campaign evidence without relying on the verifier's wall clock.
+> External policy also pins the system, environment, receiver name, signer key,
+> and receiver artifact digest, preventing valid staging or wrong-build evidence
+> from being promoted into a different target.
+> A fail-closed composite GitHub Action can enforce the same independent
+> recomputation at merge or release time from a commit-pinned verifier.
+
+> **New — independently verify prevention and safe-stop evidence.**
+> [LurePermit/LureRange evidence](docs/LUREPERMIT_EVIDENCE.md) re-derives every
+> policy expectation and metric from a LureBench report, preserves the exact
+> bytes in an in-toto checkpoint, and optionally authenticates it with P-256
+> DSSE. Strict before/after comparison refuses changed permits, suites,
+> thresholds, systems, or engine identity. It records conformance decisions but
+> executes no agent, network, credential, stop, or remediation action.
 
 > **New — prove that a remediation passed the same system-level test.**
 > [LureInvariant evidence](docs/LUREINVARIANT_EVIDENCE.md) independently
@@ -117,6 +182,55 @@ lurescope boundary append ./agent-boundary-evidence boundary-evaluation.json \
   --evaluation-id release-candidate-1
 lurescope boundary verify ./agent-boundary-evidence
 ```
+
+Independently recompute and sign an offline agent-permit evaluation:
+
+```bash
+lurebench range-eval --out range-evaluation.json
+lurescope keygen --private-out range-private.pem --public-out range-public.pem
+lurescope range create \
+  --evaluation range-evaluation.json \
+  --bundle-id policy-gateway-1 --environment evaluation \
+  --signer-public-key range-public.pem --signing-key range-private.pem \
+  --out policy-gateway-1.range
+lurescope range verify policy-gateway-1.range --public-key range-public.pem
+```
+
+See the [signed evidence, remediation comparison, public formats, and claims
+boundary](docs/LUREPERMIT_EVIDENCE.md).
+
+Independently recompute and sign a runtime decision-versus-effect evaluation:
+
+```bash
+lurebench runtime-eval --out runtime-evaluation.json
+lurescope runtime create \
+  --evaluation runtime-evaluation.json \
+  --bundle-id runtime-gateway-1 --environment evaluation \
+  --out runtime-gateway-1.evidence
+lurescope runtime verify runtime-gateway-1.evidence
+lurescope runtime export-sarif runtime-gateway-1.evidence \
+  --out runtime-mediation.sarif.json
+```
+
+See the [signed runtime evidence, OSCAL/SARIF, remediation comparison, and
+claims boundary](docs/RUNTIME_MEDIATION_EVIDENCE.md).
+
+Measure and sign continuous-access revocation convergence:
+
+```bash
+lurebench revocation-eval --out revocation-evaluation.json
+lurescope keygen --private-out revoke-private.pem --public-out revoke-public.pem
+lurescope revoke create \
+  --evaluation revocation-evaluation.json \
+  --bundle-id agent-revocation-1 --environment evaluation \
+  --signer-public-key revoke-public.pem --signing-key revoke-private.pem \
+  --out agent-revocation-1.evidence
+lurescope revoke verify agent-revocation-1.evidence \
+  --public-key revoke-public.pem
+```
+
+See the [independent verification, DSSE, OSCAL/SARIF, and claims
+boundary](docs/LUREREVOKE_EVIDENCE.md).
 
 Combine the four assurance surfaces, monitor scheduled canaries, and witness the
 latest checkpoint from a separately controlled key:

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-checkpoint/v1",
+  "title": "LureScope LureRevoke in-toto checkpoint v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [
+      {"$ref": "#/$defs/subject", "properties": {"name": {"const": "bundle.json"}}},
+      {"$ref": "#/$defs/subject", "properties": {"name": {"const": "evidence/revocation-evaluation.json"}}}
+    ], "items": false},
+    "predicateType": {"const": "https://github.com/immu4989/lurescope/spec/lurerevoke-evidence-checkpoint/v1"},
+    "predicate": {"type": "object", "additionalProperties": false, "required": ["bundle_id", "created_at", "system_id", "plan_sha256", "run_sha256", "receiver_name", "overall_status", "authentication_mode", "limitations", "interpretation_boundary"], "properties": {
+      "bundle_id": {"$ref": "#/$defs/portable_id"}, "created_at": {"type": "string", "format": "date-time"}, "system_id": {"$ref": "#/$defs/id"}, "plan_sha256": {"$ref": "#/$defs/digest"}, "run_sha256": {"$ref": "#/$defs/digest"}, "receiver_name": {"$ref": "#/$defs/id"}, "overall_status": {"enum": ["pass", "fail"]}, "authentication_mode": {"enum": ["unsigned", "ecdsa-p256-dsse"]},
+      "limitations": {"const": ["plan_run_signal_dispositions_decisions_and_metrics_are_independently_recomputed", "a_signature_authenticates_a_key_not_a_transmitter_receiver_node_or_organization", "submitted_observations_do_not_prove_complete_event_or_access_path_coverage", "passing_is_not_caep_interoperability_zero_trust_compliance_or_deployment_authorization"]},
+      "interpretation_boundary": {"const": "LureScope independently recomputed the declared revocation delivery, convergence, signal dispositions, and access outcomes and bound their exact bytes. This is evidence integrity, not proof of transmitter, receiver, clock, observation, or enforcement authenticity."}
+    }}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "portable_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "subject": {"type": "object", "additionalProperties": false, "required": ["name", "digest"], "properties": {"name": {"type": "string"}, "digest": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {"sha256": {"$ref": "#/$defs/digest"}}}}}
+  }
+}
