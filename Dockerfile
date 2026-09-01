@@ -1,4 +1,4 @@
-FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS builder
+FROM python:3.11-slim@sha256:f1fd7707d6823c38591aa16ebaa0bc6892b609835a73520ad18a39e2e7454fc5 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc \
     /uv /uvx /bin/
@@ -17,7 +17,7 @@ COPY spec ./spec
 RUN uv sync --frozen --no-dev --no-editable
 
 
-FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS runtime
+FROM python:3.11-slim@sha256:f1fd7707d6823c38591aa16ebaa0bc6892b609835a73520ad18a39e2e7454fc5 AS runtime
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
