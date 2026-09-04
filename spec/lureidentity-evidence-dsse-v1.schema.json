@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureidentity-evidence-dsse/v1",
+  "title": "LureScope LureIdentity DSSE envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["payloadType", "payload", "signatures"],
+  "properties": {
+    "payloadType": {"const": "application/vnd.in-toto+json"},
+    "payload": {"type": "string", "contentEncoding": "base64", "minLength": 4},
+    "signatures": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["keyid", "sig"], "properties": {"keyid": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "sig": {"type": "string", "contentEncoding": "base64", "minLength": 8}}}}
+  }
+}

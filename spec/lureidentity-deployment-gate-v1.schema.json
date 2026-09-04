@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1",
+  "title": "Cross-artifact LureIdentity deployment gate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "gate_id", "created_at", "producer", "system", "policy", "contract", "sources", "checks", "overall_status", "limitations", "interpretation_boundary"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1"},
+    "schema_version": {"const": 1},
+    "gate_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"$ref": "#/$defs/id"}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["system_id", "environment"], "properties": {"system_id": {"$ref": "#/$defs/id"}, "environment": {"enum": ["development", "evaluation", "staging", "production"]}}},
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_allowed_convergence_ms", "declared_convergence_ms", "minimum_run_generated_at", "expected_system_id", "expected_environment", "expected_receiver_name", "expected_receiver_artifact_sha256"],
+      "properties": {
+        "maximum_allowed_convergence_ms": {"type": "integer", "minimum": 1, "maximum": 600000},
+        "declared_convergence_ms": {"type": "integer", "minimum": 1, "maximum": 600000},
+        "minimum_run_generated_at": {"type": "string", "format": "date-time"},
+        "expected_system_id": {"$ref": "#/$defs/id"},
+        "expected_environment": {"enum": ["development", "evaluation", "staging", "production"]},
+        "expected_receiver_name": {"$ref": "#/$defs/id"},
+        "expected_receiver_artifact_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_sha256", "plan_sha256", "run_sha256", "runtime_profile_sha256", "artifact_campaign_sha256", "artifact_plan_sha256", "artifact_observation_sha256", "artifact_evaluation_sha256", "receiver"],
+      "properties": {
+        "campaign_sha256": {"$ref": "#/$defs/digest"},
+        "plan_sha256": {"$ref": "#/$defs/digest"},
+        "run_sha256": {"$ref": "#/$defs/digest"},
+        "runtime_profile_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_campaign_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_observation_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_evaluation_sha256": {"$ref": "#/$defs/digest"},
+        "receiver": {"type": "object", "additionalProperties": false, "required": ["name", "version", "artifact_sha256"], "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"$ref": "#/$defs/digest"}}}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_verification", "artifact_verification", "topology_audit", "otel_projection", "identity_evidence"],
+      "properties": {
+        "campaign_verification": {"type": "object", "additionalProperties": false, "required": ["sha256", "verified_at", "event_count", "probe_count"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "verified_at": {"type": "string", "format": "date-time"}, "event_count": {"type": "integer", "minimum": 1, "maximum": 64}, "probe_count": {"type": "integer", "minimum": 1, "maximum": 8192}}},
+        "artifact_verification": {"type": "object", "additionalProperties": false, "required": ["sha256", "verified_at", "active_workload_count", "deployment_count", "artifact_binding_count", "provenance_binding_count", "ai_bom_binding_count", "overall_status"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "verified_at": {"type": "string", "format": "date-time"}, "active_workload_count": {"type": "integer", "minimum": 1, "maximum": 128}, "deployment_count": {"type": "integer", "minimum": 1, "maximum": 8192}, "artifact_binding_count": {"type": "integer", "minimum": 4, "maximum": 32768}, "provenance_binding_count": {"type": "integer", "minimum": 3, "maximum": 24576}, "ai_bom_binding_count": {"type": "integer", "minimum": 1, "maximum": 8192}, "overall_status": {"enum": ["pass", "fail"]}}},
+        "topology_audit": {"type": "object", "additionalProperties": false, "required": ["sha256", "verdict", "covered_enforcement_point_count", "required_enforcement_point_count", "trusted_workload_identity_count", "workload_identity_count"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "verdict": {"enum": ["pass", "fail"]}, "covered_enforcement_point_count": {"type": "integer", "minimum": 0, "maximum": 32}, "required_enforcement_point_count": {"type": "integer", "minimum": 1, "maximum": 32}, "trusted_workload_identity_count": {"type": "integer", "minimum": 0, "maximum": 128}, "workload_identity_count": {"type": "integer", "minimum": 1, "maximum": 128}}},
+        "otel_projection": {"type": "object", "additionalProperties": false, "required": ["sha256", "source_export_sha256", "record_count"], "properties": {"sha256": {"$ref": "#/$defs/digest"}, "source_export_sha256": {"$ref": "#/$defs/digest"}, "record_count": {"type": "integer", "minimum": 1, "maximum": 24576}}},
+        "identity_evidence": {"type": "object", "additionalProperties": false, "required": ["manifest_sha256", "checkpoint_sha256", "signer_key_id", "overall_status"], "properties": {"manifest_sha256": {"$ref": "#/$defs/digest"}, "checkpoint_sha256": {"$ref": "#/$defs/digest"}, "signer_key_id": {"$ref": "#/$defs/digest"}, "overall_status": {"enum": ["pass", "fail"]}}}
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "prefixItems": [
+        {"$ref": "#/$defs/campaign_check"},
+        {"$ref": "#/$defs/topology_check"},
+        {"$ref": "#/$defs/trust_domain_check"},
+        {"$ref": "#/$defs/artifact_check"},
+        {"$ref": "#/$defs/preregistration_check"},
+        {"$ref": "#/$defs/probe_coverage_check"},
+        {"$ref": "#/$defs/strict_acceptance_check"},
+        {"$ref": "#/$defs/deadline_policy_check"},
+        {"$ref": "#/$defs/freshness_policy_check"},
+        {"$ref": "#/$defs/deployment_identity_check"},
+        {"$ref": "#/$defs/telemetry_check"},
+        {"$ref": "#/$defs/authentication_check"},
+        {"$ref": "#/$defs/acceptance_check"}
+      ],
+      "items": false
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "limitations": {"const": ["gate_reconciles_identity_and_artifact_compiler_proofs_declared_topology_body_free_telemetry_and_signed_lifecycle_evidence_only", "a_pass_does_not_prove_topology_discovery_telemetry_completeness_event_authenticity_clock_sync_or_enforcement", "trust_domain_membership_does_not_prove_svid_issuance_validation_or_possession", "source_signature_authenticates_a_key_not_a_directory_receiver_operator_or_organization", "external_policy_values_are_caller_supplied_and_require_separately_governed_authorization", "artifact_hash_provenance_and_ai_bom_equality_do_not_prove_content_safety_or_builder_trust", "gate_does_not_establish_scim_interoperability_compliance_or_deployment_authorization"]},
+    "interpretation_boundary": {"const": "Pass means independently recompiled identity and artifact campaigns, a complete declared runtime topology with allowed workload trust domains based on a runtime profile dated no later than the run, an independently recomputed body-free telemetry projection, and an authenticated identity-lifecycle evaluation bind the same exact identity plan and run; the declared workload-to-model, image, policy, AI-BOM, and SLSA provenance observations also match their reviewed plan. All sources satisfy caller-supplied deployment identity, freshness, probe-coverage, and convergence policy. It does not establish trusted discovery, time, event origin, SVID possession, artifact safety, builder trust, observation completeness, deployment, or enforcement authenticity."}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "campaign_check": {"const": {"check_id": "campaign_compilation_recomputed", "status": "pass"}},
+    "topology_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "declared_enforcement_topology_complete"}, "status": {"enum": ["pass", "fail"]}}},
+    "trust_domain_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "workload_trust_domains_covered"}, "status": {"enum": ["pass", "fail"]}}},
+    "artifact_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "workload_artifact_authorization_met"}, "status": {"enum": ["pass", "fail"]}}},
+    "preregistration_check": {"const": {"check_id": "runtime_profile_preregistered", "status": "pass"}},
+    "probe_coverage_check": {"const": {"check_id": "cut_probe_phase_coverage_complete", "status": "pass"}},
+    "strict_acceptance_check": {"const": {"check_id": "strict_acceptance_thresholds", "status": "pass"}},
+    "deadline_policy_check": {"const": {"check_id": "convergence_deadline_within_policy", "status": "pass"}},
+    "freshness_policy_check": {"const": {"check_id": "run_freshness_matches_policy", "status": "pass"}},
+    "deployment_identity_check": {"const": {"check_id": "deployment_identity_matches_policy", "status": "pass"}},
+    "telemetry_check": {"const": {"check_id": "telemetry_projection_recomputed", "status": "pass"}},
+    "authentication_check": {"const": {"check_id": "source_bundle_authenticated", "status": "pass"}},
+    "acceptance_check": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"const": "identity_lifecycle_acceptance_met"}, "status": {"enum": ["pass", "fail"]}}}
+  }
+}

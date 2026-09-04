@@ -53,6 +53,16 @@
   const REVOKE_TOPOLOGY_AUDIT = "https://github.com/immu4989/lurebench/spec/lurerevoke-topology-audit/v1";
   const REVOKE_OTEL_PROJECTION = "https://github.com/immu4989/lurebench/spec/lurerevoke-otel-projection/v1";
   const REVOKE_DEPLOYMENT_GATE = "https://github.com/immu4989/lurescope/spec/lurerevoke-deployment-gate/v1";
+  const IDENTITY_EVALUATION = "https://github.com/immu4989/lurebench/spec/lureidentity-evaluation-v1";
+  const IDENTITY_BUNDLE = "https://github.com/immu4989/lurescope/spec/lureidentity-evidence-bundle/v1";
+  const IDENTITY_CHECKPOINT = "https://github.com/immu4989/lurescope/spec/lureidentity-evidence-checkpoint/v1";
+  const IDENTITY_TOPOLOGY_AUDIT = "https://github.com/immu4989/lurebench/spec/lureidentity-topology-audit/v1";
+  const IDENTITY_OTEL_PROJECTION = "https://github.com/immu4989/lurebench/spec/lureidentity-otel-projection/v1";
+  const IDENTITY_CAMPAIGN_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureidentity-campaign-verification/v1";
+  const ARTIFACT_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureartifact-verification/v1";
+  const RECALL_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurerecall-verification/v1";
+  const ATTEST_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1";
+  const IDENTITY_DEPLOYMENT_GATE = "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1";
 
   function object(value, field) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -830,6 +840,350 @@
     return summary;
   }
 
+  function identityEvaluationSummary(value, meta) {
+    const metrics = object(value.summary, "LureIdentity evaluation summary");
+    const run = object(value.run, "LureIdentity receiver run");
+    const receiver = object(run.implementation, "LureIdentity receiver identity");
+    const summary = base(
+      "LureIdentity evaluation",
+      "Identity lifecycle authority closure",
+      "Graph-derived authorization cuts and preserved controls across declared policy nodes.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Authorization cuts", value: count(metrics.affected_authorization_count)},
+      {label: "Cut recall", value: ratio(metrics.cut_recall)},
+      {label: "Preserved allow rate", value: ratio(metrics.preserved_allow_rate)},
+      {label: "Delivery coverage", value: ratio(metrics.delivery_coverage_rate)},
+      {label: "p95 convergence", value: `${count(metrics.p95_convergence_ms)} ms`},
+      {label: "Deadline misses", value: count(metrics.deadline_miss_count)},
+      {label: "Stale post-deadline allows", value: count(metrics.post_deadline_stale_allow_count)},
+      {label: "Collateral blocks", value: count(metrics.collateral_block_count)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Plan", value.plan_sha256),
+      binding("Receiver run", value.run_sha256),
+      binding("Receiver artifact", receiver.artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["typed opaque identity and authorization metadata", "no SCIM payloads, credentials, tokens, prompts, commands, URLs, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    return summary;
+  }
+
+  function identityBundleSummary(value, meta) {
+    const evidence = object(value.evidence, "LureIdentity evidence binding");
+    const authentication = object(value.authentication, "LureIdentity authentication declaration");
+    const receiver = object(value.receiver, "LureIdentity receiver identity");
+    const metrics = object(value.summary, "LureIdentity bound summary");
+    const summary = base(
+      "LureIdentity evidence bundle",
+      "Tamper-evident identity closure checkpoint",
+      "Exact independently recomputable authority-closure evidence with an optional external-key signature.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Authorization cuts", value: count(metrics.affected_authorization_count)},
+      {label: "Cut recall", value: ratio(metrics.cut_recall)},
+      {label: "Preserved allow rate", value: ratio(metrics.preserved_allow_rate)},
+      {label: "Delivery coverage", value: ratio(metrics.delivery_coverage_rate)},
+      {label: "p95 convergence", value: `${count(metrics.p95_convergence_ms)} ms`},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+      {label: "Authentication", value: String(authentication.mode || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Evaluation", evidence.sha256),
+      binding("Receiver run", evidence.run_sha256),
+      binding("Plan", value.plan && value.plan.plan_sha256),
+      binding("Receiver artifact", receiver.artifact_sha256),
+      binding("Declared signer", authentication.signer_key_id),
+    ].filter(Boolean);
+    summary.privacy = ["opaque identity graph and aggregate metrics", "no directory payloads, credentials, tokens, or action content"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope identity verify` with a trusted public key to authenticate and independently recompute this bundle.");
+    return summary;
+  }
+
+  function identityTopologySummary(value, meta) {
+    const metrics = object(value.summary, "LureIdentity topology summary");
+    const inputs = object(value.inputs, "LureIdentity topology inputs");
+    const summary = base(
+      "LureIdentity topology audit",
+      "Declared identity enforcement coverage",
+      "An independently recomputable mapping from identity nodes and workload trust domains to one exact runtime profile.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Point coverage", value: ratio(metrics.enforcement_point_coverage_rate)},
+      {label: "Covered", value: `${count(metrics.covered_enforcement_point_count)} / ${count(metrics.required_enforcement_point_count)}`},
+      {label: "Missing", value: count(metrics.missing_enforcement_point_count)},
+      {label: "Unmapped nodes", value: count(metrics.unmapped_node_count)},
+      {label: "Workload trust", value: ratio(metrics.workload_trust_domain_coverage_rate)},
+      {label: "Trusted workloads", value: `${count(metrics.trusted_workload_identity_count)} / ${count(metrics.workload_identity_count)}`},
+    ];
+    summary.bindings = [
+      binding("Identity plan", inputs.identity_plan_sha256),
+      binding("Runtime profile", inputs.runtime_profile_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["declared node, workload identity, action, and sensor identifiers plus exact input digests"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope identity verify-topology`; this browser does not recompute the plan, runtime profile, mapping, or trust-domain decision.");
+    return summary;
+  }
+
+  function identityCampaignVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureIdentity campaign verification summary");
+    if (!Array.isArray(value.checks) || value.checks.length !== 9) {
+      throw new Error("LureIdentity campaign verification must contain nine checks");
+    }
+    const summary = base(
+      "LureIdentity campaign verification",
+      "Independently recompiled identity campaign",
+      "A self-contained check that independently derives event cuts, exhaustive collateral controls, and the exact bounded node/phase probe matrix.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Events", value: count(metrics.event_count)},
+      {label: "Nodes", value: count(metrics.node_count)},
+      {label: "Cut authorizations", value: count(metrics.cut_authorization_count)},
+      {label: "Preserved authorizations", value: count(metrics.preserved_authorization_count)},
+      {label: "Probes", value: count(metrics.probe_count)},
+      {label: "Checks", value: `${count(value.checks.filter(item => item && item.status === "pass").length)} / 9`},
+    ];
+    summary.bindings = [
+      binding("Campaign", value.campaign_sha256),
+      binding("Derived plan", value.derived_plan_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["synthetic projected graph metadata and digests only", "no credentials, tokens, raw directory payloads, prompts, targets, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope identity verify-campaign` with the exact campaign and plan; this browser does not recompile or authenticate either source.");
+    return summary;
+  }
+
+  function identityOtelProjectionSummary(value, meta) {
+    const inputs = object(value.inputs, "LureIdentity OpenTelemetry inputs");
+    const source = object(inputs.otel_log_export, "LureIdentity OpenTelemetry source export");
+    const run = object(value.run, "LureIdentity OpenTelemetry projected run");
+    const clock = object(value.clock_boundary, "LureIdentity OpenTelemetry clock boundary");
+    const summary = base(
+      "LureIdentity OpenTelemetry projection",
+      "Privacy-minimized identity telemetry bridge",
+      "An independently recomputable projection from strict body-free OpenTelemetry log-model records to one LureIdentity run.",
+      meta,
+    );
+    summary.status = "Projection inspected";
+    summary.metrics = [
+      {label: "Records", value: count(Array.isArray(source.records) ? source.records.length : 0)},
+      {label: "Lifecycle observations", value: count(Array.isArray(run.event_observations) ? run.event_observations.length : 0)},
+      {label: "Access decisions", value: count(Array.isArray(run.access_observations) ? run.access_observations.length : 0)},
+      {label: "Receiver", value: String(source.receiver && source.receiver.name || "unknown")},
+      {label: "Benchmark clock", value: String(clock.benchmark_time_field || "unknown")},
+      {label: "Collector time scored", value: clock.observed_timestamp_used_for_benchmark_timing === false ? "no" : "unknown"},
+    ];
+    summary.bindings = [
+      binding("Identity plan", inputs.identity_plan_sha256),
+      binding("OTel source export", inputs.otel_log_export_sha256),
+      binding("Projected run", value.run_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["no log Body", "opaque preregistered identifiers and digests only", "no raw directory subjects, SPIFFE IDs, tokens, credentials, prompts, payloads, or targets"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope identity verify-otel`; this browser does not recompute the source projection or establish telemetry completeness, clock synchronization, event origin, or causality.");
+    return summary;
+  }
+
+  function artifactVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureArtifact verification summary");
+    const digests = object(value.digests, "LureArtifact verification digests");
+    if (!Array.isArray(value.checks) || value.checks.length !== 13) {
+      throw new Error("LureArtifact verification must contain thirteen checks");
+    }
+    const summary = base(
+      "LureArtifact verification",
+      "Independent workload-to-artifact authorization",
+      "A self-contained local reimplementation that rederives the identity and artifact plans and binds each active workload deployment to exact model, image, policy, provenance, and AI-BOM metadata.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Workloads", value: count(metrics.active_workload_count)},
+      {label: "Deployments", value: count(metrics.deployment_count)},
+      {label: "Artifact bindings", value: count(metrics.artifact_binding_count)},
+      {label: "Provenance bindings", value: count(metrics.provenance_binding_count)},
+      {label: "AI-BOM bindings", value: count(metrics.ai_bom_binding_count)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Producer verdict", value: String(metrics.verdict || "unknown")},
+      {label: "Verifier checks", value: `${count(value.checks.filter(item => item && item.status === "pass").length)} / 13`},
+    ];
+    summary.bindings = [
+      binding("Identity campaign verification", digests.identity_campaign_verification_sha256),
+      binding("Identity plan", digests.identity_plan_sha256),
+      binding("Artifact campaign", digests.artifact_campaign_sha256),
+      binding("Artifact plan", digests.artifact_plan_sha256),
+      binding("Artifact observation", digests.observation_sha256),
+      binding("Artifact evaluation", digests.evaluation_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "artifact identity, digest, package URL, builder, build-type, serialization, deployment, and aggregate finding metadata only",
+      "no artifact bytes, credentials, prompts, model content, or reasoning",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope artifact check`; this browser does not recompile the campaigns, independently rederive the plans, load artifacts, or authenticate builders, observations, provenance, AI-BOMs, or signatures.");
+    return summary;
+  }
+
+  function recallVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureRecall verification summary");
+    const digests = object(value.digests, "LureRecall verification digests");
+    if (!Array.isArray(value.checks) || value.checks.length !== 12) {
+      throw new Error("LureRecall verification must contain twelve checks");
+    }
+    const summary = base(
+      "LureRecall verification",
+      "Independent transitive artifact recall",
+      "A local reimplementation that derives blast radius from exact lineage and advisory metadata, then recomputes delivery, quarantine, replacement recovery, and unaffected-service controls.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Actionable components", value: count(metrics.actionable_component_count)},
+      {label: "Affected components", value: count(metrics.affected_component_count)},
+      {label: "Affected roots", value: count(metrics.affected_root_artifact_count)},
+      {label: "Affected workloads", value: count(metrics.affected_workload_count)},
+      {label: "Affected deployments", value: count(metrics.affected_deployment_count)},
+      {label: "Affected nodes", value: count(metrics.affected_node_count)},
+      {label: "On-time delivery", value: ratio(metrics.on_time_delivery_rate)},
+      {label: "p95 delivery", value: metrics.p95_delivery_ms === null ? "Not measurable" : `${count(metrics.p95_delivery_ms)} ms`},
+      {label: "Quarantine recall", value: ratio(metrics.quarantine_recall)},
+      {label: "Recovery recall", value: ratio(metrics.recovery_recall)},
+      {label: "Unaffected preserved", value: ratio(metrics.unaffected_preservation_rate)},
+      {label: "Compromised allows", value: count(metrics.post_deadline_compromised_allow_count)},
+      {label: "Wrong replacements", value: count(metrics.wrong_replacement_count)},
+      {label: "Collateral blocks", value: count(metrics.collateral_block_count)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Verifier checks", value: `${count(value.checks.filter(item => item && item.status === "pass").length)} / 12`},
+    ];
+    summary.bindings = [
+      binding("Artifact plan", digests.artifact_plan_sha256),
+      binding("Lineage", digests.lineage_sha256),
+      binding("Advisory", digests.advisory_sha256),
+      binding("Recall plan", digests.plan_sha256),
+      binding("Response run", digests.run_sha256),
+      binding("Producer evaluation", digests.evaluation_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "component, relationship, artifact, deployment, status, timing, and aggregate finding metadata only",
+      "no source-document or artifact bytes, credentials, prompts, model content, or reasoning",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope recall check`; this browser does not rederive graph reachability, recompute response evidence, load artifacts, or authenticate advisories, lineage, observations, builders, replacements, or signatures.");
+    return summary;
+  }
+
+  function attestVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureAttest verification summary");
+    const digests = object(value.digests, "LureAttest verification digests");
+    if (!Array.isArray(value.checks) || value.checks.length !== 12) {
+      throw new Error("LureAttest verification must contain twelve checks");
+    }
+    const summary = base(
+      "LureAttest verification",
+      "Authenticated DSSE and SLSA expectations",
+      "A private self-contained report binding exact provenance payloads to pinned ECDSA P-256 keys, artifact subjects, builders, build types, sources, and external-parameter commitments.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Workloads", value: count(metrics.workload_count)},
+      {label: "Attestations", value: count(metrics.attestation_count)},
+      {label: "Authenticated", value: `${count(metrics.authenticated_attestation_count)} / ${count(metrics.attestation_count)}`},
+      {label: "Expectation matches", value: `${count(metrics.expectation_match_count)} / ${count(metrics.attestation_count)}`},
+      {label: "Policy SLSA floor", value: `L${count(metrics.minimum_policy_slsa_build_level)}`},
+      {label: "Pinned public keys", value: count(Array.isArray(value.public_keys) ? value.public_keys.length : 0)},
+      {label: "Embedded envelopes", value: count(Array.isArray(value.evidence) ? value.evidence.length : 0)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Verifier checks", value: `${count(value.checks.filter(item => item && item.status === "pass").length)} / 12`},
+    ];
+    summary.bindings = [
+      binding("Artifact plan", digests.artifact_plan_sha256),
+      binding("Trust policy", digests.trust_policy_sha256),
+      binding("Attest plan", digests.plan_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "self-contained public keys and full provenance envelopes; treat the report as private",
+      "no subject artifact, source repository, AI-BOM, credential, prompt, model content, or reasoning bytes",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope attest check`; this browser displays the report but does not re-authenticate DSSE, reparse SLSA, certify a builder, verify Sigstore transparency, or open subject artifacts.");
+    return summary;
+  }
+
+  function identityDeploymentGateSummary(value, meta) {
+    const system = object(value.system, "LureIdentity deployment-gate system");
+    const contract = object(value.contract, "LureIdentity deployment-gate contract");
+    const policy = object(value.policy, "LureIdentity deployment-gate policy");
+    const sources = object(value.sources, "LureIdentity deployment-gate sources");
+    const campaign = object(sources.campaign_verification, "LureIdentity campaign source");
+    const artifact = object(sources.artifact_verification, "LureArtifact verification source");
+    const topology = object(sources.topology_audit, "LureIdentity topology source");
+    const projection = object(sources.otel_projection, "LureIdentity telemetry source");
+    const evidence = object(sources.identity_evidence, "LureIdentity evidence source");
+    if (!Array.isArray(value.checks) || value.checks.length !== 13) {
+      throw new Error("LureIdentity deployment gate must contain thirteen checks");
+    }
+    const summary = base(
+      "LureIdentity deployment gate",
+      "Cross-artifact identity release decision",
+      "One recomputable decision binding campaign compilation, declared enforcement coverage, workload trust domains, body-free telemetry, and authenticated lifecycle evidence to the same exact contract.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "System", value: String(system.system_id || "unknown")},
+      {label: "Environment", value: String(system.environment || "unknown")},
+      {label: "Compiled probes", value: count(campaign.probe_count)},
+      {label: "Artifact decision", value: String(artifact.overall_status || "unknown")},
+      {label: "Artifact deployments", value: count(artifact.deployment_count)},
+      {label: "Artifact bindings", value: count(artifact.artifact_binding_count)},
+      {label: "Provenance bindings", value: count(artifact.provenance_binding_count)},
+      {label: "AI-BOM bindings", value: count(artifact.ai_bom_binding_count)},
+      {label: "Topology", value: String(topology.verdict || "unknown")},
+      {label: "Point coverage", value: `${count(topology.covered_enforcement_point_count)} / ${count(topology.required_enforcement_point_count)}`},
+      {label: "Trusted workloads", value: `${count(topology.trusted_workload_identity_count)} / ${count(topology.workload_identity_count)}`},
+      {label: "Telemetry records", value: count(projection.record_count)},
+      {label: "Signed evaluation", value: String(evidence.overall_status || "unknown")},
+      {label: "Convergence", value: `${count(policy.declared_convergence_ms)} / ${count(policy.maximum_allowed_convergence_ms)} ms`},
+      {label: "Run accepted from", value: String(policy.minimum_run_generated_at || "unknown")},
+      {label: "Expected receiver", value: String(policy.expected_receiver_name || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Identity campaign", contract.campaign_sha256),
+      binding("Identity plan", contract.plan_sha256),
+      binding("Receiver run", contract.run_sha256),
+      binding("Runtime profile", contract.runtime_profile_sha256),
+      binding("Artifact campaign", contract.artifact_campaign_sha256),
+      binding("Artifact plan", contract.artifact_plan_sha256),
+      binding("Artifact observation", contract.artifact_observation_sha256),
+      binding("Artifact evaluation", contract.artifact_evaluation_sha256),
+      binding("Campaign verification", campaign.sha256),
+      binding("Artifact verification", artifact.sha256),
+      binding("Topology audit", topology.sha256),
+      binding("OTel projection", projection.sha256),
+      binding("OTel source export", projection.source_export_sha256),
+      binding("Evidence manifest", evidence.manifest_sha256),
+      binding("Evidence checkpoint", evidence.checkpoint_sha256),
+      binding("Evidence signer", evidence.signer_key_id),
+      binding("Expected receiver artifact", policy.expected_receiver_artifact_sha256),
+    ].filter(Boolean);
+    summary.privacy = ["opaque declared identity and runtime metadata plus exact digests", "no directory payloads, credentials, tokens, prompts, targets, or reasoning"];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope identity verify-gate` with all five exact sources, external policy, and a trusted public key; this browser does not recompute or authenticate the gate.");
+    return summary;
+  }
+
   function revocationComparisonSummary(value, meta) {
     const metrics = object(value.summary, "LureRevoke comparison summary");
     const contract = object(value.contract, "LureRevoke comparison contract");
@@ -1412,6 +1766,31 @@
       summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
       return summary;
     }
+    if (statement.predicateType === IDENTITY_CHECKPOINT) {
+      const predicate = object(statement.predicate, "LureIdentity checkpoint predicate");
+      const summary = base(
+        "LureIdentity checkpoint",
+        "Exact identity-closure evidence binding",
+        "An in-toto checkpoint binding an identity manifest, evaluation, plan, run, and receiver identity.",
+        meta,
+      );
+      gateStatus(summary, predicate.overall_status);
+      summary.metrics = [
+        {label: "Bundle", value: String(predicate.bundle_id || "unknown")},
+        {label: "Receiver", value: String(predicate.receiver_name || "unknown")},
+        {label: "Authentication", value: String(predicate.authentication_mode || "unknown")},
+      ];
+      summary.bindings = [
+        ...(Array.isArray(statement.subject)
+          ? statement.subject.map(item => binding(item.name || "Subject", item && item.digest && item.digest.sha256))
+          : []),
+        binding("Plan", predicate.plan_sha256),
+        binding("Receiver run", predicate.run_sha256),
+      ].filter(Boolean);
+      summary.privacy = ["typed identity graph, relative timing, statuses, counts, and digests only"];
+      summary.warnings = Array.isArray(predicate.limitations) ? [...predicate.limitations] : [];
+      return summary;
+    }
     if (statement.predicateType === REVOKE_REGISTRY_HEAD) {
       const predicate = object(statement.predicate, "LureRevoke registry tree-head predicate");
       const summary = base(
@@ -1484,7 +1863,16 @@
     else if (statement.schema === REVOKE_TOPOLOGY_AUDIT) summary = revocationTopologySummary(statement, meta);
     else if (statement.schema === REVOKE_OTEL_PROJECTION) summary = revocationOtelProjectionSummary(statement, meta);
     else if (statement.schema === REVOKE_DEPLOYMENT_GATE) summary = revocationDeploymentGateSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, coverage, delegation, LureIR, portfolio, or witness artifact.");
+    else if (statement.schema === IDENTITY_EVALUATION) summary = identityEvaluationSummary(statement, meta);
+    else if (statement.schema === IDENTITY_BUNDLE) summary = identityBundleSummary(statement, meta);
+    else if (statement.schema === IDENTITY_CAMPAIGN_VERIFICATION) summary = identityCampaignVerificationSummary(statement, meta);
+    else if (statement.schema === IDENTITY_TOPOLOGY_AUDIT) summary = identityTopologySummary(statement, meta);
+    else if (statement.schema === IDENTITY_OTEL_PROJECTION) summary = identityOtelProjectionSummary(statement, meta);
+    else if (statement.schema === ARTIFACT_VERIFICATION) summary = artifactVerificationSummary(statement, meta);
+    else if (statement.schema === RECALL_VERIFICATION) summary = recallVerificationSummary(statement, meta);
+    else if (statement.schema === ATTEST_VERIFICATION) summary = attestVerificationSummary(statement, meta);
+    else if (statement.schema === IDENTITY_DEPLOYMENT_GATE) summary = identityDeploymentGateSummary(statement, meta);
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, LureIdentity, LureArtifact, LureRecall, LureAttest, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureartifact-verification/v1",
+  "title": "Independent LureArtifact verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verified_at", "identity_campaign_verification", "artifact_campaign", "artifact_plan", "observation", "evaluation", "digests", "summary", "checks", "overall_status", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lureartifact-verification/v1"},
+    "schema_version": {"const": 1},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "identity_campaign_verification": {"$ref": "https://github.com/immu4989/lurescope/spec/lureidentity-campaign-verification/v1"},
+    "artifact_campaign": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1"},
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "observation": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-observation-v1"},
+    "evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-evaluation-v1"},
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_campaign_verification_sha256", "identity_plan_sha256", "artifact_campaign_sha256", "artifact_plan_sha256", "observation_sha256", "evaluation_sha256"],
+      "properties": {
+        "identity_campaign_verification_sha256": {"$ref": "#/$defs/digest"},
+        "identity_plan_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_campaign_sha256": {"$ref": "#/$defs/digest"},
+        "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+        "observation_sha256": {"$ref": "#/$defs/digest"},
+        "evaluation_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_workload_count", "deployment_count", "artifact_binding_count", "provenance_binding_count", "ai_bom_binding_count", "finding_count", "verdict"],
+      "properties": {
+        "active_workload_count": {"$ref": "#/$defs/count"},
+        "deployment_count": {"$ref": "#/$defs/count"},
+        "artifact_binding_count": {"$ref": "#/$defs/count"},
+        "provenance_binding_count": {"$ref": "#/$defs/count"},
+        "ai_bom_binding_count": {"$ref": "#/$defs/count"},
+        "finding_count": {"$ref": "#/$defs/count"},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status"],
+        "properties": {
+          "check_id": {"enum": [
+            "identity_campaign_verification_recomputed",
+            "identity_plan_independently_rederived",
+            "artifact_campaign_contract_valid",
+            "active_workload_coverage_complete",
+            "artifact_plan_independently_rederived",
+            "deployment_matrix_recomputed",
+            "workload_identity_binding_recomputed",
+            "artifact_inventory_recomputed",
+            "slsa_provenance_binding_recomputed",
+            "ai_bom_binding_recomputed",
+            "non_executable_model_policy_recomputed",
+            "producer_evaluation_independently_recomputed",
+            "deployment_artifact_policy_satisfied"
+          ]},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "limitations": {"const": [
+      "verification_is_a_local_reimplementation_and_imports_no_lurebench_code",
+      "identity_and_artifact_campaigns_plans_observations_and_evaluation_are_exactly_digest_bound",
+      "artifact_ai_bom_and_slsa_statement_bytes_are_not_loaded_or_their_signatures_verified",
+      "a_pass_does_not_prove_observation_completeness_svid_possession_builder_trust_or_artifact_safety",
+      "verification_is_not_supply_chain_containment_compliance_certification_or_authorization"
+    ]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 65536}
+  }
+}

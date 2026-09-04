@@ -20,6 +20,10 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ![LureRange](https://img.shields.io/badge/LureRange-independent_signed_conformance-7b61ff)
 ![Runtime evidence](https://img.shields.io/badge/runtime-receipts_×_sensors_×_DSSE-7b61ff)
 ![LureRevoke](https://img.shields.io/badge/LureRevoke-convergence_×_CAEP_×_DSSE-7b61ff)
+![LureIdentity](https://img.shields.io/badge/LureIdentity-graph_closure_×_DSSE-7b61ff)
+![LureArtifact](https://img.shields.io/badge/LureArtifact-independent_supply--chain_gate-7b61ff)
+![LureRecall](https://img.shields.io/badge/LureRecall-independent_blast--radius_·_recovery-7b61ff)
+![LureAttest](https://img.shields.io/badge/LureAttest-authenticated_DSSE_·_SLSA-7b61ff)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
@@ -41,6 +45,10 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Sign agent-permit conformance →](docs/LUREPERMIT_EVIDENCE.md)** ·
 **[Sign runtime-mediation evidence →](docs/RUNTIME_MEDIATION_EVIDENCE.md)** ·
 **[Verify revocation convergence →](docs/LUREREVOKE_EVIDENCE.md)** ·
+**[Verify identity lifecycle closure →](docs/LUREIDENTITY_EVIDENCE.md)** ·
+**[Verify AI artifact authorization →](docs/LUREARTIFACT_VERIFICATION.md)** ·
+**[Verify transitive artifact recall →](docs/LURERECALL_VERIFICATION.md)** ·
+**[Authenticate SLSA provenance →](docs/LUREATTEST_VERIFICATION.md)** ·
 **[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -108,6 +116,52 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > from being promoted into a different target.
 > A fail-closed composite GitHub Action can enforce the same independent
 > recomputation at merge or release time from a commit-pinned verifier.
+
+> **New — independently verify that offboarding closes agent authority.**
+> [LureIdentity evidence](docs/LUREIDENTITY_EVIDENCE.md) revalidates the complete
+> group → human → agent → workload authority graph and independently derives
+> every authorization removed by human deactivation, group-membership removal,
+> delegation revocation, or workload retirement. It rejects alternate paths,
+> incomplete cut declarations, missing exhaustive probes, stale post-deadline
+> access, and collateral denial without importing LureBench. Exact evidence can
+> be P-256 DSSE-authenticated, inspected locally in the browser, and exported as
+> observation-only OSCAL 1.2.2 or location-free SARIF 2.1.0. An independent
+> topology verifier also binds the exact plan to the runtime profile, requires
+> every mediation point, and checks workload SPIFFE trust domains. A strict
+> deployment gate then pins the signer, system, environment, receiver build,
+> freshness floor, convergence ceiling, all-or-nothing thresholds, and complete
+> pre/window/post cut-probe coverage. This is not identity authentication,
+> topology discovery, SVID validation, SCIM interoperability, or compliance.
+
+> **New — independently bind workload identity to the deployed AI artifacts.**
+> [LureArtifact verification](docs/LUREARTIFACT_VERIFICATION.md) recompiles the
+> identity and artifact campaigns, then recomputes every workload/node binding
+> for model weights, container images, policy bundles, AI-BOMs, and SLSA
+> provenance without importing LureBench or loading artifact bytes. It exposes
+> substitutions, missing/duplicate deployments, unsafe model serialization,
+> embedded or remote code, and unapproved builders. The identity deployment
+> gate now requires this fifth exact source and fails when artifact policy is
+> unmet. Digest equality is not an artifact-safety or builder-trust claim.
+
+> **New — independently verify transitive artifact recall and recovery.**
+> [LureRecall verification](docs/LURERECALL_VERIFICATION.md) reconstructs a
+> bounded model/container/policy dependency graph, reapplies actionable
+> VEX-like status, rederives every impacted component, artifact root, workload,
+> node, replacement, and pre/quarantine/recovery probe, and independently
+> recomputes advisory delivery, quarantine recall, exact recovery, compromised
+> allows, and collateral disruption. It imports no LureBench code and binds all
+> six source artifacts. A reproduced response failure remains a valid failing
+> verification; no artifact or source-document bytes are loaded.
+
+> **New — authenticate exact provenance bytes and enforce SLSA expectations.**
+> [LureAttest verification](docs/LUREATTEST_VERIFICATION.md) independently
+> recompiles the reviewed trust plan, requires an exact non-symlink evidence
+> directory, pins externally supplied ECDSA P-256 keys to builder identities,
+> authenticates each DSSE payload, and checks the statement digest, artifact
+> subject, builder, build type, source dependency, and canonical external
+> parameters. Its private self-contained report can re-authenticate every
+> embedded envelope offline. This is fixed-key verification—not Fulcio/Rekor,
+> build-platform certification, artifact safety, or deployment authorization.
 
 > **New — independently verify prevention and safe-stop evidence.**
 > [LurePermit/LureRange evidence](docs/LUREPERMIT_EVIDENCE.md) re-derives every
@@ -231,6 +285,93 @@ lurescope revoke verify agent-revocation-1.evidence \
 
 See the [independent verification, DSSE, OSCAL/SARIF, and claims
 boundary](docs/LUREREVOKE_EVIDENCE.md).
+
+Derive, independently verify, and sign identity-lifecycle graph closure:
+
+```bash
+lurebench identity-compose \
+  --campaign conformance/lureidentity-campaign-v1/campaign.json \
+  --out identity-plan.json
+lurescope identity verify-campaign \
+  conformance/lureidentity-campaign-v1/campaign.json identity-plan.json \
+  --out identity-campaign-verification.json
+lurebench identity-run --plan identity-plan.json --out identity-run.json
+lurebench identity-eval \
+  --plan identity-plan.json --run identity-run.json \
+  --out identity-evaluation.json
+lurebench identity-topology-audit \
+  --plan identity-plan.json --out identity-topology-audit.json
+# Use fresh paths when projecting production-like telemetry:
+lurebench identity-otel-project \
+  --plan identity-plan.json --logs identity-otel-export.json \
+  --run-id agent-identity-1 \
+  --out identity-otel-projection.json --run-out identity-otel-run.json
+lurebench identity-eval \
+  --plan identity-plan.json --run identity-otel-run.json \
+  --out identity-otel-evaluation.json
+lurescope keygen --private-out identity-private.pem --public-out identity-public.pem
+lurescope identity create \
+  --evaluation identity-otel-evaluation.json \
+  --bundle-id agent-identity-1 --environment evaluation \
+  --signer-public-key identity-public.pem --signing-key identity-private.pem \
+  --out agent-identity-1.evidence
+lurescope identity verify agent-identity-1.evidence \
+  --public-key identity-public.pem
+lurescope identity verify-topology identity-topology-audit.json
+lurescope identity verify-otel identity-otel-projection.json
+```
+
+See the [independent campaign compilation, graph, telemetry, and topology
+recomputation, five-source policy-pinned deployment gate, DSSE, OSCAL/SARIF, and claims
+boundary](docs/LUREIDENTITY_EVIDENCE.md).
+
+Bind those same active workloads to approved AI deployment artifacts and
+independently recompute the result:
+
+```bash
+lurebench artifact-compose \
+  --identity-plan identity-plan.json \
+  --campaign conformance/lureartifact-v1/campaign.json \
+  --out artifact-plan.json
+lurebench artifact-observe \
+  --plan artifact-plan.json --out artifact-observation.json
+lurebench artifact-eval \
+  --plan artifact-plan.json --observation artifact-observation.json \
+  --out artifact-evaluation.json
+lurescope artifact verify \
+  identity-campaign-verification.json \
+  conformance/lureartifact-v1/campaign.json \
+  artifact-plan.json artifact-observation.json artifact-evaluation.json \
+  --out artifact-verification.json
+```
+
+The reference observation is a synthetic fixture. See the
+[independent artifact workflow and trust boundary](docs/LUREARTIFACT_VERIFICATION.md)
+before adapting a production collector.
+
+Trace and independently verify an actionable transitive artifact incident:
+
+```bash
+lurebench recall-compose \
+  --artifact-plan conformance/lureartifact-v1/plan.json \
+  --lineage conformance/lurerecall-v1/lineage.json \
+  --advisory conformance/lurerecall-v1/advisory.json \
+  --out recall-plan.json
+lurebench recall-run --plan recall-plan.json --out recall-run.json
+lurebench recall-eval \
+  --plan recall-plan.json --run recall-run.json \
+  --out recall-evaluation.json
+lurescope recall verify \
+  conformance/lureartifact-v1/plan.json \
+  conformance/lurerecall-v1/lineage.json \
+  conformance/lurerecall-v1/advisory.json \
+  recall-plan.json recall-run.json recall-evaluation.json \
+  --out recall-verification.json
+lurescope recall check recall-verification.json
+```
+
+The reference run performs no response action. See the [six-source independent
+verification and claims boundary](docs/LURERECALL_VERIFICATION.md).
 
 Combine the four assurance surfaces, monitor scheduled canaries, and witness the
 latest checkpoint from a separately controlled key:

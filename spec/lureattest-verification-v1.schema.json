@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1",
+  "title": "LureScope authenticated SLSA provenance verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verified_at", "implementation", "artifact_plan", "trust_policy", "plan", "digests", "public_keys", "evidence", "results", "summary", "checks", "overall_status", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1"},
+    "schema_version": {"const": 1},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope"}, "version": {"type": "string", "minLength": 1, "maxLength": 64}}},
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "trust_policy": {"$ref": "https://github.com/immu4989/lurebench/spec/lureattest-trust-policy-v1"},
+    "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureattest-plan-v1"},
+    "digests": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_plan_sha256", "trust_policy_sha256", "plan_sha256"],
+      "properties": {"artifact_plan_sha256": {"$ref": "#/$defs/digest"}, "trust_policy_sha256": {"$ref": "#/$defs/digest"}, "plan_sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "public_keys": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/publicKey"}},
+    "evidence": {"type": "array", "minItems": 1, "maxItems": 384, "items": {"$ref": "#/$defs/evidence"}},
+    "results": {"type": "array", "minItems": 1, "maxItems": 384, "items": {"$ref": "#/$defs/result"}},
+    "summary": {"$ref": "#/$defs/summary"},
+    "checks": {"type": "array", "minItems": 12, "maxItems": 12, "prefixItems": [
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "artifact_plan_contract_valid"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "trust_policy_contract_valid"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "attest_plan_independently_rederived"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "evidence_directory_exact"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "trusted_public_keys_pinned"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "dsse_payloads_authenticated"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "statement_digests_bound"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "artifact_subjects_bound"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "signer_builder_pairs_bound"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "build_types_bound"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "source_dependencies_bound"}, "status": {"const": "pass"}}},
+      {"$ref": "#/$defs/passCheck", "properties": {"check_id": {"const": "external_parameters_bound"}, "status": {"const": "pass"}}}
+    ], "items": false},
+    "overall_status": {"const": "pass"},
+    "limitations": {"const": [
+      "verification_is_an_independent_local_reimplementation_and_imports_no_lurebench_code",
+      "ecdsa_p256_dsse_authentication_uses_only_externally_supplied_pinned_public_keys",
+      "policy_slsa_levels_are_reviewed_trust_assertions_not_build_platform_certification",
+      "sigstore_fulcio_rekor_rfc3161_kms_and_key_lifecycle_verification_are_not_performed",
+      "subject_artifact_ai_bom_source_repository_and_build_execution_bytes_are_not_opened",
+      "a_pass_authenticates_provenance_expectations_not_artifact_safety_or_authorization"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "uri": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^(https://|urn:)[^\\s#]+$"},
+    "publicKey": {"type": "object", "additionalProperties": false, "required": ["public_key_sha256", "pem_sha256", "pem_base64"], "properties": {"public_key_sha256": {"$ref": "#/$defs/digest"}, "pem_sha256": {"$ref": "#/$defs/digest"}, "pem_base64": {"type": "string", "minLength": 1, "maxLength": 87392, "contentEncoding": "base64"}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["attestation_id", "evidence_file", "envelope_sha256", "envelope_base64"], "properties": {"attestation_id": {"$ref": "#/$defs/id"}, "evidence_file": {"type": "string", "minLength": 11, "maxLength": 106}, "envelope_sha256": {"$ref": "#/$defs/digest"}, "envelope_base64": {"type": "string", "minLength": 1, "maxLength": 2796212, "contentEncoding": "base64"}}},
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attestation_id", "evidence_file", "envelope_sha256", "statement_sha256", "subject_artifact_id", "subject_sha256", "builder_id", "build_type", "source_uri", "source_sha256", "external_parameters_sha256", "public_key_sha256", "policy_slsa_build_level", "authenticated", "expectations_satisfied", "workload_principal_id"],
+      "properties": {
+        "attestation_id": {"$ref": "#/$defs/id"}, "evidence_file": {"type": "string", "minLength": 11, "maxLength": 106}, "envelope_sha256": {"$ref": "#/$defs/digest"}, "statement_sha256": {"$ref": "#/$defs/digest"}, "subject_artifact_id": {"$ref": "#/$defs/id"}, "subject_sha256": {"$ref": "#/$defs/digest"}, "builder_id": {"$ref": "#/$defs/uri"}, "build_type": {"$ref": "#/$defs/uri"}, "source_uri": {"$ref": "#/$defs/uri"}, "source_sha256": {"$ref": "#/$defs/digest"}, "external_parameters_sha256": {"$ref": "#/$defs/digest"}, "public_key_sha256": {"$ref": "#/$defs/digest"}, "policy_slsa_build_level": {"type": "integer", "minimum": 1, "maximum": 3}, "authenticated": {"const": true}, "expectations_satisfied": {"const": true}, "workload_principal_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "summary": {"type": "object", "additionalProperties": false, "required": ["workload_count", "attestation_count", "authenticated_attestation_count", "expectation_match_count", "minimum_policy_slsa_build_level", "finding_count", "verdict"], "properties": {"workload_count": {"type": "integer", "minimum": 1, "maximum": 128}, "attestation_count": {"type": "integer", "minimum": 1, "maximum": 384}, "authenticated_attestation_count": {"type": "integer", "minimum": 1, "maximum": 384}, "expectation_match_count": {"type": "integer", "minimum": 1, "maximum": 384}, "minimum_policy_slsa_build_level": {"type": "integer", "minimum": 1, "maximum": 3}, "finding_count": {"const": 0}, "verdict": {"const": "pass"}}},
+    "passCheck": {"type": "object", "additionalProperties": false, "required": ["check_id", "status"], "properties": {"check_id": {"type": "string"}, "status": {"const": "pass"}}}
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lureidentity-campaign-verification/v1",
+  "title": "LureIdentity independent campaign compilation verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verified_at", "campaign", "campaign_sha256", "derived_plan_sha256", "summary", "checks", "overall_status", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lureidentity-campaign-verification/v1"},
+    "schema_version": {"const": 1},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "campaign": {"$ref": "https://github.com/immu4989/lurebench/spec/lureidentity-campaign-v1"},
+    "campaign_sha256": {"$ref": "#/$defs/digest"},
+    "derived_plan_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_count", "authority_edge_count", "grant_count", "event_count", "node_count", "cut_authorization_count", "preserved_authorization_count", "probe_count"],
+      "properties": {
+        "principal_count": {"type": "integer", "minimum": 1, "maximum": 128},
+        "authority_edge_count": {"type": "integer", "minimum": 0, "maximum": 256},
+        "grant_count": {"type": "integer", "minimum": 1, "maximum": 256},
+        "event_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "node_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "cut_authorization_count": {"type": "integer", "minimum": 1, "maximum": 16384},
+        "preserved_authorization_count": {"type": "integer", "minimum": 1, "maximum": 16384},
+        "probe_count": {"type": "integer", "minimum": 1, "maximum": 8192}
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "prefixItems": [
+        {"$ref": "#/$defs/campaign_contract_valid"},
+        {"$ref": "#/$defs/plan_contract_valid"},
+        {"$ref": "#/$defs/base_contract_bound"},
+        {"$ref": "#/$defs/event_sequence_derived"},
+        {"$ref": "#/$defs/authorization_cut_recomputed"},
+        {"$ref": "#/$defs/collateral_controls_exhaustive"},
+        {"$ref": "#/$defs/probe_matrix_recomputed"},
+        {"$ref": "#/$defs/probe_budget_enforced"},
+        {"$ref": "#/$defs/exact_plan_reconciled"}
+      ],
+      "items": false
+    },
+    "overall_status": {"const": "pass"},
+    "limitations": {"const": ["verification_is_an_independent_local_reimplementation_and_imports_no_lurebench_code", "a_pass_confirms_compiler_semantics_only_for_the_exact_embedded_declared_campaign", "source_event_digests_are_commitments_not_event_directory_or_identity_authentication", "verification_does_not_discover_topology_execute_probes_or_prove_complete_mediation"]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "check_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "status"],
+      "properties": {"check": {"type": "string"}, "status": {"const": "pass"}}
+    },
+    "campaign_contract_valid": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "campaign_contract_valid"}}}]},
+    "plan_contract_valid": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "plan_contract_valid"}}}]},
+    "base_contract_bound": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "base_contract_bound"}}}]},
+    "event_sequence_derived": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "event_sequence_derived"}}}]},
+    "authorization_cut_recomputed": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "authorization_cut_recomputed"}}}]},
+    "collateral_controls_exhaustive": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "collateral_controls_exhaustive"}}}]},
+    "probe_matrix_recomputed": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "probe_matrix_recomputed"}}}]},
+    "probe_budget_enforced": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "probe_budget_enforced"}}}]},
+    "exact_plan_reconciled": {"allOf": [{"$ref": "#/$defs/check_base"}, {"properties": {"check": {"const": "exact_plan_reconciled"}}}]}
+  }
+}

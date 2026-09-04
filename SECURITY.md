@@ -44,10 +44,37 @@ otherwise.
 - SCuBA bridge acceptance of a contradictory or unsupported report, cross-artifact
   rebinding, DSSE bypass, or leakage of tenant identity, raw provider settings,
   requirements, details, comments, or remediation annotations into minimized output.
-- Independent LurePermit, LureRange, runtime, LureInvariant, or LureRevoke
-  verification accepting contradictory inputs, altered byte bindings, forged or
-  wrong-key DSSE, replayed registry state, incomplete topology/probe coverage,
-  weakened deployment policy, stale evidence, or privacy-boundary violations.
+- Independent LurePermit, LureRange, runtime, LureInvariant, LureRevoke, or
+  LureIdentity verification accepting contradictory inputs, alternate authority
+  paths, altered byte bindings, forged or wrong-key DSSE, replayed registry
+  state, incomplete topology/probe coverage, weakened deployment policy, stale
+  evidence, or privacy-boundary violations.
+- LureIdentity telemetry verification accepting a log body, raw identity,
+  unknown attribute, receiver/node mismatch, reused trace context, access-time
+  rebinding, noncanonical projection, or a deployment gate whose telemetry run
+  differs from its signed evidence run.
+- LureIdentity campaign verification accepting omitted cuts, non-exhaustive
+  collateral controls, partial deauthorization, a changed probe phase or order,
+  a mismatched plan, or a deployment gate not bound to the compiler proof.
+- LureArtifact verification accepting omitted active workloads, undeclared
+  nodes, changed SPIFFE IDs, model/image/policy/AI-BOM/provenance substitution,
+  unsafe serialization, embedded or remote model code, unapproved builders,
+  contradictory findings, cross-campaign rebinding, or a deployment gate not
+  bound to the exact artifact verification.
+- LureRecall verification accepting a cycle, orphan, missing root, unbound
+  advisory, non-actionable or ambiguous VEX state, omitted transitive impact,
+  incomplete replacement/probe matrix, post-deadline compromised allow, wrong
+  recovered set, collateral block, altered metric/finding/verdict, cross-source
+  substitution, noncanonical JSON, or overwrite while still reporting pass.
+- LureAttest verification accepting missing, extra, or symlinked evidence;
+  duplicate, unknown, or wrong-curve keys; a bad DSSE signature; type-confused
+  or reparsed payload; statement, subject, builder, build-type, source, or
+  parameter drift; signer–builder substitution; ambiguous source dependency;
+  tampered embedded evidence; stale verification time; unsafe permissions; or
+  overwrite.
+- Runtime or identity evidence accepting an ambiguous, oversized, Unicode, or
+  percent-encoded SPIFFE ID, forbidden authority component, empty/relative path
+  segment, or root identity in a workload field.
 
 ## What is not a vulnerability
 

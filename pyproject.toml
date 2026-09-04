@@ -95,6 +95,12 @@ lurescope = [
 
 [tool.setuptools.data-files]
 "share/lurescope/spec" = ["spec/*.json"]
+"share/lurescope/conformance/spiffe-id-v1" = ["conformance/spiffe-id-v1/*.json"]
+"share/lurescope/conformance/lureidentity-campaign-v1" = ["conformance/lureidentity-campaign-v1/*.json"]
+"share/lurescope/conformance/lureartifact-v1" = ["conformance/lureartifact-v1/*.json"]
+"share/lurescope/conformance/lurerecall-v1" = ["conformance/lurerecall-v1/*.json"]
+"share/lurescope/conformance/lureattest-v1" = ["conformance/lureattest-v1/*.json", "conformance/lureattest-v1/*.pem"]
+"share/lurescope/conformance/lureattest-v1/evidence" = ["conformance/lureattest-v1/evidence/*.json"]
 
 [tool.pytest.ini_options]
 # Make the repo root importable so tests can reach the scripts/ helpers.

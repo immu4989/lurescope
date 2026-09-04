@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurerecall-verification/v1",
+  "title": "Independent LureRecall verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verified_at", "implementation", "artifact_plan", "lineage", "advisory", "plan", "run", "evaluation", "digests", "summary", "checks", "overall_status", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurerecall-verification/v1"},
+    "schema_version": {"const": 1},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "lineage": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-lineage-v1"},
+    "advisory": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-advisory-v1"},
+    "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-plan-v1"},
+    "run": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-run-v1"},
+    "evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-evaluation-v1"},
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_plan_sha256", "lineage_sha256", "advisory_sha256", "plan_sha256", "run_sha256", "evaluation_sha256"],
+      "properties": {
+        "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+        "lineage_sha256": {"$ref": "#/$defs/digest"},
+        "advisory_sha256": {"$ref": "#/$defs/digest"},
+        "plan_sha256": {"$ref": "#/$defs/digest"},
+        "run_sha256": {"$ref": "#/$defs/digest"},
+        "evaluation_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "summary": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-evaluation-v1#/$defs/summary"},
+    "checks": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status"],
+        "properties": {
+          "check_id": {"enum": ["artifact_plan_contract_valid", "lineage_contract_valid", "advisory_contract_valid", "source_digests_recomputed", "transitive_impact_independently_rederived", "affected_deployment_matrix_recomputed", "response_probe_matrix_recomputed", "run_contract_valid", "producer_evaluation_independently_recomputed", "response_metrics_recomputed", "finding_set_recomputed", "recall_response_policy_satisfied"]},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "limitations": {"const": [
+      "verification_is_a_local_reimplementation_and_imports_no_lurebench_code",
+      "artifact_plan_lineage_advisory_plan_run_and_evaluation_are_exactly_digest_bound",
+      "source_documents_artifact_bytes_and_replacement_bytes_are_not_loaded_or_authenticated",
+      "a_pass_does_not_prove_lineage_completeness_advisory_truth_delivery_or_enforcement",
+      "verification_is_not_incident_containment_recovery_authorization_or_compliance"
+    ]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

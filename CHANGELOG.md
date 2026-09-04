@@ -3,6 +3,99 @@
 ## Unreleased
 
 ### Added
+- Added independent LureAttest verification for real provenance documents.
+  LureScope imports no LureBench code while recompiling the exact trust plan,
+  requiring a complete non-symlink evidence directory, pinning externally
+  supplied ECDSA P-256 keys by SPKI digest, authenticating the original DSSE
+  payload bytes, and verifying bounded in-toto Statement v1 / SLSA Provenance
+  v1 subject, signer–builder, build-type, source-dependency, and canonical
+  external-parameter expectations. Standard and URL-safe base64 are supported,
+  and DSSE `keyid` remains only a hint. Three public schemas, a real signed
+  three-envelope vector, private self-contained no-overwrite reports, key and
+  commitment helper commands, documentation, packaging, and adversarial tests
+  are included. The profile explicitly excludes Sigstore certificate,
+  transparency-log and timestamp verification, build-platform certification,
+  artifact safety, compliance, and authorization.
+- Added independent LureRecall verification for transitive AI-artifact
+  incident response. Without importing LureBench, LureScope reconstructs the
+  bounded lineage DAG, reapplies actionable `affected` and
+  `under_investigation` status, rederives every impacted component, artifact
+  root, workload, node, shortest path, exact replacement, and
+  pre/quarantine/recovery probe, then recomputes delivery, delay, quarantine,
+  recovery, compromised-use, wrong-replacement, collateral, finding, check, and
+  verdict output. The self-contained report binds all six exact sources and
+  preserves a valid response failure as a valid failed verification. Six public
+  schemas, a shared five-file golden vector, private no-overwrite CLI,
+  packaging, an operator guide, browser-ready evidence, and adversarial tests
+  are included without loading or authenticating source documents or artifact
+  bytes.
+- Added independent LureArtifact verification and a five-source LureIdentity
+  deployment gate. Without importing LureBench, LureScope rederives the exact
+  identity plan, recompiles complete active-workload artifact coverage, and
+  recomputes claimed per-node model, container, policy, AI-BOM, and SLSA
+  provenance findings. It detects substitutions, SPIFFE drift, unsafe model
+  serialization, embedded/remote code, and unapproved builders without loading
+  artifact bytes. A self-contained verification schema, shared five-file golden
+  vector, private no-overwrite CLI, package data, operator guide, and
+  adversarial tests are included. The deployment gate requires the exact same
+  identity campaign proof and adds immutable artifact campaign, plan,
+  observation, and evaluation digests; a valid failed artifact evaluation
+  remains a valid failed gate.
+- Added independent verification for LureIdentity campaign compilation.
+  LureScope imports no LureBench code while re-deriving event sequence and
+  digests, complete authorization cuts, every unchanged authorized actor outside
+  each event cone, stable node/phase probes, and the bounded matrix. A shared
+  golden conformance vector exercises both implementations, and a public,
+  self-contained verification artifact binds the exact campaign and derived
+  plan digests. The identity deployment gate now requires this fourth source,
+  preventing a valid but manually under-specified plan from reaching a release
+  decision. CLI, browser inspection, schemas, packaging, and adversarial
+  plan/report substitution tests are included.
+- Added independent LureIdentity evidence. LureScope revalidates the complete
+  group → human → agent → workload DAG and independently recomputes baseline
+  grants, event dependency cones, exact authorization cuts, exhaustive cut and
+  preservation probe coverage, event dispositions, convergence, stale access,
+  collateral denial, every metric, and the verdict without importing LureBench.
+  Alternate authority paths, undeclared affected actors, preserved actors inside
+  a cut cone, and partial per-node probe designs fail closed.
+- Added `lurescope identity create`, `verify`, `export-oscal`, and
+  `export-sarif`; optional P-256 DSSE-authenticated in-toto checkpoints; three
+  strict public bundle schemas; official-schema-validated observation-only OSCAL
+  1.2.2; location-free SARIF 2.1.0 failures; canonical private no-overwrite
+  evidence; and browser Evidence Explorer summaries. A hand-computed
+  interoperability vector avoids self-confirming producer/verifier test logic,
+  and a full cross-repository run verifies LureBench's 279-probe, nine-point
+  reference evaluation without claiming identity authenticity, SCIM
+  interoperability, complete mediation, enforcement, or compliance.
+- Added independent LureIdentity/LurePermit topology verification and a
+  policy-pinned deployment gate. The topology audit binds exact plan and runtime
+  profile bytes, requires every declared mediation point, rejects undeclared
+  nodes, and checks each workload SPIFFE trust domain against the profile
+  allowlist without claiming discovery or SVID authentication. The gate requires
+  an externally pinned P-256 bundle signer, system, environment, receiver name
+  and artifact digest, independently recompiled campaign, pre-run runtime
+  profile, freshness floor, convergence
+  ceiling, strict zero-failure/complete-rate thresholds, and pre/window/post cut
+  probes at every node. It rejects cross-campaign rebinding and stale or
+  wrong-build evidence. A public gate schema, CLI verification, browser summary,
+  end-to-end integration test, and adversarial tests are included.
+- Added an independent verifier for LureIdentity's strict body-free
+  OpenTelemetry projection. It revalidates the exact event/resource/attribute
+  vocabulary, privacy exclusions, timestamp and trace-context constraints,
+  canonical plan-ordered output, and all plan/export/run SHA-256 bindings
+  without importing LureBench. The deployment gate now requires this third
+  source and rejects any plan, run, receiver, or timing rebinding across
+  topology, telemetry, and authenticated evidence. Four upstream contract
+  schemas are packaged for offline resolution; CLI, browser, and adversarial
+  coverage are included without claiming telemetry completeness or causality.
+- Replaced separate runtime and identity SPIFFE regexes with a shared local
+  parser that independently enforces the stable SPIFFE ID trust-domain, URI,
+  path-segment, ASCII, and length rules. Workload fields require non-root paths;
+  ambiguous authority components, percent encoding, relative/empty segments,
+  trailing slashes, and Unicode fail closed. Adversarial vectors match the
+  producer without importing it; the shared versioned conformance corpus and
+  public schema are packaged for offline consumers, while SVID, Workload API,
+  trust-bundle, and possession claims remain explicitly external.
 - Added independent LureRevoke evidence. LureScope revalidates CAEP-shaped
   event metadata, opaque subjects, receiver observations, signal digests,
   duplicate/invalid dispositions, access decisions, and every convergence,

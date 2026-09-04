@@ -2685,6 +2685,503 @@ def _revocation_evidence(argv: Sequence[str]) -> int:
         return 2
 
 
+def _identity_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope identity",
+        description=(
+            "Independently recompute, bind, sign, and export LureIdentity lifecycle evidence."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    create_parser = commands.add_parser("create", help="create a private evidence bundle")
+    create_parser.add_argument("--evaluation", required=True)
+    create_parser.add_argument("--bundle-id", required=True)
+    create_parser.add_argument(
+        "--environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    create_parser.add_argument("--signer-public-key")
+    create_parser.add_argument("--signing-key")
+    create_parser.add_argument("--out", "-o", required=True)
+    create_parser.add_argument("--json", action="store_true")
+
+    verify_parser = commands.add_parser(
+        "verify", help="verify exact bytes, graph closure, metrics, and optional signature"
+    )
+    verify_parser.add_argument("bundle")
+    verify_parser.add_argument("--public-key")
+    verify_parser.add_argument("--json", action="store_true")
+
+    campaign_parser = commands.add_parser(
+        "verify-campaign",
+        help="independently derive a campaign plan and require exact byte-equivalent content",
+    )
+    campaign_parser.add_argument("campaign")
+    campaign_parser.add_argument("plan")
+    campaign_parser.add_argument("--verified-at")
+    campaign_parser.add_argument("--out", "-o")
+    campaign_parser.add_argument("--json", action="store_true")
+
+    topology_parser = commands.add_parser(
+        "verify-topology", help="independently recompute an identity/runtime scope audit"
+    )
+    topology_parser.add_argument("audit")
+    topology_parser.add_argument("--json", action="store_true")
+
+    otel_parser = commands.add_parser(
+        "verify-otel", help="independently recompute a body-free OpenTelemetry projection"
+    )
+    otel_parser.add_argument("projection")
+    otel_parser.add_argument("--json", action="store_true")
+
+    gate_parser = commands.add_parser(
+        "gate",
+        help="bind identity/artifact compiler proofs, topology, telemetry, and signed evidence",
+    )
+    gate_parser.add_argument("campaign_verification")
+    gate_parser.add_argument("artifact_verification")
+    gate_parser.add_argument("topology_audit")
+    gate_parser.add_argument("otel_projection")
+    gate_parser.add_argument("bundle")
+    gate_parser.add_argument("--bundle-public-key", required=True)
+    gate_parser.add_argument("--expected-bundle-key-id", required=True)
+    gate_parser.add_argument("--maximum-allowed-convergence-ms", type=int, required=True)
+    gate_parser.add_argument("--minimum-run-generated-at", required=True)
+    gate_parser.add_argument("--expected-system-id", required=True)
+    gate_parser.add_argument(
+        "--expected-environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    gate_parser.add_argument("--expected-receiver-name", required=True)
+    gate_parser.add_argument("--expected-receiver-artifact-sha256", required=True)
+    gate_parser.add_argument("--gate-id", required=True)
+    gate_parser.add_argument("--created-at")
+    gate_parser.add_argument("--out", "-o", required=True)
+    gate_parser.add_argument("--json", action="store_true")
+
+    verify_gate_parser = commands.add_parser(
+        "verify-gate", help="recompute a deployment gate from all five exact sources"
+    )
+    verify_gate_parser.add_argument("gate")
+    verify_gate_parser.add_argument("campaign_verification")
+    verify_gate_parser.add_argument("artifact_verification")
+    verify_gate_parser.add_argument("topology_audit")
+    verify_gate_parser.add_argument("otel_projection")
+    verify_gate_parser.add_argument("bundle")
+    verify_gate_parser.add_argument("--bundle-public-key", required=True)
+    verify_gate_parser.add_argument("--expected-bundle-key-id", required=True)
+    verify_gate_parser.add_argument("--maximum-allowed-convergence-ms", type=int, required=True)
+    verify_gate_parser.add_argument("--minimum-run-generated-at", required=True)
+    verify_gate_parser.add_argument("--expected-system-id", required=True)
+    verify_gate_parser.add_argument(
+        "--expected-environment",
+        choices=("development", "evaluation", "staging", "production"),
+        required=True,
+    )
+    verify_gate_parser.add_argument("--expected-receiver-name", required=True)
+    verify_gate_parser.add_argument("--expected-receiver-artifact-sha256", required=True)
+    verify_gate_parser.add_argument("--json", action="store_true")
+
+    oscal_parser = commands.add_parser(
+        "export-oscal", help="export observation-only OSCAL assessment results"
+    )
+    oscal_parser.add_argument("bundle")
+    oscal_parser.add_argument("--assessment-plan-href", required=True)
+    oscal_parser.add_argument("--public-key")
+    oscal_parser.add_argument("--out", "-o", required=True)
+    oscal_parser.add_argument("--json", action="store_true")
+
+    sarif_parser = commands.add_parser(
+        "export-sarif", help="export lifecycle closure failures as SARIF"
+    )
+    sarif_parser.add_argument("bundle")
+    sarif_parser.add_argument("--public-key")
+    sarif_parser.add_argument("--out", "-o", required=True)
+    sarif_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(list(argv))
+    try:
+        from .identity import (
+            create_identity_bundle,
+            export_identity_oscal,
+            export_identity_sarif,
+            verify_identity_bundle,
+        )
+
+        public_key = (
+            Path(args.public_key).read_bytes() if getattr(args, "public_key", None) else None
+        )
+        if args.command == "verify-campaign":
+            from .identity_campaign import create_identity_campaign_verification
+
+            result = create_identity_campaign_verification(
+                Path(args.campaign),
+                Path(args.plan),
+                Path(args.out) if args.out else None,
+                verified_at=args.verified_at,
+            )
+            status = result["overall_status"]
+            label = "LUREIDENTITY CAMPAIGN VERIFIED"
+            destination = args.out or args.plan
+        elif args.command == "verify-topology":
+            from .identity_topology import load_identity_topology_audit
+
+            report = load_identity_topology_audit(Path(args.audit))
+            result = {
+                "valid": True,
+                "identity_plan_sha256": report["inputs"]["identity_plan_sha256"],
+                "runtime_profile_sha256": report["inputs"]["runtime_profile_sha256"],
+                "summary": report["summary"],
+                "limitations": report["limitations"],
+            }
+            status = report["summary"]["verdict"]
+            label, destination = "LUREIDENTITY TOPOLOGY VERIFIED", args.audit
+        elif args.command == "verify-otel":
+            from .identity_otel import load_identity_otel_projection
+
+            report = load_identity_otel_projection(Path(args.projection))
+            result = {
+                "valid": True,
+                "plan_sha256": report["inputs"]["identity_plan_sha256"],
+                "otel_log_export_sha256": report["inputs"]["otel_log_export_sha256"],
+                "run_sha256": report["run_sha256"],
+                "record_count": len(report["inputs"]["otel_log_export"]["records"]),
+                "limitations": report["limitations"],
+            }
+            status = "verified"
+            label, destination = "LUREIDENTITY OTEL VERIFIED", args.projection
+        elif args.command == "gate":
+            from .identity_gate import create_identity_deployment_gate
+
+            result = create_identity_deployment_gate(
+                Path(args.campaign_verification),
+                Path(args.artifact_verification),
+                Path(args.topology_audit),
+                Path(args.otel_projection),
+                Path(args.bundle),
+                Path(args.out),
+                gate_id=args.gate_id,
+                bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
+                expected_bundle_key_id=args.expected_bundle_key_id,
+                maximum_allowed_convergence_ms=args.maximum_allowed_convergence_ms,
+                minimum_run_generated_at=args.minimum_run_generated_at,
+                expected_system_id=args.expected_system_id,
+                expected_environment=args.expected_environment,
+                expected_receiver_name=args.expected_receiver_name,
+                expected_receiver_artifact_sha256=args.expected_receiver_artifact_sha256,
+                created_at=args.created_at,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREIDENTITY DEPLOYMENT GATE CREATED", args.out
+        elif args.command == "verify-gate":
+            from .identity_gate import verify_identity_deployment_gate
+
+            result = verify_identity_deployment_gate(
+                Path(args.gate),
+                Path(args.campaign_verification),
+                Path(args.artifact_verification),
+                Path(args.topology_audit),
+                Path(args.otel_projection),
+                Path(args.bundle),
+                bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
+                expected_bundle_key_id=args.expected_bundle_key_id,
+                maximum_allowed_convergence_ms=args.maximum_allowed_convergence_ms,
+                minimum_run_generated_at=args.minimum_run_generated_at,
+                expected_system_id=args.expected_system_id,
+                expected_environment=args.expected_environment,
+                expected_receiver_name=args.expected_receiver_name,
+                expected_receiver_artifact_sha256=args.expected_receiver_artifact_sha256,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREIDENTITY DEPLOYMENT GATE VERIFIED", args.gate
+        elif args.command == "create":
+            signer_public = (
+                Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
+            )
+            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            result = create_identity_bundle(
+                Path(args.out),
+                bundle_id=args.bundle_id,
+                environment=args.environment,
+                evaluation=Path(args.evaluation),
+                signer_public_key_pem=signer_public,
+                signing_key_pem=signing_key,
+            )
+            status = result["overall_status"]
+            label, destination = "LUREIDENTITY BUNDLE CREATED", args.out
+        elif args.command == "verify":
+            verified = verify_identity_bundle(Path(args.bundle), public_key_pem=public_key)
+            result = {key: value for key, value in verified.items() if key != "report"}
+            status = result["overall_status"]
+            label, destination = "LUREIDENTITY BUNDLE VERIFIED", args.bundle
+        elif args.command == "export-oscal":
+            result = export_identity_oscal(
+                Path(args.bundle),
+                Path(args.out),
+                assessment_plan_href=args.assessment_plan_href,
+                public_key_pem=public_key,
+            )
+            status = "written"
+            label, destination = "LUREIDENTITY OSCAL EXPORTED", args.out
+        else:
+            result = export_identity_sarif(
+                Path(args.bundle), Path(args.out), public_key_pem=public_key
+            )
+            status = "written"
+            label, destination = "LUREIDENTITY SARIF EXPORTED", args.out
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(f"{label}: {status.upper()} — {destination}")
+            print(
+                "boundary: evidence integrity only; no identity, directory, clock, mediation, "
+                "enforcement, or compliance authenticity claim"
+            )
+        return 0 if status in {"pass", "verified", "written"} else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureIdentity evidence workflow failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _artifact_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope artifact",
+        description=(
+            "Independently recompile and verify workload-to-model, image, policy, "
+            "AI-BOM, and SLSA provenance bindings without loading artifact bytes."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify",
+        help="rederive the identity/artifact plans and producer evaluation from exact sources",
+    )
+    verify_parser.add_argument("identity_campaign_verification")
+    verify_parser.add_argument("artifact_campaign")
+    verify_parser.add_argument("artifact_plan")
+    verify_parser.add_argument("observation")
+    verify_parser.add_argument("evaluation")
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="strictly parse and independently recompute a saved verification"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command == "verify":
+            from .artifact import create_artifact_verification
+
+            result = create_artifact_verification(
+                Path(args.identity_campaign_verification),
+                Path(args.artifact_campaign),
+                Path(args.artifact_plan),
+                Path(args.observation),
+                Path(args.evaluation),
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .artifact import load_artifact_verification
+
+            result = load_artifact_verification(Path(args.verification))
+            destination = args.verification
+        status = result["overall_status"]
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            summary = result["summary"]
+            print(
+                f"LUREARTIFACT INDEPENDENT VERIFICATION: {status.upper()} — "
+                f"workloads={summary['active_workload_count']} "
+                f"deployments={summary['deployment_count']} "
+                f"artifact-bindings={summary['artifact_binding_count']} "
+                f"findings={summary['finding_count']} — {destination}"
+            )
+            print(
+                "boundary: exact declared metadata recomputation only; no artifact loading, "
+                "builder authentication, observation completeness, or safety claim"
+            )
+        return 0 if status == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureArtifact verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _recall_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope recall",
+        description=(
+            "Independently rederive transitive AI-artifact blast radius, advisory delivery, "
+            "quarantine, exact replacement recovery, and collateral controls."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify",
+        help="rederive the plan and producer evaluation from six exact source artifacts",
+    )
+    verify_parser.add_argument("artifact_plan")
+    verify_parser.add_argument("lineage")
+    verify_parser.add_argument("advisory")
+    verify_parser.add_argument("plan")
+    verify_parser.add_argument("run")
+    verify_parser.add_argument("evaluation")
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="strictly parse and independently recompute a saved verification"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command == "verify":
+            from .recall import create_recall_verification
+
+            result = create_recall_verification(
+                Path(args.artifact_plan),
+                Path(args.lineage),
+                Path(args.advisory),
+                Path(args.plan),
+                Path(args.run),
+                Path(args.evaluation),
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .recall import load_recall_verification
+
+            result = load_recall_verification(Path(args.verification))
+            destination = args.verification
+        status = result["overall_status"]
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            summary = result["summary"]
+            print(
+                f"LURERECALL INDEPENDENT VERIFICATION: {status.upper()} — "
+                f"affected-deployments={summary['affected_deployment_count']} "
+                f"quarantine-recall={summary['quarantine_recall']:.3f} "
+                f"recovery-recall={summary['recovery_recall']:.3f} "
+                f"findings={summary['finding_count']} — {destination}"
+            )
+            print(
+                "boundary: exact metadata recomputation only; no source-document or artifact "
+                "loading, advisory authentication, containment, or recovery claim"
+            )
+        return 0 if status == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureRecall verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _attest_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope attest",
+        description=(
+            "Authenticate exact DSSE payload bytes and verify bounded in-toto/SLSA "
+            "subject, builder, build-type, source, and parameter expectations."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify", help="independently recompile policy and authenticate all planned envelopes"
+    )
+    verify_parser.add_argument("artifact_plan")
+    verify_parser.add_argument("trust_policy")
+    verify_parser.add_argument("plan")
+    verify_parser.add_argument("evidence_directory")
+    verify_parser.add_argument(
+        "--public-key",
+        action="append",
+        required=True,
+        help="trusted ECDSA P-256 public PEM; repeat once per reviewed signer",
+    )
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="re-authenticate every embedded envelope in a saved private report"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+
+    key_parser = commands.add_parser(
+        "key-id", help="print the SHA-256 fingerprint used to pin a P-256 public key"
+    )
+    key_parser.add_argument("public_key")
+
+    commit_parser = commands.add_parser(
+        "commit-external-parameters",
+        help="print the canonical SHA-256 commitment for a strict JSON object",
+    )
+    commit_parser.add_argument("json_object")
+
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command == "key-id":
+            from .attest import public_key_sha256
+
+            print(public_key_sha256(Path(args.public_key).read_bytes()))
+            return 0
+        if args.command == "commit-external-parameters":
+            from .attest import external_parameters_sha256
+
+            print(external_parameters_sha256(Path(args.json_object).read_bytes()))
+            return 0
+        if args.command == "verify":
+            from .attest import create_attest_verification
+
+            result = create_attest_verification(
+                Path(args.artifact_plan),
+                Path(args.trust_policy),
+                Path(args.plan),
+                Path(args.evidence_directory),
+                [Path(item) for item in args.public_key],
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .attest import load_attest_verification
+
+            result = load_attest_verification(Path(args.verification))
+            destination = args.verification
+        summary = result["summary"]
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(
+                f"LUREATTEST AUTHENTICATED VERIFICATION: PASS — "
+                f"attestations={summary['authenticated_attestation_count']}/"
+                f"{summary['attestation_count']} builders={len(result['public_keys'])} "
+                f"policy-SLSA-level>={summary['minimum_policy_slsa_build_level']} — "
+                f"{destination}"
+            )
+            print(
+                "boundary: pinned-key ECDSA P-256 DSSE plus bounded SLSA expectations; "
+                "not Sigstore transparency, builder certification, artifact safety, "
+                "or authorization"
+            )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureAttest verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -2731,6 +3228,14 @@ def main(argv=None) -> int:
         return _runtime_evidence(args[1:])
     if args and args[0] == "revoke":
         return _revocation_evidence(args[1:])
+    if args and args[0] == "identity":
+        return _identity_evidence(args[1:])
+    if args and args[0] == "artifact":
+        return _artifact_evidence(args[1:])
+    if args and args[0] == "recall":
+        return _recall_evidence(args[1:])
+    if args and args[0] == "attest":
+        return _attest_evidence(args[1:])
     return _serve(args)
 
 

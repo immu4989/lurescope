@@ -27,6 +27,13 @@ page to inspect:
   portable inclusion and consistency proofs, dual-head split-view comparisons,
   runtime-topology coverage audits, body-free OpenTelemetry projections, and
   cross-artifact deployment gates.
+- LureIdentity evaluations, signed evidence-bundle manifests, in-toto
+  checkpoint/DSSE artifacts, runtime-topology/trust-domain audits, body-free
+  OpenTelemetry projections, and five-source cross-artifact deployment gates;
+- independent LureArtifact verification reports binding workload deployments to
+  exact model, container, policy, SLSA provenance, and AI-BOM metadata; and
+- independent LureRecall verification reports for transitive artifact blast
+  radius, advisory delivery, quarantine, exact recovery, and collateral control.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -90,7 +97,57 @@ verification additionally requires the exact sources, external policy, and a
 separately trusted bundle key. See the
 [signed LureRevoke evidence workflow](LUREREVOKE_EVIDENCE.md).
 
+For LureIdentity evidence, the browser displays the independently reported
+authorization-cut count, cut recall, preservation rate, event delivery,
+convergence, stale allows, collateral blocks, receiver identity, exact
+plan/run/evaluation bindings, declared enforcement-point and workload-domain
+coverage, campaign-derived cut/control/probe counts, body-free telemetry and
+clock boundaries, workload-to-artifact verification, and deployment-gate
+policy. It does not recompile the campaign, traverse the authority graph,
+recompute topology, telemetry, artifact, or gate checks, authenticate directory
+events, SVIDs, observations, builders, provenance, AI-BOMs, or signatures,
+discover mediation points, or establish SCIM or OpenTelemetry interoperability.
+Use `lurescope identity verify-campaign`, `verify`, `verify-topology`,
+`verify-otel`, and `verify-gate` with exact sources and a public key obtained
+through a separately trusted channel. See the [signed LureIdentity evidence
+workflow](LUREIDENTITY_EVIDENCE.md).
+
+For LureArtifact verification, the browser displays active workload,
+deployment, artifact, provenance, AI-BOM, and finding counts plus all six exact
+source digests. It does not independently recompile the identity or artifact
+campaign, rederive either plan, load or inspect artifact bytes, validate package
+URLs, authenticate observations or builders, verify SLSA signatures, or parse
+the bound AI-BOM document. Use `lurescope artifact check` for the independent
+local recomputation and apply separate artifact scanning, signature, builder,
+license, and vulnerability controls. See the [LureArtifact verification
+workflow and claims boundary](LUREARTIFACT_VERIFICATION.md).
+
+For LureRecall verification, the browser displays actionable and affected
+component, artifact-root, workload, deployment, and node counts; delivery
+coverage and p95 delay; quarantine and recovery recall; unaffected preservation;
+compromised allows; wrong replacements; collateral blocks; findings; and all
+six source digests. It does not traverse the graph or recompute response
+evidence, parse or authenticate the source advisory, establish lineage
+completeness, load artifact bytes, or prove quarantine or restoration. Use
+`lurescope recall check` for independent local recomputation and retain trusted
+advisory, provenance, scanning, runtime-sensor, and incident-command controls.
+See the [LureRecall verification workflow and claims
+boundary](LURERECALL_VERIFICATION.md).
+
+For LureAttest verification, the browser displays workload, attestation,
+authenticated-envelope, expectation-match, policy SLSA-floor, pinned-key,
+embedded-envelope, finding, and verifier-check counts plus the exact artifact
+plan, trust policy, and LureAttest plan digests. The report contains full
+provenance envelopes and public keys and must remain private. The browser does
+not re-authenticate DSSE signatures, reparse SLSA statements, validate Sigstore
+certificates/transparency/timestamps, certify a builder, open subject artifacts,
+or establish safety or authorization. Use `lurescope attest check` for the
+self-contained offline cryptographic and semantic recomputation. See the
+[LureAttest authenticated provenance workflow](LUREATTEST_VERIFICATION.md).
+
 For a deployment gate, the browser shows the declared and policy convergence
 limits, minimum accepted run timestamp, deployment identity, receiver artifact,
 and all source bindings. It does not authenticate the caller-supplied policy or
-recompute any of the ten checks.
+recompute the ten LureRevoke or thirteen LureIdentity checks. LureIdentity gate
+verification requires the exact campaign, artifact, topology, telemetry, and
+signed lifecycle-evidence sources.

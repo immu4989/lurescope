@@ -435,6 +435,83 @@ test("signed LureRevoke checkpoint remains unauthenticated in browser inspection
   assert.equal(summary.bindings.length, 4);
 });
 
+test("LureIdentity artifacts expose graph closure without claiming authentication", () => {
+  const evaluation = {
+    schema: "https://github.com/immu4989/lurebench/spec/lureidentity-evaluation-v1",
+    plan_sha256: sha("a"),
+    run_sha256: sha("b"),
+    run: {implementation: {name: "identity-receiver", artifact_sha256: sha("c")}},
+    summary: {
+      affected_authorization_count: 9,
+      cut_recall: 1,
+      preserved_allow_rate: 1,
+      delivery_coverage_rate: 1,
+      p95_convergence_ms: 400,
+      deadline_miss_count: 0,
+      post_deadline_stale_allow_count: 0,
+      collateral_block_count: 0,
+      verdict: "pass",
+    },
+    limitations: ["identity_authenticity_not_proven"],
+  };
+  const evaluationSummary = explorer.summarizeArtifact(evaluation);
+  assert.equal(evaluationSummary.kind, "LureIdentity evaluation");
+  assert.equal(evaluationSummary.status, "pass");
+  assert.equal(evaluationSummary.metrics.find(item => item.label === "Authorization cuts").value, "9");
+  assert.equal(evaluationSummary.bindings.length, 3);
+
+  const bundle = {
+    schema: "https://github.com/immu4989/lurescope/spec/lureidentity-evidence-bundle/v1",
+    bundle_id: "identity-1",
+    plan: {plan_sha256: sha("d")},
+    receiver: {name: "identity-receiver", artifact_sha256: sha("e")},
+    evidence: {sha256: sha("f"), run_sha256: sha("1")},
+    summary: {
+      affected_authorization_count: 9,
+      cut_recall: 1,
+      preserved_allow_rate: 1,
+      delivery_coverage_rate: 1,
+      p95_convergence_ms: 400,
+    },
+    overall_status: "pass",
+    authentication: {mode: "unsigned", signer_key_id: null},
+    limitations: ["complete_authority_coverage_not_proven"],
+  };
+  const bundleSummary = explorer.summarizeArtifact(bundle);
+  assert.equal(bundleSummary.kind, "LureIdentity evidence bundle");
+  assert.equal(bundleSummary.status, "pass");
+  assert.match(bundleSummary.warnings.join(" "), /lurescope identity verify/);
+});
+
+test("signed LureIdentity checkpoint remains unauthenticated in browser inspection", () => {
+  const checkpoint = {
+    _type: "https://in-toto.io/Statement/v1",
+    subject: [
+      {name: "bundle.json", digest: {sha256: sha("a")}},
+      {name: "evidence/identity-evaluation.json", digest: {sha256: sha("b")}},
+    ],
+    predicateType: "https://github.com/immu4989/lurescope/spec/lureidentity-evidence-checkpoint/v1",
+    predicate: {
+      bundle_id: "identity-1",
+      receiver_name: "identity-receiver",
+      overall_status: "pass",
+      authentication_mode: "ecdsa-p256-dsse",
+      plan_sha256: sha("c"),
+      run_sha256: sha("d"),
+      limitations: ["identity_authenticity_not_proven"],
+    },
+  };
+  const envelope = {
+    payloadType: "application/vnd.in-toto+json",
+    payload: Buffer.from(JSON.stringify(checkpoint), "utf8").toString("base64"),
+    signatures: [{keyid: sha("1"), sig: "AAAA"}],
+  };
+  const summary = explorer.summarizeArtifact(envelope);
+  assert.equal(summary.kind, "LureIdentity checkpoint");
+  assert.equal(summary.signature.authenticated, false);
+  assert.equal(summary.bindings.length, 4);
+});
+
 test("LureRevoke registry artifacts expose Merkle bindings without claiming verification", () => {
   const registry = explorer.summarizeArtifact({
     schema: "https://github.com/immu4989/lurescope/spec/lurerevoke-registry/v1",
@@ -674,6 +751,271 @@ test("LureRevoke deployment gate exposes exact cross-artifact bindings", () => {
   );
   assert.equal(summary.bindings.length, 9);
   assert.match(summary.warnings.join(" "), /verify-gate/i);
+});
+
+test("LureIdentity topology audit exposes enforcement and workload trust coverage", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/lureidentity-topology-audit/v1",
+    inputs: {
+      identity_plan_sha256: sha("a"),
+      runtime_profile_sha256: sha("b"),
+    },
+    summary: {
+      required_enforcement_point_count: 9,
+      covered_enforcement_point_count: 8,
+      missing_enforcement_point_count: 1,
+      unmapped_node_count: 0,
+      enforcement_point_coverage_rate: 8 / 9,
+      workload_identity_count: 3,
+      trusted_workload_identity_count: 2,
+      untrusted_workload_identity_count: 1,
+      workload_trust_domain_coverage_rate: 2 / 3,
+      verdict: "fail",
+    },
+    limitations: ["a_pass_does_not_prove_discovery_completeness"],
+  });
+  assert.equal(summary.kind, "LureIdentity topology audit");
+  assert.equal(summary.status, "fail");
+  assert.equal(summary.metrics[1].value, "8 / 9");
+  assert.equal(summary.metrics[5].value, "2 / 3");
+  assert.equal(summary.bindings.length, 2);
+  assert.match(summary.warnings.join(" "), /verify-topology/i);
+});
+
+test("LureIdentity campaign verification exposes compiler coverage and bindings", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lureidentity-campaign-verification/v1",
+    summary: {
+      event_count: 4,
+      node_count: 9,
+      cut_authorization_count: 9,
+      preserved_authorization_count: 19,
+      probe_count: 414,
+    },
+    campaign_sha256: sha("a"),
+    derived_plan_sha256: sha("b"),
+    checks: Array.from({length: 9}, (_, index) => ({check: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["source_event_authenticity_not_proven"],
+  });
+  assert.equal(summary.kind, "LureIdentity campaign verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Probes").value, "414");
+  assert.equal(summary.metrics.find(item => item.label === "Checks").value, "9 / 9");
+  assert.equal(summary.bindings.length, 2);
+  assert.match(summary.warnings.join(" "), /verify-campaign/i);
+});
+
+test("LureIdentity OpenTelemetry projection exposes privacy and clock boundaries", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/lureidentity-otel-projection/v1",
+    inputs: {
+      identity_plan_sha256: sha("a"),
+      otel_log_export_sha256: sha("b"),
+      otel_log_export: {
+        receiver: {name: "identity-receiver"},
+        records: Array.from({length: 12}, () => ({})),
+      },
+    },
+    run: {
+      event_observations: Array.from({length: 3}, () => ({})),
+      access_observations: Array.from({length: 9}, () => ({})),
+    },
+    run_sha256: sha("c"),
+    clock_boundary: {
+      benchmark_time_field: "Timestamp",
+      observed_timestamp_used_for_benchmark_timing: false,
+    },
+    limitations: ["projection_does_not_prove_telemetry_completeness"],
+  });
+  assert.equal(summary.kind, "LureIdentity OpenTelemetry projection");
+  assert.equal(summary.metrics[0].value, "12");
+  assert.equal(summary.metrics[1].value, "3");
+  assert.equal(summary.metrics[2].value, "9");
+  assert.equal(summary.metrics[5].value, "no");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.warnings.join(" "), /verify-otel/i);
+});
+
+test("LureArtifact verification exposes workload supply-chain bindings", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lureartifact-verification/v1",
+    summary: {
+      active_workload_count: 2,
+      deployment_count: 3,
+      artifact_binding_count: 12,
+      provenance_binding_count: 9,
+      ai_bom_binding_count: 3,
+      finding_count: 0,
+      verdict: "pass",
+    },
+    digests: {
+      identity_campaign_verification_sha256: sha("a"),
+      identity_plan_sha256: sha("b"),
+      artifact_campaign_sha256: sha("c"),
+      artifact_plan_sha256: sha("d"),
+      observation_sha256: sha("e"),
+      evaluation_sha256: sha("f"),
+    },
+    checks: Array.from({length: 13}, (_, index) => ({check_id: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["artifact_ai_bom_and_slsa_statement_bytes_are_not_loaded_or_their_signatures_verified"],
+  });
+  assert.equal(summary.kind, "LureArtifact verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Artifact bindings").value, "12");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "13 / 13");
+  assert.equal(summary.bindings.length, 6);
+  assert.match(summary.warnings.join(" "), /artifact check/i);
+  assert.match(summary.warnings.join(" "), /does not.*load artifacts/i);
+});
+
+test("LureRecall verification exposes blast radius, recovery, and exact sources", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lurerecall-verification/v1",
+    summary: {
+      actionable_component_count: 1,
+      affected_component_count: 2,
+      affected_root_artifact_count: 1,
+      affected_workload_count: 1,
+      affected_deployment_count: 2,
+      affected_node_count: 2,
+      on_time_delivery_rate: 1,
+      p95_delivery_ms: 50,
+      quarantine_recall: 1,
+      recovery_recall: 1,
+      unaffected_preservation_rate: 1,
+      post_deadline_compromised_allow_count: 0,
+      wrong_replacement_count: 0,
+      collateral_block_count: 0,
+      finding_count: 0,
+    },
+    digests: {
+      artifact_plan_sha256: sha("a"),
+      lineage_sha256: sha("b"),
+      advisory_sha256: sha("c"),
+      plan_sha256: sha("d"),
+      run_sha256: sha("e"),
+      evaluation_sha256: sha("f"),
+    },
+    checks: Array.from({length: 12}, (_, index) => ({check_id: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["source_documents_artifact_bytes_and_replacement_bytes_are_not_loaded_or_authenticated"],
+  });
+  assert.equal(summary.kind, "LureRecall verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Affected deployments").value, "2");
+  assert.equal(summary.metrics.find(item => item.label === "p95 delivery").value, "50 ms");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "12 / 12");
+  assert.equal(summary.bindings.length, 6);
+  assert.match(summary.warnings.join(" "), /recall check/i);
+});
+
+test("LureAttest verification exposes authenticated provenance boundaries", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1",
+    summary: {
+      workload_count: 1,
+      attestation_count: 3,
+      authenticated_attestation_count: 3,
+      expectation_match_count: 3,
+      minimum_policy_slsa_build_level: 2,
+      finding_count: 0,
+      verdict: "pass",
+    },
+    digests: {
+      artifact_plan_sha256: sha("a"),
+      trust_policy_sha256: sha("b"),
+      plan_sha256: sha("c"),
+    },
+    public_keys: [{}],
+    evidence: [{}, {}, {}],
+    checks: Array.from({length: 12}, (_, index) => ({check_id: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["sigstore_fulcio_rekor_rfc3161_kms_and_key_lifecycle_verification_are_not_performed"],
+  });
+  assert.equal(summary.kind, "LureAttest verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Authenticated").value, "3 / 3");
+  assert.equal(summary.metrics.find(item => item.label === "Policy SLSA floor").value, "L2");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "12 / 12");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.warnings.join(" "), /attest check/i);
+  assert.match(summary.warnings.join(" "), /does not re-authenticate DSSE/i);
+});
+
+test("LureIdentity deployment gate exposes policy and exact source bindings", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1",
+    system: {system_id: "agent-platform", environment: "production"},
+    policy: {
+      declared_convergence_ms: 400,
+      maximum_allowed_convergence_ms: 500,
+      minimum_run_generated_at: "2026-09-03T12:00:00Z",
+      expected_receiver_name: "identity-receiver",
+      expected_receiver_artifact_sha256: sha("a"),
+    },
+    contract: {
+      campaign_sha256: sha("f"),
+      plan_sha256: sha("a"),
+      run_sha256: sha("b"),
+      runtime_profile_sha256: sha("c"),
+      artifact_campaign_sha256: sha("d"),
+      artifact_plan_sha256: sha("e"),
+      artifact_observation_sha256: sha("f"),
+      artifact_evaluation_sha256: sha("a"),
+    },
+    sources: {
+      campaign_verification: {
+        sha256: sha("f"),
+        event_count: 4,
+        probe_count: 414,
+      },
+      artifact_verification: {
+        sha256: sha("b"),
+        verified_at: "2026-09-03T12:00:01Z",
+        active_workload_count: 2,
+        deployment_count: 3,
+        artifact_binding_count: 12,
+        provenance_binding_count: 9,
+        ai_bom_binding_count: 3,
+        overall_status: "pass",
+      },
+      topology_audit: {
+        sha256: sha("d"),
+        verdict: "pass",
+        covered_enforcement_point_count: 9,
+        required_enforcement_point_count: 9,
+        trusted_workload_identity_count: 2,
+        workload_identity_count: 2,
+      },
+      otel_projection: {
+        sha256: sha("c"),
+        source_export_sha256: sha("d"),
+        record_count: 323,
+      },
+      identity_evidence: {
+        manifest_sha256: sha("e"),
+        checkpoint_sha256: sha("f"),
+        signer_key_id: sha("b"),
+        overall_status: "pass",
+      },
+    },
+    checks: Array.from({length: 13}, (_, index) => ({check_id: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["gate_does_not_establish_deployment_authorization"],
+  });
+  assert.equal(summary.kind, "LureIdentity deployment gate");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics[2].value, "414");
+  assert.equal(summary.metrics[3].value, "pass");
+  assert.equal(summary.metrics[5].value, "12");
+  assert.equal(summary.metrics[9].value, "9 / 9");
+  assert.equal(summary.metrics[10].value, "2 / 2");
+  assert.equal(summary.metrics[11].value, "323");
+  assert.equal(summary.bindings.length, 17);
+  assert.match(summary.warnings.join(" "), /verify-gate/i);
+  assert.match(summary.warnings.join(" "), /five exact sources/i);
 });
 
 test("LureBoundary entry preserves sticky breach and response boundary", () => {
