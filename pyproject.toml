@@ -101,6 +101,8 @@ lurescope = [
 "share/lurescope/conformance/lurerecall-v1" = ["conformance/lurerecall-v1/*.json"]
 "share/lurescope/conformance/lureattest-v1" = ["conformance/lureattest-v1/*.json", "conformance/lureattest-v1/*.pem"]
 "share/lurescope/conformance/lureattest-v1/evidence" = ["conformance/lureattest-v1/evidence/*.json"]
+"share/lurescope/conformance/lurebom-v1" = ["conformance/lurebom-v1/*.json"]
+"share/lurescope/conformance/lurechannel-v1" = ["conformance/lurechannel-v1/*.json"]
 
 [tool.pytest.ini_options]
 # Make the repo root importable so tests can reach the scripts/ helpers.

@@ -944,6 +944,87 @@ test("LureAttest verification exposes authenticated provenance boundaries", () =
   assert.match(summary.warnings.join(" "), /does not re-authenticate DSSE/i);
 });
 
+test("LureBOM Twin exposes source-byte parity and projection loss", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lurebom-verification/v1",
+    summary: {
+      component_count: 4,
+      matched_component_count: 4,
+      component_parity_rate: 1,
+      dependency_count: 1,
+      matched_dependency_count: 1,
+      dependency_parity_rate: 1,
+      artifact_subject_count: 3,
+      ignored_field_count: 35,
+      finding_count: 0,
+      verdict: "pass",
+      raw_documents_reparsed: true,
+      producer_evaluation_reproduced: true,
+      semantic_parity: true,
+    },
+    manifest: {artifact_plan_sha256: sha("a")},
+    documents: {
+      cyclonedx: {document_sha256: sha("b")},
+      spdx: {document_sha256: sha("c")},
+    },
+    checks: Array.from({length: 13}, (_, index) => `check-${index}`),
+    limitations: ["projection_loss_lists_ignored_fields_but_does_not_interpret_their_semantics"],
+  });
+  assert.equal(summary.kind, "LureBOM Twin verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Components").value, "4 / 4");
+  assert.equal(summary.metrics.find(item => item.label === "Projection-loss paths").value, "35");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "13 / 13");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.privacy.join(" "), /embeds both full source BOMs/i);
+  assert.match(summary.warnings.join(" "), /lurescope bom check/i);
+});
+
+test("LureChannel exposes three-state isolation and sensor evidence", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/lurechannel-verification/v1",
+    summary: {
+      verdict: "inconclusive",
+      test_count: 3,
+      passed_test_count: 2,
+      failed_test_count: 0,
+      inconclusive_test_count: 1,
+      delivery_control_count: 1,
+      delivered_control_count: 1,
+      delivery_control_rate: 1,
+      isolation_test_count: 2,
+      clean_isolation_test_count: 1,
+      unauthorized_flow_count: 0,
+      residual_flow_count: 0,
+      sighting_count: 1,
+      required_sensor_window_count: 3,
+      complete_sensor_window_count: 2,
+      sensor_coverage_rate: 2 / 3,
+      finding_count: 1,
+      source_documents_reparsed: true,
+      producer_evaluation_reproduced: true,
+      bounded_noninterference_observed: false,
+    },
+    documents: {
+      plan: {document_sha256: sha("a")},
+      run: {document_sha256: sha("b")},
+      evaluation: {document_sha256: sha("c")},
+    },
+    checks: Array.from({length: 12}, (_, index) => `check-${index}`),
+    limitations: ["sensor_window_completeness_remains_an_operator_assertion_not_environment_discovery"],
+  });
+  assert.equal(summary.kind, "LureChannel verification");
+  assert.equal(summary.status, "inconclusive");
+  assert.equal(summary.metrics.find(item => item.label === "Tests").value, "2 / 3");
+  assert.equal(summary.metrics.find(item => item.label === "Sensor windows").value, "2 / 3");
+  assert.equal(summary.metrics.find(item => item.label === "Unauthorized flows").value, "0");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "12 / 12");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.privacy.join(" "), /raw canaries/i);
+  assert.match(summary.warnings.join(" "), /lurescope channel check/i);
+  assert.match(summary.warnings.join(" "), /does not decode and reparse/i);
+});
+
 test("LureIdentity deployment gate exposes policy and exact source bindings", () => {
   const summary = explorer.summarizeArtifact({
     schema: "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1",

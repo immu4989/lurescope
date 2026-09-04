@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurebom-verification/v1",
+  "title": "Independent LureBOM Twin source-byte verification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "verification_id",
+    "verified_at",
+    "engine",
+    "artifact_plan",
+    "manifest",
+    "producer_evaluation",
+    "documents",
+    "checks",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurebom-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-lurebom-independent"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "manifest": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1"},
+    "producer_evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-evaluation-v1"},
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cyclonedx", "spdx"],
+      "properties": {
+        "cyclonedx": {"$ref": "#/$defs/document"},
+        "spdx": {"$ref": "#/$defs/document"}
+      }
+    },
+    "checks": {
+      "const": [
+        "artifact_plan_contract_valid",
+        "manifest_contract_valid",
+        "primary_bom_bound_to_lureartifact",
+        "source_document_digests_bound",
+        "strict_source_json_reparsed",
+        "all_projected_components_explicitly_mapped",
+        "component_sha256_parity_recomputed",
+        "component_package_url_parity_recomputed",
+        "component_class_parity_recomputed",
+        "artifact_subject_bindings_recomputed",
+        "directed_dependency_parity_recomputed",
+        "producer_evaluation_reproduced",
+        "projection_loss_preserved"
+      ]
+    },
+    "summary": {"$ref": "#/$defs/summary"},
+    "limitations": {
+      "const": [
+        "verification_is_an_independent_local_reimplementation_and_imports_no_lurebench_code",
+        "embedded_source_bom_bytes_are_reparsed_and_bound_to_the_reviewed_manifest_digests",
+        "projection_loss_lists_ignored_fields_but_does_not_interpret_their_semantics",
+        "spdx_and_cyclonedx_schema_conformance_issuer_authenticity_and_completeness_are_not_proven",
+        "no_artifact_model_container_policy_dataset_package_or_external_reference_is_opened",
+        "a_pass_is_not_vulnerability_license_safety_compliance_procurement_or_deployment_approval"
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "document_sha256", "payload_base64"],
+      "properties": {
+        "format": {"enum": ["cyclonedx-1.7", "spdx-3.0.1"]},
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 11184812,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_count",
+        "matched_component_count",
+        "component_parity_rate",
+        "dependency_count",
+        "matched_dependency_count",
+        "dependency_parity_rate",
+        "artifact_subject_count",
+        "ignored_field_count",
+        "finding_count",
+        "verdict",
+        "raw_documents_reparsed",
+        "producer_evaluation_reproduced",
+        "semantic_parity"
+      ],
+      "properties": {
+        "component_count": {"type": "integer", "minimum": 1, "maximum": 8192},
+        "matched_component_count": {"type": "integer", "minimum": 0, "maximum": 8192},
+        "component_parity_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "dependency_count": {"type": "integer", "minimum": 0, "maximum": 32768},
+        "matched_dependency_count": {"type": "integer", "minimum": 0, "maximum": 32768},
+        "dependency_parity_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "artifact_subject_count": {"type": "integer", "minimum": 1, "maximum": 3},
+        "ignored_field_count": {"type": "integer", "minimum": 0, "maximum": 131072},
+        "finding_count": {"type": "integer", "minimum": 0, "maximum": 65536},
+        "verdict": {"enum": ["pass", "fail"]},
+        "raw_documents_reparsed": {"const": true},
+        "producer_evaluation_reproduced": {"const": true},
+        "semantic_parity": {"type": "boolean"}
+      }
+    }
+  }
+}

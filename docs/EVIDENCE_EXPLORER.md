@@ -33,7 +33,13 @@ page to inspect:
 - independent LureArtifact verification reports binding workload deployments to
   exact model, container, policy, SLSA provenance, and AI-BOM metadata; and
 - independent LureRecall verification reports for transitive artifact blast
-  radius, advisory delivery, quarantine, exact recovery, and collateral control.
+  radius, advisory delivery, quarantine, exact recovery, and collateral control;
+- private LureAttest authenticated-provenance verification reports; and
+- private LureBOM Twin reports that embed exact CycloneDX 1.7 and SPDX 3.0.1
+  documents plus their common-denominator semantic reconciliation; and
+- private LureChannel reports that bind exact plans, observation runs, and
+  producer evaluations for allowed delivery, denied active flow, and
+  post-termination residue tests.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -144,6 +150,31 @@ certificates/transparency/timestamps, certify a builder, open subject artifacts,
 or establish safety or authorization. Use `lurescope attest check` for the
 self-contained offline cryptographic and semantic recomputation. See the
 [LureAttest authenticated provenance workflow](LUREATTEST_VERIFICATION.md).
+
+For LureBOM Twin verification, the browser displays component and dependency
+parity, artifact-subject coverage, projection-loss paths, findings, source-byte
+reparse state, producer-reproduction state, and the three primary digests. The
+report embeds both complete source BOM documents and must remain private. The
+browser does not decode and reparse those bytes, reproduce mappings, validate
+the complete SPDX or CycloneDX schemas, authenticate an issuer, fetch external
+references, or establish inventory completeness, vulnerability/license state,
+or artifact safety. Use `lurescope bom check` for the self-contained normative
+recomputation. Reports larger than the explorer's 8 MiB input limit, up to the
+CLI verifier's 32 MiB report limit, must be checked with the CLI. See the
+[LureBOM verification workflow](LUREBOM_VERIFICATION.md).
+
+For LureChannel verification, the browser displays pass, fail, and inconclusive
+counts; allowed-delivery and isolation controls; required and complete sensor
+windows; unauthorized and residual flows; findings; independent-reproduction
+state; and all three exact source-byte digests. Raw canaries, customer content,
+and secrets are excluded by contract, but internal run, tenant,
+isolation-domain, channel, and sensor identifiers make the report private. The
+browser does not decode and reparse the embedded sources, recompute results,
+authenticate sensor assertions, discover unknown paths, or establish universal
+noninterference or containment. Use `lurescope channel check` for self-contained
+normative recomputation. Reports larger than the explorer's 8 MiB input limit,
+up to the CLI verifier's 32 MiB report limit, must be checked with the CLI. See
+the [LureChannel verification workflow](LURECHANNEL_VERIFICATION.md).
 
 For a deployment gate, the browser shows the declared and policy convergence
 limits, minimum accepted run timestamp, deployment identity, receiver artifact,

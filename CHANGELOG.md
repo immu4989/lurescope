@@ -3,6 +3,28 @@
 ## Unreleased
 
 ### Added
+- Added independent LureChannel verification for metadata-only cross-run
+  isolation evidence. LureScope imports no LureBench code while strictly
+  reparsing exact plan, observation, and producer-evaluation bytes and
+  rederiving run lifetimes, sensor topology and windows, positive delivery
+  controls, active denied flows, unexpected paths, and post-termination
+  residue. Its mode-0600 no-overwrite report embeds all three sources for
+  complete offline `check` recomputation. Shared schemas and vectors, a
+  verification schema, CLI workflow, Evidence Explorer support, an operator
+  guide, and tamper tests are included. Sensor completeness remains an operator
+  assertion, and a pass is not universal noninterference, containment, safety,
+  compliance, certification, or deployment authorization.
+- Added an independent LureBOM Twin verifier that reparses the original
+  CycloneDX 1.7 and SPDX 3.0.1 bytes without importing LureBench, rederives the
+  explicit component map, digest/PURL/class/artifact bindings, directed
+  dependency parity, findings, metrics, and projection-loss paths, and requires
+  exact reproduction of the producer evaluation. Its mode-0600 no-overwrite
+  report embeds both source BOMs for complete offline `check` recomputation.
+  Shared schemas and vectors, a private verification schema, CLI workflow,
+  Evidence Explorer support, an operator guide, and adversarial tamper tests
+  are included without claiming full source-standard conformance, issuer
+  authenticity, BOM completeness, vulnerability/license analysis, compliance,
+  or artifact safety.
 - Added independent LureAttest verification for real provenance documents.
   LureScope imports no LureBench code while recompiling the exact trust plan,
   requiring a complete non-symlink evidence directory, pinning externally

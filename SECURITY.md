@@ -72,6 +72,20 @@ otherwise.
   parameter drift; signer–builder substitution; ambiguous source dependency;
   tampered embedded evidence; stale verification time; unsafe permissions; or
   overwrite.
+- LureBOM verification accepting changed or noncanonical source bytes,
+  duplicate JSON keys, unsupported SPDX/CycloneDX versions, ambiguous hashes,
+  inferred component identity, an unmapped or missing component,
+  class/digest/PURL substitution, unknown/self/duplicate or one-sided
+  dependency, hidden projection loss, a producer result that cannot be
+  independently reproduced, tampered embedded BOM bytes, stale verification
+  time, oversized evidence, or overwrite while still reporting pass.
+- LureChannel verification accepting changed or noncanonical source bytes,
+  contradictory run lifetimes, same-domain tests, untested denied channels,
+  an unauthorized, residual, late, duplicate, or unexpected-path sighting while
+  reporting pass, incomplete sensor windows or failed positive controls as
+  evidence of isolation, altered metrics or verdict, producer/source
+  substitution, tampered embedded bytes, oversized evidence, unsafe paths, or
+  overwrite.
 - Runtime or identity evidence accepting an ambiguous, oversized, Unicode, or
   percent-encoded SPIFFE ID, forbidden authority component, empty/relative path
   segment, or root identity in a workload field.
@@ -126,6 +140,15 @@ copies of the same report. The bridge therefore marks the bundle as not shareabl
 default, creates private files, and should run only inside the system authorized to
 hold the source report. A SHA-256-bound unsigned statement proves self-consistency,
 not authorship; require a trusted DSSE signature when provenance must be authenticated.
+
+LureChannel is intended only for authorized, operator-controlled environments.
+Canaries must be non-sensitive and non-executable; never use credentials,
+customer data, real prompts, personal data, or exploit payloads. Do not probe a
+third-party service without authorization. Its self-contained reports can
+expose internal run, tenant, isolation-domain, channel, and sensor identifiers
+and should remain private. A `complete` sensor window is an operator assertion,
+not infrastructure discovery, and a passing declared matrix does not prove that
+unknown or uninstrumented communication paths are absent.
 
 ## Acceptable use
 

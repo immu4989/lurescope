@@ -3182,6 +3182,137 @@ def _attest_evidence(argv: Sequence[str]) -> int:
         return 2
 
 
+def _bom_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope bom",
+        description=(
+            "Independently reparse exact CycloneDX 1.7 and SPDX 3.0.1 bytes, "
+            "recompute their bounded semantic projection, and verify LureBOM parity."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify", help="recompute a producer evaluation from the original source BOM bytes"
+    )
+    verify_parser.add_argument("artifact_plan")
+    verify_parser.add_argument("manifest")
+    verify_parser.add_argument("producer_evaluation")
+    verify_parser.add_argument("cyclonedx")
+    verify_parser.add_argument("spdx")
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="reparse the embedded source BOM bytes in a saved private report"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command == "verify":
+            from .bom import create_bom_verification
+
+            result = create_bom_verification(
+                Path(args.artifact_plan),
+                Path(args.manifest),
+                Path(args.producer_evaluation),
+                Path(args.cyclonedx),
+                Path(args.spdx),
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .bom import load_bom_verification
+
+            result = load_bom_verification(Path(args.verification))
+            destination = args.verification
+        summary = result["summary"]
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LUREBOM INDEPENDENT VERIFICATION: {summary['verdict'].upper()} — "
+                f"components={summary['matched_component_count']}/{summary['component_count']} "
+                f"dependencies={summary['matched_dependency_count']}/"
+                f"{summary['dependency_count']} ignored-fields="
+                f"{summary['ignored_field_count']} — {destination}"
+            )
+            print(
+                "boundary: original BOM bytes reparsed for a declared common denominator; "
+                "not full schema conformance, issuer authenticity, completeness, or safety"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureBOM verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _channel_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope channel",
+        description=(
+            "Independently re-evaluate metadata-only canary flows across declared "
+            "agent-run isolation boundaries."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify", help="recompute a producer evaluation from its exact plan and run"
+    )
+    verify_parser.add_argument("plan")
+    verify_parser.add_argument("run")
+    verify_parser.add_argument("producer_evaluation")
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="reparse and recompute a saved self-contained verification"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command == "verify":
+            from .channel import create_channel_verification
+
+            result = create_channel_verification(
+                Path(args.plan),
+                Path(args.run),
+                Path(args.producer_evaluation),
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .channel import load_channel_verification
+
+            result = load_channel_verification(Path(args.verification))
+            destination = args.verification
+        summary = result["summary"]
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LURECHANNEL INDEPENDENT VERIFICATION: {summary['verdict'].upper()} — "
+                f"tests={summary['passed_test_count']}/{summary['test_count']} "
+                f"inconclusive={summary['inconclusive_test_count']} "
+                f"unauthorized={summary['unauthorized_flow_count']} "
+                f"residual={summary['residual_flow_count']} — {destination}"
+            )
+            print(
+                "boundary: exact source bytes and declared sensor windows only; "
+                "not universal noninterference, containment, safety, or authorization"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureChannel verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -3236,6 +3367,10 @@ def main(argv=None) -> int:
         return _recall_evidence(args[1:])
     if args and args[0] == "attest":
         return _attest_evidence(args[1:])
+    if args and args[0] == "bom":
+        return _bom_evidence(args[1:])
+    if args and args[0] == "channel":
+        return _channel_evidence(args[1:])
     return _serve(args)
 
 

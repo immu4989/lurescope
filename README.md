@@ -24,6 +24,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ![LureArtifact](https://img.shields.io/badge/LureArtifact-independent_supply--chain_gate-7b61ff)
 ![LureRecall](https://img.shields.io/badge/LureRecall-independent_blast--radius_·_recovery-7b61ff)
 ![LureAttest](https://img.shields.io/badge/LureAttest-authenticated_DSSE_·_SLSA-7b61ff)
+![LureBOM Twin](https://img.shields.io/badge/LureBOM_Twin-source--byte_semantic_parity-7b61ff)
+![LureChannel](https://img.shields.io/badge/LureChannel-independent_noninterference_evidence-7b61ff)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
@@ -49,6 +51,8 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Verify AI artifact authorization →](docs/LUREARTIFACT_VERIFICATION.md)** ·
 **[Verify transitive artifact recall →](docs/LURERECALL_VERIFICATION.md)** ·
 **[Authenticate SLSA provenance →](docs/LUREATTEST_VERIFICATION.md)** ·
+**[Reconcile CycloneDX and SPDX twins →](docs/LUREBOM_VERIFICATION.md)** ·
+**[Verify cross-run isolation canaries →](docs/LURECHANNEL_VERIFICATION.md)** ·
 **[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -162,6 +166,26 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > parameters. Its private self-contained report can re-authenticate every
 > embedded envelope offline. This is fixed-key verification—not Fulcio/Rekor,
 > build-platform certification, artifact safety, or deployment authorization.
+
+> **New — independently detect cross-format AI-BOM drift.**
+> [LureBOM Twin verification](docs/LUREBOM_VERIFICATION.md) reparses the exact
+> CycloneDX 1.7 and SPDX 3.0.1 source bytes, binds the primary BOM to the
+> authorized LureArtifact workload, and reproduces explicit component,
+> SHA-256, Package URL, class, artifact-subject, and directed dependency
+> comparisons without importing LureBench. Its private report embeds both
+> documents for complete offline rechecking and records every ignored field as
+> projection loss. It does not claim full schema conformance, issuer identity,
+> completeness, vulnerability status, licensing, or artifact safety.
+
+> **New — independently verify cross-run canary isolation.**
+> [LureChannel verification](docs/LURECHANNEL_VERIFICATION.md) reparses exact
+> plan, observation, and producer-evaluation bytes; independently recomputes
+> active and post-termination flows, positive controls, unexpected paths, and
+> sensor-window sufficiency; and packages the inputs into one private offline
+> report. A direct forbidden sighting remains `fail`; incomplete telemetry
+> remains `inconclusive`. It imports no LureBench code and does not claim sensor
+> truth, unknown-path discovery, universal noninterference, containment, safety,
+> or authorization.
 
 > **New — independently verify prevention and safe-stop evidence.**
 > [LurePermit/LureRange evidence](docs/LUREPERMIT_EVIDENCE.md) re-derives every

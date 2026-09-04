@@ -62,6 +62,8 @@
   const ARTIFACT_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureartifact-verification/v1";
   const RECALL_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurerecall-verification/v1";
   const ATTEST_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1";
+  const LUREBOM_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurebom-verification/v1";
+  const LURECHANNEL_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurechannel-verification/v1";
   const IDENTITY_DEPLOYMENT_GATE = "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1";
 
   function object(value, field) {
@@ -1121,6 +1123,94 @@
     return summary;
   }
 
+  function lureBomVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureBOM verification summary");
+    const manifest = object(value.manifest, "LureBOM verification manifest");
+    const documents = object(value.documents, "LureBOM embedded documents");
+    const cyclonedx = object(documents.cyclonedx, "embedded CycloneDX document");
+    const spdx = object(documents.spdx, "embedded SPDX document");
+    if (!Array.isArray(value.checks) || value.checks.length !== 13) {
+      throw new Error("LureBOM verification must contain thirteen checks");
+    }
+    const summary = base(
+      "LureBOM Twin verification",
+      "CycloneDX 1.7 ↔ SPDX 3.0.1 semantic parity",
+      "An independent source-byte reparse comparing explicitly mapped component integrity, Package URLs, compatible classes, artifact subjects, and directed dependency edges.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Components", value: `${count(metrics.matched_component_count)} / ${count(metrics.component_count)}`},
+      {label: "Component parity", value: ratio(metrics.component_parity_rate)},
+      {label: "Dependencies", value: `${count(metrics.matched_dependency_count)} / ${count(metrics.dependency_count)}`},
+      {label: "Dependency parity", value: ratio(metrics.dependency_parity_rate)},
+      {label: "Artifact subjects", value: count(metrics.artifact_subject_count)},
+      {label: "Projection-loss paths", value: count(metrics.ignored_field_count)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Raw BOMs reparsed", value: metrics.raw_documents_reparsed === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_evaluation_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 13`},
+    ];
+    summary.bindings = [
+      binding("Artifact plan", manifest.artifact_plan_sha256),
+      binding("CycloneDX 1.7", cyclonedx.document_sha256),
+      binding("SPDX 3.0.1", spdx.document_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the report embeds both full source BOMs; treat software and AI inventory as private",
+      "no listed model, container, policy, dataset, package, or external reference is opened",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope bom check`; this browser does not reparse embedded BOM bytes, reproduce mappings, validate full SPDX/CycloneDX schemas, authenticate issuers, or establish inventory completeness or safety.");
+    return summary;
+  }
+
+  function lureChannelVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureChannel verification summary");
+    const documents = object(value.documents, "LureChannel embedded documents");
+    const plan = object(documents.plan, "embedded LureChannel plan");
+    const run = object(documents.run, "embedded LureChannel run");
+    const evaluation = object(documents.evaluation, "embedded LureChannel evaluation");
+    if (!Array.isArray(value.checks) || value.checks.length !== 12) {
+      throw new Error("LureChannel verification must contain twelve checks");
+    }
+    const summary = base(
+      "LureChannel verification",
+      "Bounded cross-run canary-flow evidence",
+      "An independent re-evaluation of declared allowed delivery, denied active transfer, post-termination residue, unexpected paths, and sensor-window coverage.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Tests", value: `${count(metrics.passed_test_count)} / ${count(metrics.test_count)}`},
+      {label: "Failed", value: count(metrics.failed_test_count)},
+      {label: "Inconclusive", value: count(metrics.inconclusive_test_count)},
+      {label: "Isolation controls", value: `${count(metrics.clean_isolation_test_count)} / ${count(metrics.isolation_test_count)}`},
+      {label: "Delivery controls", value: `${count(metrics.delivered_control_count)} / ${count(metrics.delivery_control_count)}`},
+      {label: "Delivery-control rate", value: ratio(metrics.delivery_control_rate)},
+      {label: "Sensor windows", value: `${count(metrics.complete_sensor_window_count)} / ${count(metrics.required_sensor_window_count)}`},
+      {label: "Sensor coverage", value: ratio(metrics.sensor_coverage_rate)},
+      {label: "Unauthorized flows", value: count(metrics.unauthorized_flow_count)},
+      {label: "Residual flows", value: count(metrics.residual_flow_count)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Sources reparsed", value: metrics.source_documents_reparsed === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_evaluation_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 12`},
+    ];
+    summary.bindings = [
+      binding("LureChannel plan bytes", plan.document_sha256),
+      binding("Observation run bytes", run.document_sha256),
+      binding("Producer evaluation bytes", evaluation.document_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "raw canaries, customer content, and secrets are excluded by contract; only canary SHA-256 digests are retained",
+      "the report may expose internal run, tenant, isolation-domain, channel, and sensor identifiers; treat it as private",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope channel check`; this browser does not decode and reparse the embedded sources, recompute flow results, authenticate sensor assertions, discover unknown paths, or prove universal noninterference or containment.");
+    return summary;
+  }
+
   function identityDeploymentGateSummary(value, meta) {
     const system = object(value.system, "LureIdentity deployment-gate system");
     const contract = object(value.contract, "LureIdentity deployment-gate contract");
@@ -1871,8 +1961,10 @@
     else if (statement.schema === ARTIFACT_VERIFICATION) summary = artifactVerificationSummary(statement, meta);
     else if (statement.schema === RECALL_VERIFICATION) summary = recallVerificationSummary(statement, meta);
     else if (statement.schema === ATTEST_VERIFICATION) summary = attestVerificationSummary(statement, meta);
+    else if (statement.schema === LUREBOM_VERIFICATION) summary = lureBomVerificationSummary(statement, meta);
+    else if (statement.schema === LURECHANNEL_VERIFICATION) summary = lureChannelVerificationSummary(statement, meta);
     else if (statement.schema === IDENTITY_DEPLOYMENT_GATE) summary = identityDeploymentGateSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, LureIdentity, LureArtifact, LureRecall, LureAttest, coverage, delegation, LureIR, portfolio, or witness artifact.");
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, LureIdentity, LureArtifact, LureRecall, LureAttest, LureBOM, LureChannel, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

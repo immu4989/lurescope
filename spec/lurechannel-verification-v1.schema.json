@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/lurechannel-verification/v1",
+  "title": "Independent self-contained LureChannel verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verification_id", "verified_at", "engine", "documents", "producer_evaluation", "checks", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/lurechannel-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-lurechannel-independent"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 32}
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan", "run", "evaluation"],
+      "properties": {
+        "plan": {"$ref": "#/$defs/document"},
+        "run": {"$ref": "#/$defs/document"},
+        "evaluation": {"$ref": "#/$defs/document"}
+      }
+    },
+    "producer_evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/lurechannel-evaluation-v1"},
+    "checks": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "strict_source_json_reparsed",
+          "canonical_plan_binding_recomputed",
+          "canonical_run_binding_recomputed",
+          "declared_run_lifetimes_rechecked",
+          "cross_domain_test_matrix_rechecked",
+          "sensor_topology_rechecked",
+          "sensor_window_coverage_recomputed",
+          "allowed_delivery_controls_recomputed",
+          "unexpected_canary_paths_recomputed",
+          "unauthorized_flows_recomputed",
+          "post_termination_residue_recomputed",
+          "producer_evaluation_reproduced"
+        ]
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "test_count", "passed_test_count", "failed_test_count", "inconclusive_test_count", "delivery_control_count", "delivered_control_count", "delivery_control_rate", "isolation_test_count", "clean_isolation_test_count", "unauthorized_flow_count", "residual_flow_count", "sighting_count", "required_sensor_window_count", "complete_sensor_window_count", "sensor_coverage_rate", "finding_count", "source_documents_reparsed", "producer_evaluation_reproduced", "bounded_noninterference_observed"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail", "inconclusive"]},
+        "test_count": {"$ref": "#/$defs/count"},
+        "passed_test_count": {"$ref": "#/$defs/count"},
+        "failed_test_count": {"$ref": "#/$defs/count"},
+        "inconclusive_test_count": {"$ref": "#/$defs/count"},
+        "delivery_control_count": {"$ref": "#/$defs/count"},
+        "delivered_control_count": {"$ref": "#/$defs/count"},
+        "delivery_control_rate": {"$ref": "#/$defs/rate"},
+        "isolation_test_count": {"$ref": "#/$defs/count"},
+        "clean_isolation_test_count": {"$ref": "#/$defs/count"},
+        "unauthorized_flow_count": {"$ref": "#/$defs/count"},
+        "residual_flow_count": {"$ref": "#/$defs/count"},
+        "sighting_count": {"$ref": "#/$defs/count"},
+        "required_sensor_window_count": {"$ref": "#/$defs/count"},
+        "complete_sensor_window_count": {"$ref": "#/$defs/count"},
+        "sensor_coverage_rate": {"$ref": "#/$defs/rate"},
+        "finding_count": {"$ref": "#/$defs/count"},
+        "source_documents_reparsed": {"const": true},
+        "producer_evaluation_reproduced": {"const": true},
+        "bounded_noninterference_observed": {"type": "boolean"}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "exact_embedded_inputs_and_independent_recomputation_do_not_authenticate_their_issuer",
+          "sensor_window_completeness_remains_an_operator_assertion_not_environment_discovery",
+          "absence_of_sightings_only_applies_to_the_declared_test_matrix_and_observation_windows",
+          "passing_is_not_universal_noninterference_containment_safety_compliance_or_authorization"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4, "maxLength": 11184812, "pattern": "^[A-Za-z0-9+/]*={0,2}$"}
+      }
+    }
+  }
+}
