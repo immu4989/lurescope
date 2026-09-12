@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-verification/v1",
+  "title": "Independent self-contained LureMandate verification v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "verification_id", "verified_at", "engine", "documents", "producer_evaluation", "checks", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-verification/v1"}, "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"}, "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope-luremandate-independent"}, "version": {"type": "string", "minLength": 1, "maxLength": 32}}},
+    "documents": {"type": "object", "additionalProperties": false, "required": ["plan", "run", "evaluation"], "properties": {"plan": {"$ref": "#/$defs/document"}, "run": {"$ref": "#/$defs/document"}, "evaluation": {"$ref": "#/$defs/document"}}},
+    "producer_evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-evaluation-v1"},
+    "checks": {
+      "type": "array", "minItems": 11, "maxItems": 11, "uniqueItems": true,
+      "items": {"enum": ["strict_source_json_reparsed", "canonical_plan_binding_recomputed", "canonical_intent_bindings_recomputed", "agent_workload_and_run_bindings_rechecked", "approval_freshness_rechecked", "approval_single_use_recomputed", "self_approval_and_role_separation_rechecked", "per_transaction_impact_limits_recomputed", "rolling_cumulative_budgets_recomputed", "observed_effect_authority_bypasses_recomputed", "producer_evaluation_reproduced"]}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["verdict", "transaction_count", "passed_transaction_count", "failed_transaction_count", "inconclusive_transaction_count", "expected_allow_count", "correct_allow_count", "expected_block_count", "correct_block_count", "invalid_allow_count", "authority_bypass_count", "collateral_denial_count", "incorrect_reason_count", "unknown_outcome_count", "finding_count", "source_documents_reparsed", "producer_evaluation_reproduced", "transaction_authority_verified"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail", "inconclusive"]},
+        "transaction_count": {"$ref": "#/$defs/count"}, "passed_transaction_count": {"$ref": "#/$defs/count"}, "failed_transaction_count": {"$ref": "#/$defs/count"}, "inconclusive_transaction_count": {"$ref": "#/$defs/count"},
+        "expected_allow_count": {"$ref": "#/$defs/count"}, "correct_allow_count": {"$ref": "#/$defs/count"}, "expected_block_count": {"$ref": "#/$defs/count"}, "correct_block_count": {"$ref": "#/$defs/count"},
+        "invalid_allow_count": {"$ref": "#/$defs/count"}, "authority_bypass_count": {"$ref": "#/$defs/count"}, "collateral_denial_count": {"$ref": "#/$defs/count"}, "incorrect_reason_count": {"$ref": "#/$defs/count"}, "unknown_outcome_count": {"$ref": "#/$defs/count"}, "finding_count": {"$ref": "#/$defs/count"},
+        "source_documents_reparsed": {"const": true}, "producer_evaluation_reproduced": {"const": true}, "transaction_authority_verified": {"type": "boolean"}
+      }
+    },
+    "limitations": {"const": ["independent_recomputation_and_exact_bytes_do_not_authenticate_approvers_or_their_roles", "effect_observations_and_sensor_identity_remain_operator_claims", "impact_units_and_policy_thresholds_require_organization_specific_governance", "verification_covers_only_submitted_records_not_complete_runtime_mediation", "passing_is_not_compliance_certification_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 16384},
+    "document": {"type": "object", "additionalProperties": false, "required": ["document_sha256", "payload_base64"], "properties": {"document_sha256": {"$ref": "#/$defs/digest"}, "payload_base64": {"type": "string", "minLength": 4, "maxLength": 11184812, "pattern": "^[A-Za-z0-9+/]*={0,2}$"}}}
+  }
+}

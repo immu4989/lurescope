@@ -2,6 +2,67 @@
 
 ## Unreleased
 
+- Added an independent LureMandate verifier that imports no LureBench code,
+  reproduces exact approval, separation-of-duty, replay, freshness, workload,
+  rolling-budget, and observed-effect semantics; preserves all source bytes in
+  a private self-contained report; and exposes the evidence in the no-upload
+  browser explorer with strict fail/inconclusive boundaries.
+- Added externally pinned P-256 DSSE authentication for canonical LureMandate
+  approvals, with exact evidence-set coverage, distinct keys per approver,
+  embedded-key offline re-authentication, public keys and 18 signed conformance
+  envelopes, CLI workflows, JSON Schema, browser summaries, and fail-closed
+  tamper, key-alias, missing-evidence, and semantic-failure tests.
+- Added an independent body-free OpenTelemetry-to-LureMandate verifier that
+  reconstructs all 16 transactions from 67 correlated lifecycle events,
+  rechecks trace and timestamp binding without importing LureBench, validates
+  the public schemas/vector, rejects content-bearing or incomplete logs, and
+  exposes bounded event coverage in the no-upload Evidence Explorer.
+- Added a five-source LureMandate deployment gate that independently rechecks
+  semantic, P-256-authenticated, and body-free telemetry evidence against a
+  preregistered external approver-key policy and a receiver-signed canonical
+  telemetry export; requires byte-exact source,
+  plan/run/evaluation, engine-build, receiver-instance, and freshness bindings;
+  and includes schemas, a passing public vector, CLI and browser workflows, and
+  fail-closed substitution, alias, late-policy, tamper, and identity tests.
+- Added P-256 DSSE authentication for the canonical body-free LureMandate
+  OpenTelemetry export, with an externally pinned receiver key, a portable
+  self-contained re-authentication report, a public signed vector, JSON Schema,
+  CLI and browser support, and payload, signature, key-substitution, overwrite,
+  and private-key-exclusion tests.
+- Added standards bridges from the independently reverified five-source
+  LureMandate gate to observation-only OSCAL 1.2.2 Assessment Results and
+  location-free SARIF 2.1.0. The exports contain fixed typed statuses and
+  digests rather than transaction content, preserve failure findings without
+  conflating gate status with tool execution, refuse unchecked or overwritten
+  output, ship public vectors, and are validated offline against vendored
+  official NIST and OASIS schemas.
+- Added an independent LureMandate black-box conformance verifier that imports
+  no LureBench code, reparses exact answer-free challenge, gateway submission,
+  and producer-score bytes, rebuilds the ordered session and its replay and
+  rolling-budget state, re-derives every decision, reason, invalid allow,
+  collateral denial, and guard-coverage count, checks a separate 25-case profile
+  that reaches all 21 v1 outcomes without changing the signed core, and emits a
+  private portable offline-recheckable report with a strict schema and public
+  vector.
+- Added externally pinned ECDSA P-256 DSSE authentication for canonical
+  LureMandate black-box gateway submissions. The self-contained report embeds
+  and independently rechecks the complete conformance verification, exact
+  signed answer set, and public key; ships a public-key-only vector, schema,
+  CLI and browser support; and fails closed on payload, signature, key-pin,
+  digest, timestamp, summary, overwrite, and private-key-permission errors.
+- Added an independent LureMandate pairwise-input verifier that imports no
+  LureBench code, rederives 15 factors from the actual answer-free challenge,
+  recomputes all 420 binary combinations across 105 factor pairs, conjuncts
+  coverage with exact gateway-answer correctness, preserves producer bytes in
+  a portable private report, and ships schemas, CLI/browser support, a public
+  16-case corpus, and fail-closed cross-implementation tests.
+- Added independent verification for LureMandate's 40-case counterfactual
+  guard-pair profile. It imports no LureBench code, reconstructs all 20
+  semantic-dimension vectors and adjacent control/mutant outcomes, distinguishes
+  18 single-dimension from two dependency-coupled pairs, preserves exact source
+  bytes, and ships schemas, CLI/browser support, a public report, and tamper
+  tests without presenting contract sensitivity as formal MC/DC.
+
 ### Added
 - Added independent LureChannel verification for metadata-only cross-run
   isolation evidence. LureScope imports no LureBench code while strictly

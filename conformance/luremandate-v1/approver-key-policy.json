@@ -1,0 +1,29 @@
+{
+  "schema": "https://github.com/immu4989/lurescope/spec/luremandate-approver-key-policy/v1",
+  "schema_version": 1,
+  "policy_id": "luremandate-conformance-key-policy",
+  "created_at": "2026-09-05T14:58:00Z",
+  "campaign_id": "luremandate-conformance-v1",
+  "environment": {
+    "environment_id": "federal-research-sandbox",
+    "tenant_id": "agency-tenant"
+  },
+  "approver_keys": [
+    {
+      "approver_id": "approver-mission",
+      "public_key_sha256": "b3ee19eac28eba5540b6f97d86bb6b3543ce15c0c7ba7c5a79a7db09dce15db2"
+    },
+    {
+      "approver_id": "approver-operator",
+      "public_key_sha256": "adec00d378fb0727084a2483babd14f0b671329a11ba6c1a0f7eb6fc26711b51"
+    },
+    {
+      "approver_id": "approver-security",
+      "public_key_sha256": "23f1b9c9b5faa3c24a21688c43ecbccc6932fa02695b0436e7bde8123e6abb7f"
+    },
+    {
+      "approver_id": "requester-a",
+      "public_key_sha256": "ca1f35865ff1d64dcd0a45bd82cd0b9eaf229af86d9edf0a2a38ebb0a490c6c6"
+    }
+  ]
+}

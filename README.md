@@ -26,6 +26,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 ![LureAttest](https://img.shields.io/badge/LureAttest-authenticated_DSSE_·_SLSA-7b61ff)
 ![LureBOM Twin](https://img.shields.io/badge/LureBOM_Twin-source--byte_semantic_parity-7b61ff)
 ![LureChannel](https://img.shields.io/badge/LureChannel-independent_noninterference_evidence-7b61ff)
+![LureMandate](https://img.shields.io/badge/LureMandate-independent_transaction_authority-7b61ff)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631787.svg)](https://doi.org/10.5281/zenodo.21631787)
 
@@ -53,6 +54,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Authenticate SLSA provenance →](docs/LUREATTEST_VERIFICATION.md)** ·
 **[Reconcile CycloneDX and SPDX twins →](docs/LUREBOM_VERIFICATION.md)** ·
 **[Verify cross-run isolation canaries →](docs/LURECHANNEL_VERIFICATION.md)** ·
+**[Verify transaction-specific authority →](docs/LUREMANDATE_VERIFICATION.md)** ·
 **[Build a witnessed agent-assurance portfolio →](docs/AGENT_ASSURANCE_PORTFOLIO.md)** ·
 **[View web UI source →](lurescope/static/index.html)**
 
@@ -186,6 +188,51 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > remains `inconclusive`. It imports no LureBench code and does not claim sensor
 > truth, unknown-path discovery, universal noninterference, containment, safety,
 > or authorization.
+
+> **New — independently verify transaction-specific human authority.**
+> [LureMandate verification](docs/LUREMANDATE_VERIFICATION.md) reparses exact
+> plan, run, and producer-evaluation bytes and independently recomputes intent
+> digests, agent/workload/run binding, approval freshness, distinct authorized
+> roles, self-approval denial, one-time ID/nonce consumption, per-action limits,
+> rolling cumulative budgets, and observed authority bypasses. A valid producer
+> failure remains `fail`, and an unknown effect remains `inconclusive`. The
+> private browser explorer displays the result locally. An optional P-256 DSSE
+> workflow authenticates every canonical approval payload against externally
+> pinned, distinct approver keys and emits a self-contained offline-verifiable
+> report. It does not prove the key-to-person mapping, human comprehension,
+> omitted-action discovery, legal authority, complete mediation, or compliance.
+> A separately implemented body-free OpenTelemetry verifier also reconstructs
+> the exact run from correlated intent, approval, decision, and outcome events,
+> while an externally pinned P-256 receiver key authenticates the canonical
+> export carried by a portable self-verifying report.
+> A separate black-box conformance verifier accepts an answer-free ordered
+> challenge and complete gateway submission, then independently re-derives all
+> decisions, reasons, replay/budget state, invalid allows, collateral denials,
+> and exercised guard coverage without importing LureBench. The separate
+> 25-case profile reaches all 21 v1 decision outcomes while preserving the
+> signed 16-case core evidence chain. An additional externally pinned P-256
+> DSSE layer authenticates the exact canonical gateway answer set and packages
+> the key, envelope, and independent score verification into one portable
+> offline-recheckable report—without claiming runtime gateway identity, key
+> custody, complete mediation, compliance, or authorization.
+> A complementary independent pairwise verifier derives 15 input factors from
+> a 16-case orthogonal-array challenge and confirms all 420 binary combinations
+> across 105 factor pairs alongside the exact gateway score. This is bounded
+> strength-2 input coverage—not higher-order, production-domain, proprietary
+> implementation-structure, or complete-mediation coverage.
+> An independent 40-case counterfactual verifier also reconstructs a valid
+> control and denial mutant for every guard and checks the exact semantic delta:
+> 18 single-dimension pairs and two explicitly dependency-coupled pairs. This
+> is contract sensitivity evidence—not MC/DC, proprietary source-code
+> causality, omitted-action discovery, or runtime mediation proof.
+> A fail-closed deployment gate then binds the semantic report, authenticated
+> approvals, telemetry projection, and preregistered external approver-key
+> policy to one exact run while pinning the engine build, receiver instance,
+> and minimum run time so valid evidence cannot be mixed or replayed across
+> deployments. Gated, transaction-content-free OSCAL 1.2.2 observations and
+> location-free SARIF 2.1.0 findings let assessment and engineering systems
+> consume the same independently reverified evidence without turning a pass
+> into a compliance, safety, or authorization claim.
 
 > **New — independently verify prevention and safe-stop evidence.**
 > [LurePermit/LureRange evidence](docs/LUREPERMIT_EVIDENCE.md) re-derives every

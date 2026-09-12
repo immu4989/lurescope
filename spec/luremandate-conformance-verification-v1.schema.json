@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-conformance-verification/v1",
+  "title": "Independent LureMandate conformance verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "verification_id",
+    "verified_at",
+    "engine",
+    "documents",
+    "producer_score",
+    "checks",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-conformance-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-luremandate-conformance-independent"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 96}
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["challenge", "submission", "score"],
+      "properties": {
+        "challenge": {"$ref": "#/$defs/document"},
+        "submission": {"$ref": "#/$defs/document"},
+        "score": {"$ref": "#/$defs/document"}
+      }
+    },
+    "producer_score": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1"},
+    "checks": {
+      "const": [
+        "strict_challenge_submission_and_score_json_reparsed",
+        "answer_free_challenge_shape_rechecked",
+        "canonical_challenge_and_submission_bindings_recomputed",
+        "complete_ordered_submission_coverage_rechecked",
+        "single_session_replay_and_budget_state_recomputed",
+        "every_expected_decision_and_reason_independently_derived",
+        "invalid_allow_and_collateral_denial_counts_recomputed",
+        "producer_conformance_score_reproduced"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "case_count",
+        "exact_match_count",
+        "decision_match_count",
+        "reason_match_count",
+        "invalid_allow_count",
+        "collateral_denial_count",
+        "covered_reason_count",
+        "reason_universe_count",
+        "reason_coverage_complete",
+        "source_documents_reparsed",
+        "producer_score_reproduced",
+        "answer_free_challenge_rechecked"
+      ],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "exact_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "decision_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "reason_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "invalid_allow_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "collateral_denial_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "covered_reason_count": {"type": "integer", "minimum": 1, "maximum": 21},
+        "reason_universe_count": {"const": 21},
+        "reason_coverage_complete": {"type": "boolean"},
+        "source_documents_reparsed": {"const": true},
+        "producer_score_reproduced": {"const": true},
+        "answer_free_challenge_rechecked": {"const": true}
+      }
+    },
+    "limitations": {
+      "const": [
+        "independent_recomputation_does_not_authenticate_the_submitting_engine",
+        "answer_omission_does_not_prevent_a_knowledgeable_implementer_from_inferring_answers",
+        "coverage_is_limited_to_submitted_ordered_cases_and_reported_reason_codes",
+        "verification_does_not_establish_omitted_action_discovery_or_complete_mediation",
+        "passing_is_not_compliance_certification_safety_or_deployment_authorization"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 192, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4}
+      }
+    }
+  }
+}

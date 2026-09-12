@@ -1,0 +1,92 @@
+name: Verify LureMandate deployment gate
+description: Recompute a LureMandate gate from exact semantic, signed-approval, telemetry, and key-policy sources.
+author: Imran Ahamed
+
+inputs:
+  gate:
+    description: Path to the canonical LureMandate deployment-gate JSON.
+    required: true
+  semantic-verification:
+    description: Path to the exact independent LureMandate semantic verification JSON.
+    required: true
+  authenticated-verification:
+    description: Path to the exact P-256-authenticated LureMandate verification JSON.
+    required: true
+  otel-projection:
+    description: Path to the exact body-free OpenTelemetry projection JSON.
+    required: true
+  authenticated-otel-projection:
+    description: Path to the exact receiver-signed OpenTelemetry authentication report.
+    required: true
+  approver-key-policy:
+    description: Path to the separately governed preregistered approver-key policy JSON.
+    required: true
+  minimum-run-started-at:
+    description: Earliest LureMandate run start accepted by external release policy.
+    required: true
+  expected-engine-id:
+    description: Engine identity authorized by external deployment policy.
+    required: true
+  expected-engine-version:
+    description: Engine version authorized by external deployment policy.
+    required: true
+  expected-engine-artifact-sha256:
+    description: Pinned SHA-256 digest of the engine artifact authorized for deployment.
+    required: true
+  expected-receiver-instance-id:
+    description: Telemetry receiver instance authorized by external deployment policy.
+    required: true
+  expected-receiver-key-id:
+    description: Pinned P-256 receiver public-key fingerprint authorized by external policy.
+    required: true
+  python-version:
+    description: Python runtime used for independent verification.
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install the verifier from this pinned action revision
+      shell: bash
+      env:
+        LURESCOPE_ACTION_ROOT: ${{ github.action_path }}/../../..
+      run: python -m pip install --disable-pip-version-check -- "$LURESCOPE_ACTION_ROOT"
+    - name: Recompute the deployment gate
+      shell: bash
+      env:
+        LURESCOPE_MANDATE_GATE: ${{ inputs.gate }}
+        LURESCOPE_MANDATE_SEMANTIC: ${{ inputs.semantic-verification }}
+        LURESCOPE_MANDATE_AUTHENTICATED: ${{ inputs.authenticated-verification }}
+        LURESCOPE_MANDATE_OTEL: ${{ inputs.otel-projection }}
+        LURESCOPE_MANDATE_AUTHENTICATED_OTEL: ${{ inputs.authenticated-otel-projection }}
+        LURESCOPE_MANDATE_KEY_POLICY: ${{ inputs.approver-key-policy }}
+        LURESCOPE_MANDATE_MINIMUM_RUN: ${{ inputs.minimum-run-started-at }}
+        LURESCOPE_MANDATE_ENGINE_ID: ${{ inputs.expected-engine-id }}
+        LURESCOPE_MANDATE_ENGINE_VERSION: ${{ inputs.expected-engine-version }}
+        LURESCOPE_MANDATE_ENGINE_SHA256: ${{ inputs.expected-engine-artifact-sha256 }}
+        LURESCOPE_MANDATE_RECEIVER_INSTANCE: ${{ inputs.expected-receiver-instance-id }}
+        LURESCOPE_MANDATE_RECEIVER_KEY_ID: ${{ inputs.expected-receiver-key-id }}
+      run: >-
+        lurescope mandate verify-gate
+        "$LURESCOPE_MANDATE_GATE"
+        "$LURESCOPE_MANDATE_SEMANTIC"
+        "$LURESCOPE_MANDATE_AUTHENTICATED"
+        "$LURESCOPE_MANDATE_OTEL"
+        "$LURESCOPE_MANDATE_AUTHENTICATED_OTEL"
+        "$LURESCOPE_MANDATE_KEY_POLICY"
+        --minimum-run-started-at "$LURESCOPE_MANDATE_MINIMUM_RUN"
+        --expected-engine-id "$LURESCOPE_MANDATE_ENGINE_ID"
+        --expected-engine-version "$LURESCOPE_MANDATE_ENGINE_VERSION"
+        --expected-engine-artifact-sha256 "$LURESCOPE_MANDATE_ENGINE_SHA256"
+        --expected-receiver-instance-id "$LURESCOPE_MANDATE_RECEIVER_INSTANCE"
+        --expected-receiver-key-id "$LURESCOPE_MANDATE_RECEIVER_KEY_ID"
+        --json
+
+branding:
+  icon: shield
+  color: purple

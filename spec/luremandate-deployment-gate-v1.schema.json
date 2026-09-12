@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-deployment-gate/v1",
+  "title": "LureMandate deployment gate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "gate_id",
+    "created_at",
+    "producer",
+    "campaign",
+    "policy",
+    "contract",
+    "sources",
+    "checks",
+    "overall_status",
+    "limitations",
+    "interpretation_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-deployment-gate/v1"},
+    "schema_version": {"const": 1},
+    "gate_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope"},
+        "version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_id", "environment", "run_id"],
+      "properties": {
+        "campaign_id": {"$ref": "#/$defs/id"},
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["environment_id", "tenant_id"],
+          "properties": {
+            "environment_id": {"$ref": "#/$defs/id"},
+            "tenant_id": {"$ref": "#/$defs/id"}
+          }
+        },
+        "run_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver_key_policy_id",
+        "approver_key_policy_sha256",
+        "minimum_run_started_at",
+        "expected_engine_id",
+        "expected_engine_version",
+        "expected_engine_artifact_sha256",
+        "expected_receiver_instance_id",
+        "expected_receiver_key_id"
+      ],
+      "properties": {
+        "approver_key_policy_id": {"$ref": "#/$defs/id"},
+        "approver_key_policy_sha256": {"$ref": "#/$defs/digest"},
+        "minimum_run_started_at": {"type": "string", "format": "date-time"},
+        "expected_engine_id": {"$ref": "#/$defs/id"},
+        "expected_engine_version": {"$ref": "#/$defs/id"},
+        "expected_engine_artifact_sha256": {"$ref": "#/$defs/digest"},
+        "expected_receiver_instance_id": {"$ref": "#/$defs/id"},
+        "expected_receiver_key_id": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_sha256",
+        "run_sha256",
+        "evaluation_sha256",
+        "plan_document_sha256",
+        "run_document_sha256",
+        "evaluation_document_sha256",
+        "engine",
+        "receiver"
+      ],
+      "properties": {
+        "plan_sha256": {"$ref": "#/$defs/digest"},
+        "run_sha256": {"$ref": "#/$defs/digest"},
+        "evaluation_sha256": {"$ref": "#/$defs/digest"},
+        "plan_document_sha256": {"$ref": "#/$defs/digest"},
+        "run_document_sha256": {"$ref": "#/$defs/digest"},
+        "evaluation_document_sha256": {"$ref": "#/$defs/digest"},
+        "engine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["engine_id", "engine_version", "engine_artifact_sha256"],
+          "properties": {
+            "engine_id": {"$ref": "#/$defs/id"},
+            "engine_version": {"$ref": "#/$defs/id"},
+            "engine_artifact_sha256": {"$ref": "#/$defs/digest"}
+          }
+        },
+        "receiver": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "instance_id", "version", "artifact_sha256"],
+          "properties": {
+            "name": {"$ref": "#/$defs/id"},
+            "instance_id": {"$ref": "#/$defs/id"},
+            "version": {"$ref": "#/$defs/id"},
+            "artifact_sha256": {"$ref": "#/$defs/digest"}
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_verification",
+        "authenticated_verification",
+        "otel_projection",
+        "authenticated_otel_projection"
+      ],
+      "properties": {
+        "semantic_verification": {"$ref": "#/$defs/verification_source"},
+        "authenticated_verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "verification_id",
+            "verified_at",
+            "verdict",
+            "authenticated_approval_count",
+            "approver_key_count"
+          ],
+          "properties": {
+            "sha256": {"$ref": "#/$defs/digest"},
+            "verification_id": {"$ref": "#/$defs/id"},
+            "verified_at": {"type": "string", "format": "date-time"},
+            "verdict": {"enum": ["pass", "fail"]},
+            "authenticated_approval_count": {"type": "integer", "minimum": 1, "maximum": 65536},
+            "approver_key_count": {"type": "integer", "minimum": 1, "maximum": 65536}
+          }
+        },
+        "otel_projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256", "generated_at", "source_export_sha256", "record_count"],
+          "properties": {
+            "sha256": {"$ref": "#/$defs/digest"},
+            "generated_at": {"type": "string", "format": "date-time"},
+            "source_export_sha256": {"$ref": "#/$defs/digest"},
+            "record_count": {"type": "integer", "minimum": 1, "maximum": 77824}
+          }
+        },
+        "authenticated_otel_projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "verification_id",
+            "verified_at",
+            "receiver_public_key_sha256"
+          ],
+          "properties": {
+            "sha256": {"$ref": "#/$defs/digest"},
+            "verification_id": {"$ref": "#/$defs/id"},
+            "verified_at": {"type": "string", "format": "date-time"},
+            "receiver_public_key_sha256": {"$ref": "#/$defs/digest"}
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status"],
+        "properties": {
+          "check_id": {"enum": [
+            "semantic_verification_recomputed",
+            "authenticated_approval_evidence_recomputed",
+            "body_free_telemetry_projection_recomputed",
+            "telemetry_source_signature_authenticated",
+            "exact_plan_run_and_evaluation_binding",
+            "preregistered_approver_key_policy",
+            "externally_pinned_approver_keys",
+            "deployment_engine_identity_matches_policy",
+            "run_freshness_matches_policy",
+            "transaction_authority_acceptance_met"
+          ]},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "overall_status": {"enum": ["pass", "fail"]},
+    "limitations": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256}
+    },
+    "interpretation_boundary": {"type": "string", "minLength": 1, "maxLength": 2048}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "verification_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "verification_id", "verified_at", "verdict"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/digest"},
+        "verification_id": {"$ref": "#/$defs/id"},
+        "verified_at": {"type": "string", "format": "date-time"},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1",
+  "title": "Authenticated LureMandate OpenTelemetry projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "verification_id",
+    "verified_at",
+    "engine",
+    "documents",
+    "receiver_public_key",
+    "export_envelope",
+    "projection",
+    "checks",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-luremandate-otel-dsse"},
+        "version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projection"],
+      "properties": {
+        "projection": {"$ref": "#/$defs/embedded_document"}
+      }
+    },
+    "receiver_public_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key_sha256", "pem_sha256", "pem_base64"],
+      "properties": {
+        "public_key_sha256": {"$ref": "#/$defs/digest"},
+        "pem_sha256": {"$ref": "#/$defs/digest"},
+        "pem_base64": {"type": "string", "minLength": 4, "maxLength": 87384, "pattern": "^[A-Za-z0-9+/]*={0,2}$"}
+      }
+    },
+    "export_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["envelope_sha256", "envelope_base64", "payload_sha256", "key_id"],
+      "properties": {
+        "envelope_sha256": {"$ref": "#/$defs/digest"},
+        "envelope_base64": {"type": "string", "minLength": 4, "maxLength": 16777216, "pattern": "^[A-Za-z0-9+/]*={0,2}$"},
+        "payload_sha256": {"$ref": "#/$defs/digest"},
+        "key_id": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "projection": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1"},
+    "checks": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        {"const": "projection_independently_recomputed"},
+        {"const": "canonical_export_payload_recomputed"},
+        {"const": "dsse_payload_type_and_shape_rechecked"},
+        {"const": "externally_supplied_receiver_key_pinned"},
+        {"const": "dsse_key_id_matches_public_key_fingerprint"},
+        {"const": "ecdsa_p256_export_signature_authenticated"},
+        {"const": "receiver_identity_bound_to_signed_export"}
+      ],
+      "items": false
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "telemetry_source_authenticated",
+        "record_count",
+        "transaction_count",
+        "receiver",
+        "receiver_public_key_sha256"
+      ],
+      "properties": {
+        "verdict": {"const": "pass"},
+        "telemetry_source_authenticated": {"const": true},
+        "record_count": {"type": "integer", "minimum": 1, "maximum": 77824},
+        "transaction_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "receiver": {"$ref": "#/$defs/receiver"},
+        "receiver_public_key_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "embedded_document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4, "maxLength": 11184812, "pattern": "^[A-Za-z0-9+/]*={0,2}$"}
+      }
+    },
+    "receiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "instance_id", "version", "artifact_sha256"],
+      "properties": {
+        "name": {"$ref": "#/$defs/id"},
+        "instance_id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/id"},
+        "artifact_sha256": {
+          "oneOf": [
+            {"$ref": "#/$defs/digest"},
+            {"type": "null"}
+          ]
+        }
+      }
+    }
+  }
+}

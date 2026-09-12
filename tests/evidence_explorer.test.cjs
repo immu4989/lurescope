@@ -1025,6 +1025,346 @@ test("LureChannel exposes three-state isolation and sensor evidence", () => {
   assert.match(summary.warnings.join(" "), /does not decode and reparse/i);
 });
 
+test("LureMandate exposes exact authority decisions and effect evidence", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-verification/v1",
+    summary: {
+      verdict: "pass",
+      transaction_count: 16,
+      passed_transaction_count: 16,
+      failed_transaction_count: 0,
+      inconclusive_transaction_count: 0,
+      expected_allow_count: 4,
+      correct_allow_count: 4,
+      expected_block_count: 12,
+      correct_block_count: 12,
+      invalid_allow_count: 0,
+      authority_bypass_count: 0,
+      collateral_denial_count: 0,
+      incorrect_reason_count: 0,
+      unknown_outcome_count: 0,
+      finding_count: 0,
+      source_documents_reparsed: true,
+      producer_evaluation_reproduced: true,
+      transaction_authority_verified: true,
+    },
+    documents: {
+      plan: {document_sha256: sha("a")},
+      run: {document_sha256: sha("b")},
+      evaluation: {document_sha256: sha("c")},
+    },
+    checks: Array.from({length: 11}, (_, index) => `check-${index}`),
+    limitations: ["effect_observations_and_sensor_identity_remain_operator_claims"],
+  });
+  assert.equal(summary.kind, "LureMandate verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Transactions").value, "16 / 16");
+  assert.equal(summary.metrics.find(item => item.label === "Correctly blocked").value, "12 / 12");
+  assert.equal(summary.metrics.find(item => item.label === "Authority bypasses").value, "0");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "11 / 11");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.privacy.join(" "), /transaction payloads/i);
+  assert.match(summary.warnings.join(" "), /lurescope mandate check/i);
+  assert.match(summary.warnings.join(" "), /authenticate approvers/i);
+});
+
+test("LureMandate conformance exposes black-box score and bounded coverage", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-conformance-verification/v1",
+    summary: {
+      verdict: "pass",
+      case_count: 25,
+      exact_match_count: 25,
+      decision_match_count: 25,
+      reason_match_count: 25,
+      invalid_allow_count: 0,
+      collateral_denial_count: 0,
+      covered_reason_count: 21,
+      reason_universe_count: 21,
+      reason_coverage_complete: true,
+      source_documents_reparsed: true,
+      producer_score_reproduced: true,
+      answer_free_challenge_rechecked: true,
+    },
+    documents: {
+      challenge: {document_sha256: sha("a")},
+      submission: {document_sha256: sha("b")},
+      score: {document_sha256: sha("c")},
+    },
+    checks: Array.from({length: 8}, (_, index) => `check-${index}`),
+    limitations: ["coverage_is_limited_to_submitted_ordered_cases_and_reported_reason_codes"],
+  });
+  assert.equal(summary.kind, "LureMandate conformance verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Exact answers").value, "25 / 25");
+  assert.equal(summary.metrics.find(item => item.label === "Guard outcomes covered").value, "21 / 21");
+  assert.equal(summary.metrics.find(item => item.label === "Guard coverage complete").value, "Yes");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "8 / 8");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.privacy.join(" "), /excludes transaction decisions/i);
+  assert.match(summary.warnings.join(" "), /check-conformance/i);
+  assert.match(summary.warnings.join(" "), /prevent answer inference/i);
+});
+
+test("authenticated LureMandate conformance exposes gateway provenance without overclaiming", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-conformance-verification/v1",
+    summary: {
+      verdict: "pass",
+      case_count: 25,
+      exact_match_count: 25,
+      decision_match_count: 25,
+      reason_match_count: 25,
+      invalid_allow_count: 0,
+      collateral_denial_count: 0,
+      covered_reason_count: 21,
+      reason_universe_count: 21,
+      reason_coverage_complete: true,
+      gateway_submission_authenticated: true,
+    },
+    documents: {
+      conformance_verification: {document_sha256: sha("a")},
+    },
+    gateway_public_key: {
+      public_key_sha256: sha("b"),
+      pem_sha256: sha("c"),
+    },
+    submission_envelope: {
+      payload_sha256: sha("d"),
+      envelope_sha256: sha("e"),
+    },
+    checks: Array.from({length: 6}, (_, index) => `check-${index}`),
+    limitations: ["signature_authenticates_the_canonical_submission_not_gateway_runtime_or_complete_mediation"],
+  });
+  assert.equal(summary.kind, "Authenticated LureMandate conformance");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Exact answers").value, "25 / 25");
+  assert.equal(summary.metrics.find(item => item.label === "Guard outcomes covered").value, "21 / 21");
+  assert.equal(summary.metrics.find(item => item.label === "Gateway submission authenticated").value, "Yes");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "6 / 6");
+  assert.equal(summary.bindings.length, 5);
+  assert.match(summary.privacy.join(" "), /private key material remain excluded/i);
+  assert.match(summary.warnings.join(" "), /check-conformance-auth/i);
+  assert.match(summary.warnings.join(" "), /does not.*runtime identity|not.*runtime identity/i);
+});
+
+test("LureMandate pairwise verification exposes interaction coverage without overclaiming", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-pairwise-verification/v1",
+    document: {document_sha256: sha("a")},
+    summary: {
+      verdict: "pass",
+      score_verdict: "pass",
+      case_count: 16,
+      factor_count: 15,
+      factor_pair_count: 105,
+      required_interaction_count: 420,
+      covered_interaction_count: 420,
+      interaction_coverage: 1,
+      pairwise_coverage_complete: true,
+      source_document_reparsed: true,
+      producer_report_reproduced: true,
+    },
+    checks: Array.from({length: 6}, (_, index) => `check-${index}`),
+    limitations: ["binary_strength_two_coverage_does_not_establish_higher_strength_or_production_domain_coverage"],
+  });
+  assert.equal(summary.kind, "LureMandate pairwise verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Interactions").value, "420 / 420");
+  assert.equal(summary.metrics.find(item => item.label === "Interaction coverage").value, "100.0%");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "6 / 6");
+  assert.equal(summary.bindings.length, 1);
+  assert.match(summary.warnings.join(" "), /check-pairwise/i);
+  assert.match(summary.warnings.join(" "), /higher-strength/i);
+});
+
+test("LureMandate counterfactual verification exposes guard sensitivity without claiming MC/DC", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-counterfactual-verification/v1",
+    document: {document_sha256: sha("a")},
+    summary: {
+      verdict: "pass",
+      score_verdict: "pass",
+      case_count: 40,
+      guard_pair_count: 20,
+      passed_guard_pair_count: 20,
+      single_dimension_pair_count: 18,
+      dependency_coupled_pair_count: 2,
+      guard_reason_coverage_complete: true,
+      source_document_reparsed: true,
+      producer_report_reproduced: true,
+    },
+    checks: Array.from({length: 6}, (_, index) => `check-${index}`),
+    limitations: ["semantic_dimensions_are_contract_abstractions_not_source_code_conditions_or_formal_mcdc"],
+  });
+  assert.equal(summary.kind, "LureMandate counterfactual verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Guard pairs").value, "20 / 20");
+  assert.equal(summary.metrics.find(item => item.label === "Single-dimension pairs").value, "18");
+  assert.equal(summary.metrics.find(item => item.label === "Dependency-coupled pairs").value, "2");
+  assert.equal(summary.bindings.length, 1);
+  assert.match(summary.warnings.join(" "), /check-counterfactual/i);
+  assert.match(summary.warnings.join(" "), /formal MC\/DC/i);
+});
+
+test("authenticated LureMandate exposes signature coverage and pinned keys", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-verification/v1",
+    summary: {
+      verdict: "pass",
+      transaction_count: 16,
+      passed_transaction_count: 16,
+      expected_block_count: 12,
+      correct_block_count: 12,
+      invalid_allow_count: 0,
+      authority_bypass_count: 0,
+      unknown_outcome_count: 0,
+      authenticated_approval_count: 18,
+      unique_approval_count: 18,
+      approver_key_count: 4,
+      approval_authentication_complete: true,
+      producer_evaluation_reproduced: true,
+    },
+    documents: {
+      plan: {document_sha256: sha("a")},
+      run: {document_sha256: sha("b")},
+      evaluation: {document_sha256: sha("c")},
+    },
+    public_keys: [
+      {approver_id: "mission-owner", public_key_sha256: sha("d")},
+      {approver_id: "security-reviewer", public_key_sha256: sha("e")},
+    ],
+    checks: Array.from({length: 10}, (_, index) => `check-${index}`),
+    limitations: ["external_key_to_person_mapping_is_a_reviewer_input_not_directory_or_identity_proofing"],
+  });
+  assert.equal(summary.kind, "Authenticated LureMandate verification");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Authenticated approvals").value, "18 / 18");
+  assert.equal(summary.metrics.find(item => item.label === "Distinct approver keys").value, "4");
+  assert.equal(summary.metrics.find(item => item.label === "Verifier checks").value, "10 / 10");
+  assert.equal(summary.bindings.length, 5);
+  assert.match(summary.privacy.join(" "), /embeds all approval envelopes/i);
+  assert.match(summary.warnings.join(" "), /lurescope mandate check-auth/i);
+  assert.match(summary.warnings.join(" "), /does not re-authenticate/i);
+});
+
+test("LureMandate OpenTelemetry projection exposes body-free event coverage", () => {
+  const event = name => ({EventName: name});
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1",
+    inputs: {
+      mandate_plan_sha256: sha("a"),
+      otel_log_export_sha256: sha("b"),
+      otel_log_export: {
+        records: [
+          event("org.lurebench.luremandate.intent_proposed"),
+          event("org.lurebench.luremandate.approval_recorded"),
+          event("org.lurebench.luremandate.decision_recorded"),
+          event("org.lurebench.luremandate.outcome_recorded"),
+        ],
+      },
+    },
+    run: {transactions: [{}]},
+    run_sha256: sha("c"),
+    privacy: {body_accepted: false},
+    clock_boundary: {observed_timestamp_used_for_benchmark_timing: false},
+    limitations: ["projection_does_not_prove_telemetry_completeness"],
+  });
+  assert.equal(summary.kind, "LureMandate OpenTelemetry projection");
+  assert.equal(summary.status, "informational");
+  assert.equal(summary.metrics.find(item => item.label === "Transactions").value, "1");
+  assert.equal(summary.metrics.find(item => item.label === "Log records").value, "4");
+  assert.equal(summary.metrics.find(item => item.label === "Body accepted").value, "No");
+  assert.equal(summary.bindings.length, 3);
+  assert.match(summary.privacy.join(" "), /InstrumentationScope/i);
+  assert.match(summary.warnings.join(" "), /verify-otel/i);
+});
+
+test("authenticated LureMandate telemetry exposes receiver signature bindings", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1",
+    summary: {
+      verdict: "pass",
+      transaction_count: 16,
+      record_count: 67,
+      telemetry_source_authenticated: true,
+      receiver: {name: "authority-gateway", instance_id: "gateway-1"},
+    },
+    documents: {projection: {document_sha256: sha("a")}},
+    receiver_public_key: {public_key_sha256: sha("b"), pem_sha256: sha("c")},
+    export_envelope: {payload_sha256: sha("d"), envelope_sha256: sha("e")},
+    checks: Array.from({length: 7}, (_, index) => `check-${index}`),
+    limitations: ["signature_does_not_prove_telemetry_completeness"],
+  });
+  assert.equal(summary.kind, "Authenticated LureMandate telemetry");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Log records").value, "67");
+  assert.equal(summary.metrics.find(item => item.label === "Source authenticated").value, "Yes");
+  assert.equal(summary.bindings.length, 5);
+  assert.match(summary.privacy.join(" "), /no private key/i);
+  assert.match(summary.warnings.join(" "), /check-otel-auth/i);
+});
+
+test("LureMandate approver-key policy exposes external trust pins", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-approver-key-policy/v1",
+    campaign_id: "authority-campaign",
+    created_at: "2026-09-05T14:58:00Z",
+    environment: {environment_id: "production", tenant_id: "agency"},
+    approver_keys: [
+      {approver_id: "mission-owner", public_key_sha256: sha("a")},
+      {approver_id: "security-reviewer", public_key_sha256: sha("b")},
+    ],
+  });
+  assert.equal(summary.kind, "LureMandate approver-key policy");
+  assert.equal(summary.status, "informational");
+  assert.equal(summary.metrics.find(item => item.label === "Pinned approvers").value, "2");
+  assert.equal(summary.bindings.length, 2);
+  assert.match(summary.privacy.join(" "), /no private keys/i);
+  assert.match(summary.warnings.join(" "), /verify-gate/i);
+});
+
+test("LureMandate deployment gate exposes exact five-source bindings", () => {
+  const summary = explorer.summarizeArtifact({
+    schema: "https://github.com/immu4989/lurescope/spec/luremandate-deployment-gate/v1",
+    campaign: {
+      campaign_id: "authority-campaign",
+      run_id: "run-1",
+      environment: {environment_id: "production", tenant_id: "agency"},
+    },
+    policy: {
+      minimum_run_started_at: "2026-09-05T15:00:00Z",
+      approver_key_policy_sha256: sha("a"),
+    },
+    contract: {
+      plan_sha256: sha("b"),
+      run_sha256: sha("c"),
+      evaluation_sha256: sha("d"),
+    },
+    sources: {
+      semantic_verification: {sha256: sha("e")},
+      authenticated_verification: {
+        sha256: sha("f"),
+        authenticated_approval_count: 18,
+        approver_key_count: 4,
+      },
+      otel_projection: {sha256: sha("1"), record_count: 67},
+      authenticated_otel_projection: {sha256: sha("2")},
+    },
+    checks: Array.from({length: 10}, (_, index) => ({check_id: `check-${index}`, status: "pass"})),
+    overall_status: "pass",
+    limitations: ["caller_supplied_policy_requires_external_authorization"],
+  });
+  assert.equal(summary.kind, "LureMandate deployment gate");
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.metrics.find(item => item.label === "Authenticated approvals").value, "18");
+  assert.equal(summary.metrics.find(item => item.label === "Telemetry records").value, "67");
+  assert.equal(summary.metrics.find(item => item.label === "Gate checks").value, "10 / 10");
+  assert.equal(summary.bindings.length, 8);
+  assert.match(summary.warnings.join(" "), /exact five source artifacts/i);
+  assert.match(summary.warnings.join(" "), /does not recompute/i);
+});
+
 test("LureIdentity deployment gate exposes policy and exact source bindings", () => {
   const summary = explorer.summarizeArtifact({
     schema: "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1",

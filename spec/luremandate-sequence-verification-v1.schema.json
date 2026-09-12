@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-sequence-verification/v1",
+  "title": "Independent LureMandate ordered operation-pair assurance verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verification_id", "verified_at", "engine", "document", "producer_report", "checks", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-sequence-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-luremandate-sequence-independent"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 96}
+      }
+    },
+    "document": {"$ref": "#/$defs/document"},
+    "producer_report": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-sequence-assurance/v1"},
+    "checks": {"const": ["strict_sequence_report_and_embedded_score_reparsed", "canonical_score_binding_recomputed", "twenty_state_priming_cases_reconstructed", "twenty_six_measured_operations_derived_from_challenge_actions", "fixed_cyclic_de_bruijn_order_two_sequence_recomputed", "all_twenty_five_ordered_operation_pairs_reenumerated", "gateway_score_and_sequence_pass_conjunction_recomputed"]},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "score_verdict", "preamble_case_count", "measured_case_count", "passed_measured_case_count", "operation_count", "required_ordered_pair_count", "covered_ordered_pair_count", "ordered_pair_coverage_complete", "source_document_reparsed", "producer_report_reproduced"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "score_verdict": {"enum": ["pass", "fail"]},
+        "preamble_case_count": {"const": 20},
+        "measured_case_count": {"const": 26},
+        "passed_measured_case_count": {"type": "integer", "minimum": 0, "maximum": 26},
+        "operation_count": {"const": 5},
+        "required_ordered_pair_count": {"const": 25},
+        "covered_ordered_pair_count": {"type": "integer", "minimum": 0, "maximum": 25},
+        "ordered_pair_coverage_complete": {"type": "boolean"},
+        "source_document_reparsed": {"const": true},
+        "producer_report_reproduced": {"const": true}
+      }
+    },
+    "limitations": {"const": ["independent_recomputation_does_not_authenticate_the_submitting_gateway", "ordered_strength_two_coverage_does_not_establish_longer_sequences", "isolated_requester_scopes_do_not_test_cross_subject_state_interference", "passing_does_not_establish_unrepresented_operations_complete_mediation_safety_or_compliance", "verification_is_not_certification_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4}
+      }
+    }
+  }
+}

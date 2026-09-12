@@ -39,7 +39,18 @@ page to inspect:
   documents plus their common-denominator semantic reconciliation; and
 - private LureChannel reports that bind exact plans, observation runs, and
   producer evaluations for allowed delivery, denied active flow, and
-  post-termination residue tests.
+  post-termination residue tests; and
+- private LureMandate reports that bind exact authority plans, ordered decision
+  runs, and producer evaluations for dual control, replay, rolling-budget, and
+  observed-effect checks, plus authenticated variants with P-256 DSSE envelope
+  coverage and externally pinned distinct approver-key fingerprints, and
+  body-free OpenTelemetry projections with lifecycle event coverage, plus
+  receiver-signed telemetry reports, preregistered approver-key policies, and
+  five-source deployment gates, plus independent answer-free black-box
+  conformance verifications with exact score and source bindings, plus
+  gateway-signed conformance reports with externally pinned P-256 keys and
+  independent two-way input-interaction and counterfactual guard-pair
+  verifications.
 
 The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
@@ -118,6 +129,19 @@ Use `lurescope identity verify-campaign`, `verify`, `verify-topology`,
 through a separately trusted channel. See the [signed LureIdentity evidence
 workflow](LUREIDENTITY_EVIDENCE.md).
 
+For LureMandate evidence, the browser displays authority outcomes, black-box
+exact-match and exercised-guard counts, signature coverage, body-free event
+counts, external key fingerprints, deployment policy, and exact source
+bindings. It does not rederive decisions, re-authenticate P-256 signatures,
+reconstruct telemetry, compare source bytes, authenticate a submitted engine,
+authorize receiver or approver key policy, or establish key custody, complete
+mediation, legal authority, or deployment authorization. Use
+`lurescope mandate check`, `check-conformance`, `check-conformance-auth`,
+`check-pairwise`, `check-counterfactual`,
+`check-auth`, `verify-otel`, `check-otel-auth`, or `verify-gate` for the
+applicable normative check. See the
+[complete LureMandate workflow](LUREMANDATE_VERIFICATION.md).
+
 For LureArtifact verification, the browser displays active workload,
 deployment, artifact, provenance, AI-BOM, and finding counts plus all six exact
 source digests. It does not independently recompile the identity or artifact
@@ -175,6 +199,32 @@ noninterference or containment. Use `lurescope channel check` for self-contained
 normative recomputation. Reports larger than the explorer's 8 MiB input limit,
 up to the CLI verifier's 32 MiB report limit, must be checked with the CLI. See
 the [LureChannel verification workflow](LURECHANNEL_VERIFICATION.md).
+
+For LureMandate verification, the browser displays correct allows and blocks,
+invalid allows, authority bypasses, collateral denials, unknown outcomes,
+findings, source-byte digests, privacy boundaries, and limitations.
+Authenticated reports additionally show signature coverage and pinned-key
+fingerprints. Telemetry projections show intent, approval, decision, and outcome
+event counts plus exact plan/export/run bindings. Black-box reports show exact
+answers, decision and reason matches, invalid allows, collateral denials, and
+the bounded set of expected guard outcomes exercised. Authenticated black-box
+reports additionally show the exact gateway submission/envelope bindings and
+externally pinned gateway-key fingerprint. Pairwise reports show exact gateway
+score status and 420/420 interaction coverage across 105 pairs. Counterfactual
+reports show 20/20 valid-control/denial-mutant pairs and disclose which are
+single-dimension or dependency-coupled. The browser does not
+decode and reparse embedded sources, authenticate signatures or the claimed
+gateway, derive answers, or reconstruct telemetry. Use `lurescope mandate
+check` for base recomputation,
+`lurescope mandate check-conformance` for answer-free score recomputation,
+`lurescope mandate check-conformance-auth` for signed gateway-submission
+re-authentication,
+`lurescope mandate check-pairwise` for independent two-way coverage
+recomputation,
+`lurescope mandate check-counterfactual` for semantic guard-pair recomputation,
+`lurescope mandate check-auth` for strict offline re-authentication, or
+`lurescope mandate verify-otel` for the telemetry projection; see the
+[LureMandate verification workflow](LUREMANDATE_VERIFICATION.md).
 
 For a deployment gate, the browser shows the declared and policy convergence
 limits, minimum accepted run timestamp, deployment identity, receiver artifact,

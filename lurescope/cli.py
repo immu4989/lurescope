@@ -3313,6 +3313,646 @@ def _channel_evidence(argv: Sequence[str]) -> int:
         return 2
 
 
+def _mandate_evidence(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lurescope mandate",
+        description=(
+            "Independently verify exact intent binding, separation of duties, "
+            "single-use approvals, and rolling authority budgets."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify_parser = commands.add_parser(
+        "verify", help="recompute a producer evaluation from its exact plan and run"
+    )
+    verify_parser.add_argument("plan")
+    verify_parser.add_argument("run")
+    verify_parser.add_argument("producer_evaluation")
+    verify_parser.add_argument("--verified-at")
+    verify_parser.add_argument("--out", "-o", required=True)
+    verify_parser.add_argument("--json", action="store_true")
+
+    verify_conformance_parser = commands.add_parser(
+        "verify-conformance",
+        help="independently rederive an answer-free black-box conformance score",
+    )
+    verify_conformance_parser.add_argument("challenge")
+    verify_conformance_parser.add_argument("submission")
+    verify_conformance_parser.add_argument("score")
+    verify_conformance_parser.add_argument("--verified-at")
+    verify_conformance_parser.add_argument("--out", "-o", required=True)
+    verify_conformance_parser.add_argument("--json", action="store_true")
+
+    check_conformance_parser = commands.add_parser(
+        "check-conformance",
+        help="reparse and recompute a self-contained conformance verification",
+    )
+    check_conformance_parser.add_argument("verification")
+    check_conformance_parser.add_argument("--json", action="store_true")
+
+    sign_conformance_parser = commands.add_parser(
+        "sign-conformance",
+        help="sign one validated canonical gateway submission with ECDSA P-256",
+    )
+    sign_conformance_parser.add_argument("challenge")
+    sign_conformance_parser.add_argument("submission")
+    sign_conformance_parser.add_argument("--private-key", required=True)
+    sign_conformance_parser.add_argument("--out", "-o", required=True)
+
+    authenticate_conformance_parser = commands.add_parser(
+        "authenticate-conformance",
+        help="authenticate a verified gateway submission against an externally pinned key",
+    )
+    authenticate_conformance_parser.add_argument("verification")
+    authenticate_conformance_parser.add_argument("envelope")
+    authenticate_conformance_parser.add_argument("--gateway-public-key", required=True)
+    authenticate_conformance_parser.add_argument("--expected-gateway-key-id", required=True)
+    authenticate_conformance_parser.add_argument("--verified-at")
+    authenticate_conformance_parser.add_argument("--out", "-o", required=True)
+    authenticate_conformance_parser.add_argument("--json", action="store_true")
+
+    check_conformance_auth_parser = commands.add_parser(
+        "check-conformance-auth",
+        help="re-authenticate a self-contained signed conformance verification",
+    )
+    check_conformance_auth_parser.add_argument("verification")
+    check_conformance_auth_parser.add_argument("--json", action="store_true")
+
+    verify_pairwise_parser = commands.add_parser(
+        "verify-pairwise",
+        help="independently recompute LureMandate two-way input-interaction assurance",
+    )
+    verify_pairwise_parser.add_argument("report")
+    verify_pairwise_parser.add_argument("--verified-at")
+    verify_pairwise_parser.add_argument("--out", "-o", required=True)
+    verify_pairwise_parser.add_argument("--json", action="store_true")
+
+    check_pairwise_parser = commands.add_parser(
+        "check-pairwise",
+        help="recompute a self-contained LureMandate pairwise verification",
+    )
+    check_pairwise_parser.add_argument("verification")
+    check_pairwise_parser.add_argument("--json", action="store_true")
+
+    verify_counterfactual_parser = commands.add_parser(
+        "verify-counterfactual",
+        help="independently recompute LureMandate valid-control/guard-mutant pairs",
+    )
+    verify_counterfactual_parser.add_argument("report")
+    verify_counterfactual_parser.add_argument("--verified-at")
+    verify_counterfactual_parser.add_argument("--out", "-o", required=True)
+    verify_counterfactual_parser.add_argument("--json", action="store_true")
+
+    check_counterfactual_parser = commands.add_parser(
+        "check-counterfactual",
+        help="recompute a self-contained LureMandate counterfactual verification",
+    )
+    check_counterfactual_parser.add_argument("verification")
+    check_counterfactual_parser.add_argument("--json", action="store_true")
+
+    check_parser = commands.add_parser(
+        "check", help="reparse and recompute a saved self-contained verification"
+    )
+    check_parser.add_argument("verification")
+    check_parser.add_argument("--json", action="store_true")
+    sign_parser = commands.add_parser(
+        "sign", help="sign one canonical approval statement with an ECDSA P-256 key"
+    )
+    sign_parser.add_argument("statement")
+    sign_parser.add_argument("--private-key", required=True)
+    sign_parser.add_argument("--out", "-o", required=True)
+
+    sign_otel_parser = commands.add_parser(
+        "sign-otel-export",
+        help="sign one validated canonical OpenTelemetry export with an ECDSA P-256 key",
+    )
+    sign_otel_parser.add_argument("plan")
+    sign_otel_parser.add_argument("export")
+    sign_otel_parser.add_argument("--private-key", required=True)
+    sign_otel_parser.add_argument("--out", "-o", required=True)
+
+    authenticate_parser = commands.add_parser(
+        "authenticate",
+        help="authenticate exact approval statements with externally pinned public keys",
+    )
+    authenticate_parser.add_argument("plan")
+    authenticate_parser.add_argument("run")
+    authenticate_parser.add_argument("producer_evaluation")
+    authenticate_parser.add_argument("evidence_directory")
+    authenticate_parser.add_argument(
+        "--approver-key",
+        action="append",
+        required=True,
+        help="exact PERSON_ID=PUBLIC_KEY.pem mapping; repeat once per approver",
+    )
+    authenticate_parser.add_argument("--verified-at")
+    authenticate_parser.add_argument("--out", "-o", required=True)
+    authenticate_parser.add_argument("--json", action="store_true")
+
+    check_auth_parser = commands.add_parser(
+        "check-auth", help="re-authenticate a self-contained approval verification"
+    )
+    check_auth_parser.add_argument("verification")
+    check_auth_parser.add_argument("--json", action="store_true")
+    authenticate_otel_parser = commands.add_parser(
+        "authenticate-otel",
+        help="authenticate the exact canonical telemetry export embedded by a projection",
+    )
+    authenticate_otel_parser.add_argument("projection")
+    authenticate_otel_parser.add_argument("envelope")
+    authenticate_otel_parser.add_argument("--receiver-public-key", required=True)
+    authenticate_otel_parser.add_argument("--expected-receiver-key-id", required=True)
+    authenticate_otel_parser.add_argument("--verified-at")
+    authenticate_otel_parser.add_argument("--out", "-o", required=True)
+    authenticate_otel_parser.add_argument("--json", action="store_true")
+    check_otel_auth_parser = commands.add_parser(
+        "check-otel-auth",
+        help="re-authenticate a self-contained signed telemetry projection",
+    )
+    check_otel_auth_parser.add_argument("verification")
+    check_otel_auth_parser.add_argument("--json", action="store_true")
+    verify_otel_parser = commands.add_parser(
+        "verify-otel",
+        help="independently reconstruct a run from a body-free OpenTelemetry projection",
+    )
+    verify_otel_parser.add_argument("projection")
+    verify_otel_parser.add_argument("--json", action="store_true")
+
+    def add_gate_policy_options(command_parser: argparse.ArgumentParser) -> None:
+        command_parser.add_argument("--minimum-run-started-at", required=True)
+        command_parser.add_argument("--expected-engine-id", required=True)
+        command_parser.add_argument("--expected-engine-version", required=True)
+        command_parser.add_argument("--expected-engine-artifact-sha256", required=True)
+        command_parser.add_argument("--expected-receiver-instance-id", required=True)
+        command_parser.add_argument("--expected-receiver-key-id", required=True)
+
+    gate_parser = commands.add_parser(
+        "gate",
+        help="bind semantic, authenticated, telemetry, and external key-policy evidence",
+    )
+    gate_parser.add_argument("semantic_verification")
+    gate_parser.add_argument("authenticated_verification")
+    gate_parser.add_argument("otel_projection")
+    gate_parser.add_argument("authenticated_otel_projection")
+    gate_parser.add_argument("approver_key_policy")
+    gate_parser.add_argument("--gate-id", required=True)
+    gate_parser.add_argument("--created-at")
+    gate_parser.add_argument("--out", "-o", required=True)
+    gate_parser.add_argument("--json", action="store_true")
+    add_gate_policy_options(gate_parser)
+
+    verify_gate_parser = commands.add_parser(
+        "verify-gate",
+        help="recompute a saved deployment gate from its exact evidence and external policy",
+    )
+    verify_gate_parser.add_argument("gate")
+    verify_gate_parser.add_argument("semantic_verification")
+    verify_gate_parser.add_argument("authenticated_verification")
+    verify_gate_parser.add_argument("otel_projection")
+    verify_gate_parser.add_argument("authenticated_otel_projection")
+    verify_gate_parser.add_argument("approver_key_policy")
+    verify_gate_parser.add_argument("--json", action="store_true")
+    add_gate_policy_options(verify_gate_parser)
+
+    def add_gate_export_sources(command_parser: argparse.ArgumentParser) -> None:
+        command_parser.add_argument("gate")
+        command_parser.add_argument("semantic_verification")
+        command_parser.add_argument("authenticated_verification")
+        command_parser.add_argument("otel_projection")
+        command_parser.add_argument("authenticated_otel_projection")
+        command_parser.add_argument("approver_key_policy")
+        command_parser.add_argument("--out", "-o", required=True)
+        command_parser.add_argument("--json", action="store_true")
+        add_gate_policy_options(command_parser)
+
+    export_oscal_parser = commands.add_parser(
+        "export-oscal",
+        help="reverify the complete gate and export observation-only OSCAL 1.2.2",
+    )
+    add_gate_export_sources(export_oscal_parser)
+    export_oscal_parser.add_argument("--assessment-plan-href", required=True)
+    export_oscal_parser.add_argument("--generated-at")
+
+    export_sarif_parser = commands.add_parser(
+        "export-sarif",
+        help="reverify the complete gate and export location-free SARIF 2.1.0",
+    )
+    add_gate_export_sources(export_sarif_parser)
+    args = parser.parse_args(list(argv))
+    try:
+        if args.command in ("verify-counterfactual", "check-counterfactual"):
+            from .mandate_counterfactual import (
+                create_counterfactual_mandate_verification,
+                load_counterfactual_mandate_verification,
+            )
+
+            if args.command == "verify-counterfactual":
+                result = create_counterfactual_mandate_verification(
+                    Path(args.report),
+                    Path(args.out),
+                    verified_at=args.verified_at,
+                )
+                destination = args.out
+            else:
+                result = load_counterfactual_mandate_verification(Path(args.verification))
+                destination = args.verification
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE COUNTERFACTUAL INDEPENDENTLY VERIFIED: "
+                    f"{summary['verdict'].upper()} — pairs="
+                    f"{summary['passed_guard_pair_count']}/"
+                    f"{summary['guard_pair_count']} — {destination}"
+                )
+                print(
+                    "boundary: contract-level semantic pairs, not formal MC/DC, gateway "
+                    "authentication, source-code causality, mediation, or certification"
+                )
+            return 0 if summary["verdict"] == "pass" else 1
+        if args.command in ("verify-pairwise", "check-pairwise"):
+            from .mandate_pairwise import (
+                create_pairwise_mandate_verification,
+                load_pairwise_mandate_verification,
+            )
+
+            if args.command == "verify-pairwise":
+                result = create_pairwise_mandate_verification(
+                    Path(args.report),
+                    Path(args.out),
+                    verified_at=args.verified_at,
+                )
+                destination = args.out
+            else:
+                result = load_pairwise_mandate_verification(Path(args.verification))
+                destination = args.verification
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE PAIRWISE INDEPENDENTLY VERIFIED: "
+                    f"{summary['verdict'].upper()} — interactions="
+                    f"{summary['covered_interaction_count']}/"
+                    f"{summary['required_interaction_count']} — {destination}"
+                )
+                print(
+                    "boundary: binary strength-2 reference-factor coverage only; not "
+                    "gateway authentication, higher-strength coverage, mediation, or certification"
+                )
+            return 0 if summary["verdict"] == "pass" else 1
+        if args.command == "sign-conformance":
+            from .mandate_conformance_auth import sign_mandate_conformance_submission
+
+            result = sign_mandate_conformance_submission(
+                Path(args.challenge),
+                Path(args.submission),
+                Path(args.private_key),
+                Path(args.out),
+            )
+            print(
+                "signed canonical LureMandate gateway submission — "
+                f"key={result['signatures'][0]['keyid']} — {args.out}"
+            )
+            return 0
+        if args.command in ("authenticate-conformance", "check-conformance-auth"):
+            from .mandate_conformance_auth import (
+                create_authenticated_mandate_conformance_verification,
+                load_authenticated_mandate_conformance_verification,
+            )
+
+            if args.command == "authenticate-conformance":
+                result = create_authenticated_mandate_conformance_verification(
+                    Path(args.verification),
+                    Path(args.envelope),
+                    Path(args.gateway_public_key),
+                    Path(args.out),
+                    expected_gateway_key_id=args.expected_gateway_key_id,
+                    verified_at=args.verified_at,
+                )
+                destination = args.out
+            else:
+                result = load_authenticated_mandate_conformance_verification(
+                    Path(args.verification)
+                )
+                destination = args.verification
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    "LUREMANDATE GATEWAY SUBMISSION AUTHENTICATED: "
+                    f"{summary['verdict'].upper()} — exact="
+                    f"{summary['exact_match_count']}/{summary['case_count']} "
+                    f"key={summary['gateway_public_key_sha256']} — {destination}"
+                )
+                print(
+                    "boundary: pinned P-256 signature over the canonical submission; not "
+                    "gateway runtime identity, complete mediation, compliance, or authorization"
+                )
+            return 0 if summary["verdict"] == "pass" else 1
+        if args.command in ("verify-conformance", "check-conformance"):
+            from .mandate_conformance import (
+                create_mandate_conformance_verification,
+                load_mandate_conformance_verification,
+            )
+
+            if args.command == "verify-conformance":
+                result = create_mandate_conformance_verification(
+                    Path(args.challenge),
+                    Path(args.submission),
+                    Path(args.score),
+                    Path(args.out),
+                    verified_at=args.verified_at,
+                )
+                destination = args.out
+            else:
+                result = load_mandate_conformance_verification(Path(args.verification))
+                destination = args.verification
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE CONFORMANCE INDEPENDENTLY VERIFIED: "
+                    f"{summary['verdict'].upper()} — exact="
+                    f"{summary['exact_match_count']}/{summary['case_count']} "
+                    f"guards={summary['covered_reason_count']} — {destination}"
+                )
+                print(
+                    "boundary: submitted answer-free cases only; not engine authentication, "
+                    "complete mediation, compliance, safety, or authorization"
+                )
+            return 0 if summary["verdict"] == "pass" else 1
+        if args.command == "sign":
+            from .mandate_auth import sign_approval_statement
+
+            result = sign_approval_statement(
+                Path(args.statement), Path(args.private_key), Path(args.out)
+            )
+            print(
+                f"signed canonical LureMandate approval — "
+                f"key={result['signatures'][0]['keyid']} — {args.out}"
+            )
+            return 0
+        if args.command == "sign-otel-export":
+            from .mandate_otel_auth import sign_mandate_otel_export
+
+            result = sign_mandate_otel_export(
+                Path(args.plan),
+                Path(args.export),
+                Path(args.private_key),
+                Path(args.out),
+            )
+            print(
+                "signed canonical LureMandate OpenTelemetry export — "
+                f"key={result['signatures'][0]['keyid']} — {args.out}"
+            )
+            return 0
+        if args.command == "authenticate-otel":
+            from .mandate_otel_auth import create_authenticated_mandate_otel_projection
+
+            result = create_authenticated_mandate_otel_projection(
+                Path(args.projection),
+                Path(args.envelope),
+                Path(args.receiver_public_key),
+                Path(args.out),
+                expected_receiver_key_id=args.expected_receiver_key_id,
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    "LUREMANDATE OTEL SOURCE AUTHENTICATED: "
+                    f"records={result['summary']['record_count']} "
+                    f"transactions={result['summary']['transaction_count']} — {destination}"
+                )
+                print(
+                    "boundary: pinned P-256 signature over the canonical submitted export; "
+                    "not telemetry completeness, clock assurance, or complete mediation"
+                )
+            return 0
+        if args.command == "check-otel-auth":
+            from .mandate_otel_auth import load_authenticated_mandate_otel_projection
+
+            result = load_authenticated_mandate_otel_projection(Path(args.verification))
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    "LUREMANDATE OTEL SOURCE RE-AUTHENTICATED: "
+                    f"key={result['summary']['receiver_public_key_sha256']} — "
+                    f"{args.verification}"
+                )
+                print(
+                    "boundary: embedded key and signature are valid; trust the receiver-key "
+                    "mapping only through independent policy"
+                )
+            return 0
+        if args.command == "verify-otel":
+            from .mandate_otel import load_mandate_otel_projection
+
+            result = load_mandate_otel_projection(Path(args.projection))
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    "LUREMANDATE OTEL INDEPENDENTLY VERIFIED: records="
+                    f"{len(result['inputs']['otel_log_export']['records'])} "
+                    f"transactions={len(result['run']['transactions'])} — {args.projection}"
+                )
+                print(
+                    "boundary: body-free custom event projection; not raw OTLP, telemetry "
+                    "completeness, source authentication, clock assurance, or enforcement"
+                )
+            return 0
+        if args.command == "gate":
+            from .mandate_gate import create_mandate_deployment_gate
+
+            result = create_mandate_deployment_gate(
+                Path(args.semantic_verification),
+                Path(args.authenticated_verification),
+                Path(args.otel_projection),
+                Path(args.authenticated_otel_projection),
+                Path(args.approver_key_policy),
+                Path(args.out),
+                gate_id=args.gate_id,
+                created_at=args.created_at,
+                minimum_run_started_at=args.minimum_run_started_at,
+                expected_engine_id=args.expected_engine_id,
+                expected_engine_version=args.expected_engine_version,
+                expected_engine_artifact_sha256=args.expected_engine_artifact_sha256,
+                expected_receiver_instance_id=args.expected_receiver_instance_id,
+                expected_receiver_key_id=args.expected_receiver_key_id,
+            )
+            destination = args.out
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                authenticated_count = result["sources"]["authenticated_verification"][
+                    "authenticated_approval_count"
+                ]
+                record_count = result["sources"]["otel_projection"]["record_count"]
+                print(
+                    f"LUREMANDATE DEPLOYMENT GATE: {result['overall_status'].upper()} — "
+                    f"approvals={authenticated_count} records={record_count} — {destination}"
+                )
+                print(
+                    "boundary: exact submitted evidence and caller-supplied policy; not identity "
+                    "proofing, key custody, telemetry completeness, enforcement, or authorization"
+                )
+            return 0 if result["overall_status"] == "pass" else 1
+        if args.command == "verify-gate":
+            from .mandate_gate import verify_mandate_deployment_gate
+
+            result = verify_mandate_deployment_gate(
+                Path(args.gate),
+                Path(args.semantic_verification),
+                Path(args.authenticated_verification),
+                Path(args.otel_projection),
+                Path(args.authenticated_otel_projection),
+                Path(args.approver_key_policy),
+                minimum_run_started_at=args.minimum_run_started_at,
+                expected_engine_id=args.expected_engine_id,
+                expected_engine_version=args.expected_engine_version,
+                expected_engine_artifact_sha256=args.expected_engine_artifact_sha256,
+                expected_receiver_instance_id=args.expected_receiver_instance_id,
+                expected_receiver_key_id=args.expected_receiver_key_id,
+            )
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE DEPLOYMENT GATE VERIFIED: "
+                    f"{result['overall_status'].upper()} — {args.gate}"
+                )
+                print(
+                    "boundary: independently recomputed exact evidence and external policy; "
+                    "not deployment authorization or proof of complete mediation"
+                )
+            return 0 if result["overall_status"] == "pass" else 1
+        if args.command in ("export-oscal", "export-sarif"):
+            from .mandate_export import export_mandate_oscal, export_mandate_sarif
+
+            sources = (
+                Path(args.gate),
+                Path(args.semantic_verification),
+                Path(args.authenticated_verification),
+                Path(args.otel_projection),
+                Path(args.authenticated_otel_projection),
+                Path(args.approver_key_policy),
+                Path(args.out),
+            )
+            policy = {
+                "minimum_run_started_at": args.minimum_run_started_at,
+                "expected_engine_id": args.expected_engine_id,
+                "expected_engine_version": args.expected_engine_version,
+                "expected_engine_artifact_sha256": args.expected_engine_artifact_sha256,
+                "expected_receiver_instance_id": args.expected_receiver_instance_id,
+                "expected_receiver_key_id": args.expected_receiver_key_id,
+            }
+            if args.command == "export-oscal":
+                result = export_mandate_oscal(
+                    *sources,
+                    assessment_plan_href=args.assessment_plan_href,
+                    generated_at=args.generated_at,
+                    **policy,
+                )
+                overall_status = result["assessment-results"]["metadata"]["props"][1]["value"]
+                label = "OSCAL 1.2.2"
+            else:
+                result = export_mandate_sarif(*sources, **policy)
+                overall_status = result["runs"][0]["properties"]["overallStatus"]
+                label = "SARIF 2.1.0"
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(f"LUREMANDATE {label} EXPORTED: {overall_status.upper()} — {args.out}")
+                print(
+                    "boundary: independently reverified typed gate observations and digests; "
+                    "not source content, compliance, safety, legal authority, or authorization"
+                )
+            return 0
+        if args.command == "authenticate":
+            from .mandate_auth import create_authenticated_mandate_verification
+
+            key_paths = {}
+            for mapping in args.approver_key:
+                approver_id, separator, path = mapping.partition("=")
+                if not separator or not approver_id or not path:
+                    raise ValueError("--approver-key expects PERSON_ID=PUBLIC_KEY.pem")
+                if approver_id in key_paths:
+                    raise ValueError("--approver-key contains a duplicate person ID")
+                key_paths[approver_id] = Path(path)
+            result = create_authenticated_mandate_verification(
+                Path(args.plan),
+                Path(args.run),
+                Path(args.producer_evaluation),
+                Path(args.evidence_directory),
+                key_paths,
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        elif args.command == "check-auth":
+            from .mandate_auth import load_authenticated_mandate_verification
+
+            result = load_authenticated_mandate_verification(Path(args.verification))
+            destination = args.verification
+        elif args.command == "verify":
+            from .mandate import create_mandate_verification
+
+            result = create_mandate_verification(
+                Path(args.plan),
+                Path(args.run),
+                Path(args.producer_evaluation),
+                Path(args.out),
+                verified_at=args.verified_at,
+            )
+            destination = args.out
+        else:
+            from .mandate import load_mandate_verification
+
+            result = load_mandate_verification(Path(args.verification))
+            destination = args.verification
+        summary = result["summary"]
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            authentication = (
+                " approvals-authenticated="
+                f"{summary['authenticated_approval_count']}/"
+                f"{summary['unique_approval_count']}"
+                if "authenticated_approval_count" in summary
+                else ""
+            )
+            print(
+                f"LUREMANDATE INDEPENDENT VERIFICATION: {summary['verdict'].upper()} — "
+                f"transactions={summary['passed_transaction_count']}/"
+                f"{summary['transaction_count']} invalid-allows="
+                f"{summary['invalid_allow_count']} bypasses="
+                f"{summary['authority_bypass_count']}{authentication} — {destination}"
+            )
+            if "authenticated_approval_count" in summary:
+                print(
+                    "boundary: externally pinned P-256 signatures over exact approval "
+                    "metadata; not directory identity proof, human comprehension, legal "
+                    "authority, complete mediation, or compliance"
+                )
+            else:
+                print(
+                    "boundary: exact source bytes and claimed metadata only; not approver "
+                    "authentication, legal authority, complete mediation, or compliance"
+                )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "triage":
@@ -3371,6 +4011,8 @@ def main(argv=None) -> int:
         return _bom_evidence(args[1:])
     if args and args[0] == "channel":
         return _channel_evidence(args[1:])
+    if args and args[0] == "mandate":
+        return _mandate_evidence(args[1:])
     return _serve(args)
 
 

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-conformance-verification/v1",
+  "title": "P-256 authenticated LureMandate conformance verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "verification_id",
+    "verified_at",
+    "engine",
+    "documents",
+    "gateway_public_key",
+    "submission_envelope",
+    "conformance_verification",
+    "checks",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-conformance-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-luremandate-conformance-dsse"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 96}
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conformance_verification"],
+      "properties": {
+        "conformance_verification": {"$ref": "#/$defs/document"}
+      }
+    },
+    "gateway_public_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key_sha256", "pem_sha256", "pem_base64"],
+      "properties": {
+        "public_key_sha256": {"$ref": "#/$defs/digest"},
+        "pem_sha256": {"$ref": "#/$defs/digest"},
+        "pem_base64": {"type": "string", "minLength": 4}
+      }
+    },
+    "submission_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["envelope_sha256", "envelope_base64", "payload_sha256", "key_id"],
+      "properties": {
+        "envelope_sha256": {"$ref": "#/$defs/digest"},
+        "envelope_base64": {"type": "string", "minLength": 4},
+        "payload_sha256": {"$ref": "#/$defs/digest"},
+        "key_id": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "conformance_verification": {"$ref": "https://github.com/immu4989/lurescope/spec/luremandate-conformance-verification/v1"},
+    "checks": {
+      "const": [
+        "conformance_verification_independently_recomputed",
+        "canonical_gateway_submission_payload_recomputed",
+        "dsse_payload_type_and_shape_rechecked",
+        "externally_supplied_gateway_key_pinned",
+        "dsse_key_id_matches_public_key_fingerprint",
+        "ecdsa_p256_gateway_submission_signature_authenticated"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "case_count",
+        "exact_match_count",
+        "decision_match_count",
+        "reason_match_count",
+        "invalid_allow_count",
+        "collateral_denial_count",
+        "covered_reason_count",
+        "reason_universe_count",
+        "reason_coverage_complete",
+        "source_documents_reparsed",
+        "producer_score_reproduced",
+        "answer_free_challenge_rechecked",
+        "gateway_submission_authenticated",
+        "gateway_public_key_sha256"
+      ],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "exact_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "decision_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "reason_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "invalid_allow_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "collateral_denial_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "covered_reason_count": {"type": "integer", "minimum": 1, "maximum": 21},
+        "reason_universe_count": {"const": 21},
+        "reason_coverage_complete": {"type": "boolean"},
+        "source_documents_reparsed": {"const": true},
+        "producer_score_reproduced": {"const": true},
+        "answer_free_challenge_rechecked": {"const": true},
+        "gateway_submission_authenticated": {"const": true},
+        "gateway_public_key_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "limitations": {
+      "const": [
+        "external_key_to_gateway_mapping_is_a_reviewer_input_not_workload_identity_proof",
+        "signature_authenticates_the_canonical_submission_not_gateway_runtime_or_complete_mediation",
+        "p256_dsse_does_not_verify_hardware_backing_kms_lifecycle_revocation_or_timestamp_authority",
+        "challenge_answers_may_be_inferred_and_case_coverage_does_not_establish_unrepresented_behavior",
+        "passing_is_not_compliance_certification_safety_legal_authority_or_deployment_authorization"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4}
+      }
+    }
+  }
+}

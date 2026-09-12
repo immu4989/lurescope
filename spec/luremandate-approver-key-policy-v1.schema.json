@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-approver-key-policy/v1",
+  "title": "LureMandate approver-key policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "policy_id",
+    "created_at",
+    "campaign_id",
+    "environment",
+    "approver_keys"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-approver-key-policy/v1"},
+    "schema_version": {"const": 1},
+    "policy_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment_id", "tenant_id"],
+      "properties": {
+        "environment_id": {"$ref": "#/$defs/id"},
+        "tenant_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "approver_keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 65536,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["approver_id", "public_key_sha256"],
+        "properties": {
+          "approver_id": {"$ref": "#/$defs/id"},
+          "public_key_sha256": {"$ref": "#/$defs/digest"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

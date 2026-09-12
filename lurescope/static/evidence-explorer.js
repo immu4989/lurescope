@@ -64,6 +64,16 @@
   const ATTEST_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lureattest-verification/v1";
   const LUREBOM_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurebom-verification/v1";
   const LURECHANNEL_VERIFICATION = "https://github.com/immu4989/lurescope/spec/lurechannel-verification/v1";
+  const LUREMANDATE_VERIFICATION = "https://github.com/immu4989/lurescope/spec/luremandate-verification/v1";
+  const LUREMANDATE_CONFORMANCE = "https://github.com/immu4989/lurescope/spec/luremandate-conformance-verification/v1";
+  const LUREMANDATE_AUTHENTICATED_CONFORMANCE = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-conformance-verification/v1";
+  const LUREMANDATE_PAIRWISE = "https://github.com/immu4989/lurescope/spec/luremandate-pairwise-verification/v1";
+  const LUREMANDATE_COUNTERFACTUAL = "https://github.com/immu4989/lurescope/spec/luremandate-counterfactual-verification/v1";
+  const LUREMANDATE_AUTHENTICATED = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-verification/v1";
+  const LUREMANDATE_OTEL = "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1";
+  const LUREMANDATE_AUTHENTICATED_OTEL = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1";
+  const LUREMANDATE_KEY_POLICY = "https://github.com/immu4989/lurescope/spec/luremandate-approver-key-policy/v1";
+  const LUREMANDATE_GATE = "https://github.com/immu4989/lurescope/spec/luremandate-deployment-gate/v1";
   const IDENTITY_DEPLOYMENT_GATE = "https://github.com/immu4989/lurescope/spec/lureidentity-deployment-gate/v1";
 
   function object(value, field) {
@@ -1211,6 +1221,410 @@
     return summary;
   }
 
+  function lureMandateVerificationSummary(value, meta) {
+    const metrics = object(value.summary, "LureMandate verification summary");
+    const documents = object(value.documents, "LureMandate embedded documents");
+    const plan = object(documents.plan, "embedded LureMandate plan");
+    const run = object(documents.run, "embedded LureMandate run");
+    const evaluation = object(documents.evaluation, "embedded LureMandate evaluation");
+    if (!Array.isArray(value.checks) || value.checks.length !== 11) {
+      throw new Error("LureMandate verification must contain eleven checks");
+    }
+    const summary = base(
+      "LureMandate verification",
+      "Transaction-specific human authority",
+      "Independent evidence that exact intent binding, approval freshness, separation of duties, single use, and rolling impact budgets were recomputed before observed effects.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Transactions", value: `${count(metrics.passed_transaction_count)} / ${count(metrics.transaction_count)}`},
+      {label: "Authorized", value: `${count(metrics.correct_allow_count)} / ${count(metrics.expected_allow_count)}`},
+      {label: "Correctly blocked", value: `${count(metrics.correct_block_count)} / ${count(metrics.expected_block_count)}`},
+      {label: "Invalid allows", value: count(metrics.invalid_allow_count)},
+      {label: "Authority bypasses", value: count(metrics.authority_bypass_count)},
+      {label: "Collateral denials", value: count(metrics.collateral_denial_count)},
+      {label: "Incorrect reasons", value: count(metrics.incorrect_reason_count)},
+      {label: "Unknown outcomes", value: count(metrics.unknown_outcome_count)},
+      {label: "Findings", value: count(metrics.finding_count)},
+      {label: "Sources reparsed", value: metrics.source_documents_reparsed === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_evaluation_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 11`},
+    ];
+    summary.bindings = [
+      binding("LureMandate plan bytes", plan.document_sha256),
+      binding("Authority run bytes", run.document_sha256),
+      binding("Producer evaluation bytes", evaluation.document_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "transaction payloads, customer content, prompts, credentials, and secrets are excluded by contract",
+      "the report may expose internal agent, requester, approver-role, policy, resource, and sensor identifiers; treat it as private",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check`; this browser does not decode and reparse embedded sources, authenticate approvers, verify role assignment, discover omitted actions, or establish legal authority or compliance.");
+    return summary;
+  }
+
+  function lureMandateConformanceSummary(value, meta) {
+    const metrics = object(value.summary, "LureMandate conformance summary");
+    const documents = object(value.documents, "LureMandate conformance documents");
+    const challenge = object(documents.challenge, "embedded conformance challenge");
+    const submission = object(documents.submission, "embedded conformance submission");
+    const score = object(documents.score, "embedded conformance score");
+    if (!Array.isArray(value.checks) || value.checks.length !== 8) {
+      throw new Error("LureMandate conformance verification must contain eight checks");
+    }
+    const summary = base(
+      "LureMandate conformance verification",
+      "Answer-free black-box authority test",
+      "Independent reconstruction of an ordered gateway challenge, submitted decisions, replay and rolling-budget state, exact answers, and exercised guard coverage.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Exact answers", value: `${count(metrics.exact_match_count)} / ${count(metrics.case_count)}`},
+      {label: "Decision matches", value: count(metrics.decision_match_count)},
+      {label: "Reason matches", value: count(metrics.reason_match_count)},
+      {label: "Invalid allows", value: count(metrics.invalid_allow_count)},
+      {label: "Collateral denials", value: count(metrics.collateral_denial_count)},
+      {label: "Guard outcomes covered", value: `${count(metrics.covered_reason_count)} / ${count(metrics.reason_universe_count)}`},
+      {label: "Guard coverage complete", value: metrics.reason_coverage_complete === true ? "Yes" : "No"},
+      {label: "Answer-free shape rechecked", value: metrics.answer_free_challenge_rechecked === true ? "Yes" : "No"},
+      {label: "Sources reparsed", value: metrics.source_documents_reparsed === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_score_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 8`},
+    ];
+    summary.bindings = [
+      binding("Challenge document bytes", challenge.document_sha256),
+      binding("Gateway submission bytes", submission.document_sha256),
+      binding("Producer score bytes", score.document_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the challenge excludes transaction decisions, reason codes, expected answers, outcomes, prompts, payloads, credentials, and customer content",
+      "the report embeds intent, approval, role, agent, resource, and policy metadata; treat it as private",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-conformance`; this browser does not decode source bytes, derive authority decisions, authenticate the claimed gateway, prevent answer inference, or prove complete coverage or mediation.");
+    return summary;
+  }
+
+  function lureMandateAuthenticatedConformanceSummary(value, meta) {
+    const metrics = object(value.summary, "authenticated LureMandate conformance summary");
+    const documents = object(value.documents, "authenticated conformance documents");
+    const verification = object(documents.conformance_verification, "embedded conformance verification");
+    const key = object(value.gateway_public_key, "embedded gateway public key");
+    const envelope = object(value.submission_envelope, "embedded gateway submission envelope");
+    if (!Array.isArray(value.checks) || value.checks.length !== 6) {
+      throw new Error("Authenticated LureMandate conformance verification must contain six checks");
+    }
+    const summary = base(
+      "Authenticated LureMandate conformance",
+      "Externally pinned gateway submission",
+      "Independent black-box authority scoring plus a canonical gateway submission authenticated with an externally pinned ECDSA P-256 public key.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Exact answers", value: `${count(metrics.exact_match_count)} / ${count(metrics.case_count)}`},
+      {label: "Decision matches", value: count(metrics.decision_match_count)},
+      {label: "Reason matches", value: count(metrics.reason_match_count)},
+      {label: "Invalid allows", value: count(metrics.invalid_allow_count)},
+      {label: "Collateral denials", value: count(metrics.collateral_denial_count)},
+      {label: "Guard outcomes covered", value: `${count(metrics.covered_reason_count)} / ${count(metrics.reason_universe_count)}`},
+      {label: "Guard coverage complete", value: metrics.reason_coverage_complete === true ? "Yes" : "No"},
+      {label: "Gateway submission authenticated", value: metrics.gateway_submission_authenticated === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 6`},
+    ];
+    summary.bindings = [
+      binding("Conformance verification bytes", verification.document_sha256),
+      binding("Gateway submission payload", envelope.payload_sha256),
+      binding("Gateway submission envelope", envelope.envelope_sha256),
+      binding("Gateway public key", key.public_key_sha256),
+      binding("Gateway public-key PEM", key.pem_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the report embeds the complete conformance verification, signed gateway submission, and public key; treat authority metadata as private",
+      "transaction outcomes, prompts, payloads, credentials, customer content, and private key material remain excluded",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-conformance-auth`; this browser does not decode embedded bytes, re-authenticate the P-256 signature, establish the external key-to-gateway mapping, verify key custody or revocation, prevent answer inference, or prove runtime identity or complete mediation.");
+    return summary;
+  }
+
+  function lureMandatePairwiseSummary(value, meta) {
+    const metrics = object(value.summary, "LureMandate pairwise summary");
+    const document = object(value.document, "embedded pairwise report");
+    if (!Array.isArray(value.checks) || value.checks.length !== 6) {
+      throw new Error("LureMandate pairwise verification must contain six checks");
+    }
+    const summary = base(
+      "LureMandate pairwise verification",
+      "Two-way authority-input interactions",
+      "Independent recomputation of gateway answers and every binary value combination across all pairs of 15 declared authority input factors.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Gateway score", value: String(metrics.score_verdict || "unknown")},
+      {label: "Cases", value: count(metrics.case_count)},
+      {label: "Factors", value: count(metrics.factor_count)},
+      {label: "Factor pairs", value: count(metrics.factor_pair_count)},
+      {label: "Interactions", value: `${count(metrics.covered_interaction_count)} / ${count(metrics.required_interaction_count)}`},
+      {label: "Interaction coverage", value: ratio(metrics.interaction_coverage)},
+      {label: "Pairwise coverage complete", value: metrics.pairwise_coverage_complete === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_report_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 6`},
+    ];
+    summary.bindings = [binding("Pairwise producer-report bytes", document.document_sha256)].filter(Boolean);
+    summary.privacy = [
+      "the report contains metadata-only synthetic authority inputs and gateway answers; no prompts, commands, payloads, credentials, or customer content",
+      "factor rows and internal identifiers remain operational evidence and should be treated as private",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-pairwise`; this browser does not decode the producer report, rederive factor values, enumerate interactions, authenticate the gateway, or establish higher-strength, production-domain, implementation-structure, or mediation coverage.");
+    return summary;
+  }
+
+  function lureMandateCounterfactualSummary(value, meta) {
+    const metrics = object(value.summary, "LureMandate counterfactual summary");
+    const document = object(value.document, "embedded counterfactual report");
+    if (!Array.isArray(value.checks) || value.checks.length !== 6) {
+      throw new Error("LureMandate counterfactual verification must contain six checks");
+    }
+    const summary = base(
+      "LureMandate counterfactual verification",
+      "Valid-control and denial-mutant pairs",
+      "Independent reconstruction of adjacent controls and mutants for every denial guard, including the exact declared semantic dimensions that changed.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Gateway score", value: String(metrics.score_verdict || "unknown")},
+      {label: "Cases", value: count(metrics.case_count)},
+      {label: "Guard pairs", value: `${count(metrics.passed_guard_pair_count)} / ${count(metrics.guard_pair_count)}`},
+      {label: "Single-dimension pairs", value: count(metrics.single_dimension_pair_count)},
+      {label: "Dependency-coupled pairs", value: count(metrics.dependency_coupled_pair_count)},
+      {label: "Guard coverage complete", value: metrics.guard_reason_coverage_complete === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_report_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 6`},
+    ];
+    summary.bindings = [binding("Counterfactual producer-report bytes", document.document_sha256)].filter(Boolean);
+    summary.privacy = [
+      "the report contains synthetic metadata-only authority inputs, gateway answers, and semantic deltas; no prompts, commands, payloads, credentials, or customer content",
+      "internal policy and identity identifiers remain operational evidence and should be treated as private",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-counterfactual`; this browser does not decode the producer report, rederive guard outcomes or dimensions, authenticate the gateway, prove source-code causality or formal MC/DC, discover unrepresented behavior, or establish complete mediation.");
+    return summary;
+  }
+
+  function lureMandateAuthenticatedSummary(value, meta) {
+    const metrics = object(value.summary, "authenticated LureMandate summary");
+    const documents = object(value.documents, "authenticated LureMandate documents");
+    const plan = object(documents.plan, "embedded LureMandate plan");
+    const run = object(documents.run, "embedded LureMandate run");
+    const evaluation = object(documents.evaluation, "embedded LureMandate evaluation");
+    if (!Array.isArray(value.checks) || value.checks.length !== 10) {
+      throw new Error("Authenticated LureMandate verification must contain ten checks");
+    }
+    const summary = base(
+      "Authenticated LureMandate verification",
+      "Externally pinned P-256 approval evidence",
+      "Independent transaction-authority recomputation plus exact canonical DSSE payload authentication using one distinct externally mapped public key per approver.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Transactions", value: `${count(metrics.passed_transaction_count)} / ${count(metrics.transaction_count)}`},
+      {label: "Authenticated approvals", value: `${count(metrics.authenticated_approval_count)} / ${count(metrics.unique_approval_count)}`},
+      {label: "Distinct approver keys", value: count(metrics.approver_key_count)},
+      {label: "Correctly blocked", value: `${count(metrics.correct_block_count)} / ${count(metrics.expected_block_count)}`},
+      {label: "Invalid allows", value: count(metrics.invalid_allow_count)},
+      {label: "Authority bypasses", value: count(metrics.authority_bypass_count)},
+      {label: "Unknown outcomes", value: count(metrics.unknown_outcome_count)},
+      {label: "Authentication complete", value: metrics.approval_authentication_complete === true ? "Yes" : "No"},
+      {label: "Producer reproduced", value: metrics.producer_evaluation_reproduced === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(value.checks.length)} / 10`},
+    ];
+    summary.bindings = [
+      binding("LureMandate plan bytes", plan.document_sha256),
+      binding("Authority run bytes", run.document_sha256),
+      binding("Producer evaluation bytes", evaluation.document_sha256),
+      ...(Array.isArray(value.public_keys)
+        ? value.public_keys.map(item => binding(`Approver key · ${item.approver_id || "unknown"}`, item.public_key_sha256))
+        : []),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the report embeds all approval envelopes and public keys; treat personnel-role and transaction metadata as private",
+      "prompts, commands, payloads, credentials, hosts, URLs, customer content, and secrets remain excluded",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-auth`; this browser does not re-authenticate signatures, establish the external key-to-person mapping, verify key custody or revocation, prove what a human saw, discover omitted actions, or establish legal authority.");
+    return summary;
+  }
+
+  function lureMandateOtelSummary(value, meta) {
+    const inputs = object(value.inputs, "LureMandate OpenTelemetry inputs");
+    const exportValue = object(inputs.otel_log_export, "LureMandate OpenTelemetry export");
+    const run = object(value.run, "projected LureMandate run");
+    const records = Array.isArray(exportValue.records) ? exportValue.records : [];
+    const transactions = Array.isArray(run.transactions) ? run.transactions : [];
+    const eventCount = name => records.filter(item => item && item.EventName === name).length;
+    const summary = base(
+      "LureMandate OpenTelemetry projection",
+      "Body-free authority telemetry",
+      "Strict projection of correlated intent, approval, decision, and outcome events into an exact LureMandate run.",
+      meta,
+    );
+    summary.status = "informational";
+    summary.statusLabel = "Recompute with CLI";
+    summary.metrics = [
+      {label: "Transactions", value: count(transactions.length)},
+      {label: "Log records", value: count(records.length)},
+      {label: "Intent events", value: count(eventCount("org.lurebench.luremandate.intent_proposed"))},
+      {label: "Approval events", value: count(eventCount("org.lurebench.luremandate.approval_recorded"))},
+      {label: "Decision events", value: count(eventCount("org.lurebench.luremandate.decision_recorded"))},
+      {label: "Outcome events", value: count(eventCount("org.lurebench.luremandate.outcome_recorded"))},
+      {label: "Body accepted", value: value.privacy && value.privacy.body_accepted === false ? "No" : "Unknown"},
+      {label: "Collector time used", value: value.clock_boundary && value.clock_boundary.observed_timestamp_used_for_benchmark_timing === false ? "No" : "Unknown"},
+    ];
+    summary.bindings = [
+      binding("LureMandate plan bytes", inputs.mandate_plan_sha256),
+      binding("OpenTelemetry export bytes", inputs.otel_log_export_sha256),
+      binding("Projected run bytes", value.run_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "log Body and InstrumentationScope are rejected; only allowlisted structured attributes are accepted",
+      "free text, prompts, commands, payloads, credentials, hosts, URLs, and customer content are excluded",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate verify-otel`; this browser does not reconstruct the run, authenticate the telemetry source, verify clock synchronization, or prove telemetry completeness or enforcement.");
+    return summary;
+  }
+
+  function lureMandateAuthenticatedOtelSummary(value, meta) {
+    const metrics = object(value.summary, "authenticated LureMandate telemetry summary");
+    const receiver = object(metrics.receiver, "authenticated telemetry receiver");
+    const documents = object(value.documents, "authenticated telemetry documents");
+    const projection = object(documents.projection, "authenticated telemetry projection document");
+    const key = object(value.receiver_public_key, "authenticated telemetry public key");
+    const envelope = object(value.export_envelope, "authenticated telemetry envelope");
+    const summary = base(
+      "Authenticated LureMandate telemetry",
+      "Receiver-signed authority events",
+      "P-256 DSSE authentication over the canonical body-free OpenTelemetry export bound to an independently reproducible projection.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Transactions", value: count(metrics.transaction_count)},
+      {label: "Log records", value: count(metrics.record_count)},
+      {label: "Receiver", value: String(receiver.name || "unknown")},
+      {label: "Receiver instance", value: String(receiver.instance_id || "unknown")},
+      {label: "Source authenticated", value: metrics.telemetry_source_authenticated === true ? "Yes" : "No"},
+      {label: "Verifier checks", value: `${count(Array.isArray(value.checks) ? value.checks.length : 0)} / 7`},
+    ];
+    summary.bindings = [
+      binding("Projection document bytes", projection.document_sha256),
+      binding("Receiver public key", key.public_key_sha256),
+      binding("Receiver public-key PEM", key.pem_sha256),
+      binding("Signed canonical export", envelope.payload_sha256),
+      binding("DSSE envelope bytes", envelope.envelope_sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the report embeds the projection, public key, and signed body-free export but no private key",
+      "free text, prompts, commands, payloads, credentials, hosts, URLs, and customer content remain excluded",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-otel-auth`; browser inspection does not authenticate the signature, authorize the receiver-key mapping, prove telemetry completeness, or verify clock synchronization.");
+    return summary;
+  }
+
+  function lureMandateKeyPolicySummary(value, meta) {
+    const environment = object(value.environment, "LureMandate key-policy environment");
+    const keys = Array.isArray(value.approver_keys) ? value.approver_keys : [];
+    const summary = base(
+      "LureMandate approver-key policy",
+      "External approval trust policy",
+      "Preregistered approver-to-key fingerprints for one campaign environment.",
+      meta,
+    );
+    summary.status = "informational";
+    summary.statusLabel = "Review external policy";
+    summary.metrics = [
+      {label: "Campaign", value: String(value.campaign_id || "unknown")},
+      {label: "Environment", value: String(environment.environment_id || "unknown")},
+      {label: "Tenant", value: String(environment.tenant_id || "unknown")},
+      {label: "Pinned approvers", value: count(keys.length)},
+      {label: "Policy created", value: String(value.created_at || "unknown")},
+    ];
+    summary.bindings = keys.map(item =>
+      binding(`Approver key · ${item.approver_id || "unknown"}`, item.public_key_sha256)
+    ).filter(Boolean);
+    summary.privacy = [
+      "the policy contains approver identifiers and public-key fingerprints but no private keys",
+      "keep the authoritative policy under separately governed change control",
+    ];
+    summary.warnings = [
+      "Use this policy with `lurescope mandate verify-gate`; browser inspection does not authorize the mapping, validate key custody, or detect revoked keys.",
+    ];
+    return summary;
+  }
+
+  function lureMandateGateSummary(value, meta) {
+    const campaign = object(value.campaign, "LureMandate deployment-gate campaign");
+    const environment = object(campaign.environment, "LureMandate deployment-gate environment");
+    const policy = object(value.policy, "LureMandate deployment-gate policy");
+    const contract = object(value.contract, "LureMandate deployment-gate contract");
+    const sources = object(value.sources, "LureMandate deployment-gate sources");
+    const authenticated = object(
+      sources.authenticated_verification,
+      "LureMandate authenticated source",
+    );
+    const projection = object(sources.otel_projection, "LureMandate telemetry source");
+    const authenticatedProjection = object(
+      sources.authenticated_otel_projection,
+      "LureMandate authenticated telemetry source",
+    );
+    if (!Array.isArray(value.checks) || value.checks.length !== 10) {
+      throw new Error("LureMandate deployment gate must contain ten checks");
+    }
+    const summary = base(
+      "LureMandate deployment gate",
+      "Bound authority release decision",
+      "One fail-closed decision binding semantic recomputation, authenticated approvals, receiver-signed body-free telemetry, and an external key policy to the same exact run.",
+      meta,
+    );
+    gateStatus(summary, value.overall_status);
+    summary.metrics = [
+      {label: "Campaign", value: String(campaign.campaign_id || "unknown")},
+      {label: "Environment", value: String(environment.environment_id || "unknown")},
+      {label: "Tenant", value: String(environment.tenant_id || "unknown")},
+      {label: "Authenticated approvals", value: count(authenticated.authenticated_approval_count)},
+      {label: "Pinned approver keys", value: count(authenticated.approver_key_count)},
+      {label: "Telemetry records", value: count(projection.record_count)},
+      {label: "Gate checks", value: `${count(value.checks.filter(item => item.status === "pass").length)} / 10`},
+      {label: "Minimum run start", value: String(policy.minimum_run_started_at || "unknown")},
+    ];
+    summary.bindings = [
+      binding("Authority plan", contract.plan_sha256),
+      binding("Authority run", contract.run_sha256),
+      binding("Producer evaluation", contract.evaluation_sha256),
+      binding("Approver-key policy bytes", policy.approver_key_policy_sha256),
+      binding("Semantic verification bytes", sources.semantic_verification && sources.semantic_verification.sha256),
+      binding("Authenticated verification bytes", authenticated.sha256),
+      binding("Telemetry projection bytes", projection.sha256),
+      binding("Authenticated telemetry bytes", authenticatedProjection.sha256),
+    ].filter(Boolean);
+    summary.privacy = [
+      "the gate stores digests and aggregate counts, while its referenced authenticated report embeds approval metadata",
+      "prompts, commands, payloads, credentials, hosts, URLs, customer content, and private keys remain excluded",
+    ];
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate verify-gate` with the exact five source artifacts and independently governed policy values; this browser does not recompute signatures, telemetry, source-byte equality, or policy authorization.");
+    return summary;
+  }
+
   function identityDeploymentGateSummary(value, meta) {
     const system = object(value.system, "LureIdentity deployment-gate system");
     const contract = object(value.contract, "LureIdentity deployment-gate contract");
@@ -1963,8 +2377,18 @@
     else if (statement.schema === ATTEST_VERIFICATION) summary = attestVerificationSummary(statement, meta);
     else if (statement.schema === LUREBOM_VERIFICATION) summary = lureBomVerificationSummary(statement, meta);
     else if (statement.schema === LURECHANNEL_VERIFICATION) summary = lureChannelVerificationSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_VERIFICATION) summary = lureMandateVerificationSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_CONFORMANCE) summary = lureMandateConformanceSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_AUTHENTICATED_CONFORMANCE) summary = lureMandateAuthenticatedConformanceSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_PAIRWISE) summary = lureMandatePairwiseSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_COUNTERFACTUAL) summary = lureMandateCounterfactualSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_AUTHENTICATED) summary = lureMandateAuthenticatedSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_OTEL) summary = lureMandateOtelSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_AUTHENTICATED_OTEL) summary = lureMandateAuthenticatedOtelSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_KEY_POLICY) summary = lureMandateKeyPolicySummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_GATE) summary = lureMandateGateSummary(statement, meta);
     else if (statement.schema === IDENTITY_DEPLOYMENT_GATE) summary = identityDeploymentGateSummary(statement, meta);
-    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, LureIdentity, LureArtifact, LureRecall, LureAttest, LureBOM, LureChannel, coverage, delegation, LureIR, portfolio, or witness artifact.");
+    else throw new Error("Unsupported evidence artifact. Choose a LureEval, Pilot Gate, Defender, Shadow, LureProof, SCuBA, LureWatch, LureBoundary, LureInvariant, LureRange, runtime mediation, LureRevoke, LureIdentity, LureArtifact, LureRecall, LureAttest, LureBOM, LureChannel, LureMandate, coverage, delegation, LureIR, portfolio, or witness artifact.");
     if (meta.signed) summary.warnings.unshift("A DSSE signature is present but is not cryptographically authenticated by this browser view. Verify it with the CLI and a trusted public key.");
     else summary.warnings.unshift("This artifact is unsigned or was supplied without an envelope; issuer identity is not authenticated.");
     return summary;

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurescope/spec/luremandate-pairwise-verification/v1",
+  "title": "Independent LureMandate pairwise assurance verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "verification_id", "verified_at", "engine", "document", "producer_report", "checks", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-pairwise-verification/v1"},
+    "schema_version": {"const": 1},
+    "verification_id": {"$ref": "#/$defs/id"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurescope-luremandate-pairwise-independent"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 96}
+      }
+    },
+    "document": {"$ref": "#/$defs/document"},
+    "producer_report": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-pairwise-assurance/v1"},
+    "checks": {"const": ["strict_pairwise_report_and_embedded_score_reparsed", "canonical_score_binding_recomputed", "fifteen_factor_values_independently_derived_from_challenge_inputs", "all_one_hundred_five_factor_pairs_reenumerated", "all_four_hundred_twenty_binary_interactions_recomputed", "gateway_score_and_pairwise_pass_conjunction_recomputed"]},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "score_verdict", "case_count", "factor_count", "factor_pair_count", "required_interaction_count", "covered_interaction_count", "interaction_coverage", "pairwise_coverage_complete", "source_document_reparsed", "producer_report_reproduced"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "score_verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "factor_count": {"const": 15},
+        "factor_pair_count": {"const": 105},
+        "required_interaction_count": {"const": 420},
+        "covered_interaction_count": {"type": "integer", "minimum": 0, "maximum": 420},
+        "interaction_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "pairwise_coverage_complete": {"type": "boolean"},
+        "source_document_reparsed": {"const": true},
+        "producer_report_reproduced": {"const": true}
+      }
+    },
+    "limitations": {"const": ["independent_recomputation_does_not_authenticate_the_submitting_gateway", "binary_strength_two_coverage_does_not_establish_higher_strength_or_production_domain_coverage", "factor_model_is_a_declared_abstraction_not_implementation_structural_coverage", "passing_does_not_prove_unrepresented_behavior_complete_mediation_safety_or_compliance", "verification_is_not_certification_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_sha256", "payload_base64"],
+      "properties": {
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "payload_base64": {"type": "string", "minLength": 4}
+      }
+    }
+  }
+}
