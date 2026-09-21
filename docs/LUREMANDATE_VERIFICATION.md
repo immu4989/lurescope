@@ -108,6 +108,121 @@ key-to-gateway mapping and revocation policy independently. The public vector
 ships only `gateway-conformance.public.pem`; no gateway private key is
 published.
 
+## Offline installation check
+
+These commands are currently unreleased; use the current source checkout or a
+wheel built from it. The published 0.11.0 package predates this functionality.
+
+```sh
+lurescope mandate selftest
+```
+
+The command discovers packaged evidence through installation metadata and
+rechecks ten reference artifacts offline, including signatures, telemetry,
+input coverage, and shared-state transitions. `--json` emits diagnostics and
+`--out new-report.json` preserves them privately. Missing or invalid artifacts
+cause failure. The result checks the reference installation, not a deployed
+gateway or production security posture.
+
+Each profile also requires rejection of four in-memory mutations: boolean and
+floating-point schema versions, an unknown field, and a modified derived verdict
+or digest. JSON diagnostics expose each result. This is selected regression
+coverage, not exhaustive verification or authentication of the installation.
+
+Strict JSON input rejects more than 128 nested containers and floating-point
+overflow. Authority file reads are bounded before allocation; embedded base64
+is checked both before and after decoding. These resource controls are not a
+sandbox. Keep evidence directories trusted while verification runs.
+Approval, telemetry-receiver, and gateway signing keys must be owner-only on
+POSIX (for example, mode `0600`). Permission checks use the opened file, before
+its bytes are read. Generated core verification reports also must fit their
+loader's size limit; oversized output is rejected before file creation.
+
+Maintainers can also run `python scripts/verify_mandate_independence.py` in a
+fresh process. It runs the same diagnostics with every LureBench import
+actively forbidden, including imports through other modules.
+
+For a trusted local wheel, first run `scripts/check_mandate_wheel.py WHEEL
+--package lurescope` against the checkout. Install it into a fresh target with
+`uv pip install --offline --no-deps --target TARGET WHEEL`. From outside the
+checkout, use the development environment's Python to run
+`scripts/check_installed_mandate.py --package lurescope --installed-root TARGET`
+(supply the script's absolute path). This executes the installed CLI, checks
+all ten profiles and forty rejection probes, verifies code/metadata locations,
+and forbids LureBench imports throughout. Dependencies still come from the
+calling environment; this is not a clean dependency-resolution test or an
+attestation of the software supply chain.
+
+The regression suite also checks 5,120 synthetic transactions against a small
+integer-time state model without calling either production implementation for
+expected answers. The model varies requester/tenant scopes, approval replay,
+denials, rolling windows, and impact-unit scaling. These finite deterministic
+traces complement the public fixtures; they do not prove arbitrary histories,
+concurrent-state correctness, or a proprietary gateway's behavior.
+
+## Timestamp precision and interpretation
+
+Authority timestamps use a strict microsecond profile of
+[RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html): a Gregorian date,
+uppercase `T`, seconds, optional one-to-six fractional digits, and either
+uppercase `Z` or a numeric hour/minute offset. Equivalent offsets compare as
+the same UTC instant; original strings remain part of their byte bindings.
+The RFC's `-00:00` convention is accepted as a known UTC instant with an
+unspecified local offset.
+
+Sub-microsecond values, offset seconds, invalid offset minutes, week dates,
+basic ISO forms, leap-second spellings, and unqualified local times are
+rejected. Precision is never truncated or rounded. Convert unsupported source
+timestamps explicitly before evidence generation and disclose any conversion
+in instrumentation documentation. The OpenTelemetry profile already requires
+microsecond-aligned Unix nanoseconds.
+
+Rolling reservations are included at the exact window boundary and excluded
+only after it. Approval expiry is inclusive at the stated expiry instant.
+These decisions use supplied event times, which do not establish clock accuracy
+or synchronization. The published schemas carry the same lexical constraint;
+calendar validity and UTC representability are checked by the implementation.
+
+## Shared-state transitions
+
+For scenarios sharing real requester and budget state, verify the separate
+41-case transition corpus with the existing conformance verifier:
+
+```sh
+lurescope mandate verify-conformance \
+  conformance/luremandate-transitions-v1/challenge.json \
+  conformance/luremandate-transitions-v1/submission.json \
+  conformance/luremandate-transitions-v1/score.json \
+  --out transitions-verification.json
+lurescope mandate check-conformance transitions-verification.json
+```
+
+This exercises denied-request accounting, consumed approvals, requester and
+policy isolation, tenant-wide accounting, inclusive window edges, partial
+reservation expiry, and replay persistence. The public reference result is
+41/41; it exercises four reason codes and does not claim complete guard coverage.
+
+## Independently verify ordered operation coverage
+
+The sequence profile contains 20 priming cases followed by 26 measured
+operations. A cyclic de Bruijn sequence covers all 25 adjacent ordered pairs
+of fresh allow, replay block, budget boundary allow, budget exceed block, and
+expired-window allow. The verifier reparses the embedded gateway score and
+recomputes the operation order, outcomes, and pair coverage.
+
+```sh
+lurescope mandate verify-sequence \
+  conformance/luremandate-sequence-v1/sequence-assurance.json \
+  --out sequence-verification.json
+lurescope mandate check-sequence sequence-verification.json
+```
+
+The public reference result passes all 46 cases. Each measured operation has
+an isolated requester scope; adjacent operations therefore do not establish
+same-subject state-transition coverage. Longer sequences, cross-subject
+interference, and external gateway execution require separate experiments.
+The browser shows the report's claims; the CLI performs verification.
+
 ## Independently verify pairwise input coverage
 
 The exhaustive conformance profile reaches all 21 decision outcomes; the

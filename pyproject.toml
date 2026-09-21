@@ -108,6 +108,8 @@ lurescope = [
 "share/lurescope/conformance/luremandate-v1/evidence" = ["conformance/luremandate-v1/evidence/*.json"]
 "share/lurescope/conformance/luremandate-pairwise-v1" = ["conformance/luremandate-pairwise-v1/*.json"]
 "share/lurescope/conformance/luremandate-counterfactual-v1" = ["conformance/luremandate-counterfactual-v1/*.json"]
+"share/lurescope/conformance/luremandate-sequence-v1" = ["conformance/luremandate-sequence-v1/*.json"]
+"share/lurescope/conformance/luremandate-transitions-v1" = ["conformance/luremandate-transitions-v1/*.json"]
 
 [tool.pytest.ini_options]
 # Make the repo root importable so tests can reach the scripts/ helpers.

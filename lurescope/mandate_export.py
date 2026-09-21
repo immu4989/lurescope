@@ -10,7 +10,8 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 from . import __version__
 from .mandate import _instant
 from .mandate_gate import verify_mandate_deployment_gate
-from .permit import _canonical, _read, _sha256, _strict, _timestamp, _timestamp_now, _write_new
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _read, _sha256, _strict, _timestamp_now, _write_new
 
 OSCAL_SCHEMA = (
     "https://raw.githubusercontent.com/usnistgov/OSCAL/v1.2.2/json/schema/"

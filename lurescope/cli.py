@@ -3378,6 +3378,24 @@ def _mandate_evidence(argv: Sequence[str]) -> int:
     check_conformance_auth_parser.add_argument("verification")
     check_conformance_auth_parser.add_argument("--json", action="store_true")
 
+    for operation in ("verify-sequence", "check-sequence"):
+        sequence_parser = commands.add_parser(
+            operation, help="independently verify ordered LureMandate operation coverage"
+        )
+        if operation == "verify-sequence":
+            sequence_parser.add_argument("report")
+            sequence_parser.add_argument("--verified-at")
+            sequence_parser.add_argument("--out", "-o", required=True)
+        else:
+            sequence_parser.add_argument("verification")
+        sequence_parser.add_argument("--json", action="store_true")
+
+    selftest_parser = commands.add_parser(
+        "selftest", help="verify packaged authority reference evidence offline"
+    )
+    selftest_parser.add_argument("--json", action="store_true")
+    selftest_parser.add_argument("--out", help="optional new diagnostic JSON file")
+
     verify_pairwise_parser = commands.add_parser(
         "verify-pairwise",
         help="independently recompute LureMandate two-way input-interaction assurance",
@@ -3540,6 +3558,47 @@ def _mandate_evidence(argv: Sequence[str]) -> int:
     add_gate_export_sources(export_sarif_parser)
     args = parser.parse_args(list(argv))
     try:
+        if args.command == "selftest":
+            from .mandate_selftest import run_mandate_selftest
+            from .permit import _canonical, _write_new
+
+            result = run_mandate_selftest()
+            if args.out:
+                _write_new(Path(args.out), _canonical(result))
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE REFERENCE SELFTEST: {summary['status'].upper()} — "
+                    f"{summary['passed']}/{summary['total']}"
+                )
+                print(result["boundary"])
+            return 0 if summary["status"] == "pass" else 1
+        if args.command in ("verify-sequence", "check-sequence"):
+            from .mandate_sequence import (
+                create_sequence_mandate_verification,
+                load_sequence_mandate_verification,
+            )
+
+            if args.command == "verify-sequence":
+                result = create_sequence_mandate_verification(
+                    Path(args.report), Path(args.out), verified_at=args.verified_at
+                )
+            else:
+                result = load_sequence_mandate_verification(Path(args.verification))
+            summary = result["summary"]
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+            else:
+                print(
+                    f"LUREMANDATE SEQUENCE INDEPENDENTLY VERIFIED: "
+                    f"{summary['verdict'].upper()} — ordered-pairs="
+                    f"{summary['covered_ordered_pair_count']}/"
+                    f"{summary['required_ordered_pair_count']}"
+                )
+                print("boundary: isolated requester scopes; coverage is limited to ordered pairs")
+            return 0 if summary["verdict"] == "pass" else 1
         if args.command in ("verify-counterfactual", "check-counterfactual"):
             from .mandate_counterfactual import (
                 create_counterfactual_mandate_verification,

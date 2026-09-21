@@ -6,7 +6,7 @@
   "required": ["schema", "schema_version", "verification_id", "verified_at", "engine", "documents", "producer_evaluation", "checks", "summary", "limitations"],
   "properties": {
     "schema": {"const": "https://github.com/immu4989/lurescope/spec/luremandate-verification/v1"}, "schema_version": {"const": 1},
-    "verification_id": {"$ref": "#/$defs/id"}, "verified_at": {"type": "string", "format": "date-time"},
+    "verification_id": {"$ref": "#/$defs/id"}, "verified_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "engine": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurescope-luremandate-independent"}, "version": {"type": "string", "minLength": 1, "maxLength": 32}}},
     "documents": {"type": "object", "additionalProperties": false, "required": ["plan", "run", "evaluation"], "properties": {"plan": {"$ref": "#/$defs/document"}, "run": {"$ref": "#/$defs/document"}, "evaluation": {"$ref": "#/$defs/document"}}},
     "producer_evaluation": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-evaluation-v1"},

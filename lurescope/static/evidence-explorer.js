@@ -69,6 +69,7 @@
   const LUREMANDATE_AUTHENTICATED_CONFORMANCE = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-conformance-verification/v1";
   const LUREMANDATE_PAIRWISE = "https://github.com/immu4989/lurescope/spec/luremandate-pairwise-verification/v1";
   const LUREMANDATE_COUNTERFACTUAL = "https://github.com/immu4989/lurescope/spec/luremandate-counterfactual-verification/v1";
+  const LUREMANDATE_SEQUENCE = "https://github.com/immu4989/lurescope/spec/luremandate-sequence-verification/v1";
   const LUREMANDATE_AUTHENTICATED = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-verification/v1";
   const LUREMANDATE_OTEL = "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1";
   const LUREMANDATE_AUTHENTICATED_OTEL = "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1";
@@ -1418,6 +1419,27 @@
     return summary;
   }
 
+  function lureMandateSequenceSummary(value, meta) {
+    const metrics = object(value.summary, "LureMandate sequence summary");
+    const document = object(value.document, "embedded sequence report");
+    const summary = base(
+      "LureMandate sequence verification",
+      "Ordered operation coverage",
+      "Twenty-six measured operations exercise all twenty-five ordered pairs across five declared operations, with twenty state-priming cases.",
+      meta,
+    );
+    gateStatus(summary, metrics.verdict);
+    summary.metrics = [
+      {label: "Priming cases", value: count(metrics.preamble_case_count)},
+      {label: "Measured operations", value: `${count(metrics.passed_measured_case_count)} / ${count(metrics.measured_case_count)}`},
+      {label: "Ordered pairs", value: `${count(metrics.covered_ordered_pair_count)} / ${count(metrics.required_ordered_pair_count)}`},
+    ];
+    summary.bindings = [binding("Sequence producer-report bytes", document.document_sha256)].filter(Boolean);
+    summary.warnings = Array.isArray(value.limitations) ? [...value.limitations] : [];
+    summary.warnings.push("Use `lurescope mandate check-sequence` to verify the evidence. This browser displays reported claims. Requester scopes are isolated; longer sequences and cross-subject interference are outside this profile.");
+    return summary;
+  }
+
   function lureMandateAuthenticatedSummary(value, meta) {
     const metrics = object(value.summary, "authenticated LureMandate summary");
     const documents = object(value.documents, "authenticated LureMandate documents");
@@ -2382,6 +2404,7 @@
     else if (statement.schema === LUREMANDATE_AUTHENTICATED_CONFORMANCE) summary = lureMandateAuthenticatedConformanceSummary(statement, meta);
     else if (statement.schema === LUREMANDATE_PAIRWISE) summary = lureMandatePairwiseSummary(statement, meta);
     else if (statement.schema === LUREMANDATE_COUNTERFACTUAL) summary = lureMandateCounterfactualSummary(statement, meta);
+    else if (statement.schema === LUREMANDATE_SEQUENCE) summary = lureMandateSequenceSummary(statement, meta);
     else if (statement.schema === LUREMANDATE_AUTHENTICATED) summary = lureMandateAuthenticatedSummary(statement, meta);
     else if (statement.schema === LUREMANDATE_OTEL) summary = lureMandateOtelSummary(statement, meta);
     else if (statement.schema === LUREMANDATE_AUTHENTICATED_OTEL) summary = lureMandateAuthenticatedOtelSummary(statement, meta);

@@ -5,6 +5,12 @@ include CODE_OF_CONDUCT.md
 include SECURITY.md
 include uv.lock
 include scripts/run_golden_pilot.py
+include scripts/check_mandate_wheel.py
+include scripts/check_installed_mandate.py
+include scripts/check_producer_contract.py
+include scripts/verify_mandate_independence.py
+include tests/producer-contract.json
+include tests/PRODUCER_CONTRACT.md
 recursive-include docs *.md
 recursive-include examples *.md *.eml *.json
 recursive-include spec *.json

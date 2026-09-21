@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+- Unified signed-authority file reads with the bounded opened-file reader.
+  All three signing paths now require owner-only private-key permissions on
+  POSIX, checked before reading. Oversized generated core verification reports
+  are rejected before output, matching the loader's size limit.
+
+- Reject oversized embedded authority evidence, signatures, and public keys
+  before base64 decoding, while retaining exact decoded-size and canonical
+  encoding checks.
+
+- Bounded authority file reads before allocation, checked opened file types,
+  and added growth/symlink/descriptor-failure regressions. Shared strict JSON
+  parsing now rejects floating-point overflow and more than 128 nested
+  containers before decoding; ordinary finite numeric types are preserved.
+
+- Added seeded integer-time model checking: 5,120 synthetic transactions per
+  implementation exercise replay, denials, requester/tenant budgets, exact
+  time boundaries, and positive integer unit scaling without calling the
+  production decision routine for expected answers.
+
+- Extended offline self-tests with four tamper-rejection probes per profile,
+  including canonical type aliases and altered derived claims. Packaging
+  regressions now cover missing, stale, duplicate, and corrupt wheel contents.
+
+- Added `mandate selftest` for ten offline packaged authority artifacts and
+  installation-aware data discovery. CI also runs with transitive LureBench
+  imports forbidden and checks exact wheel code/schema/evidence contents.
+
+- Enforced exact microsecond RFC 3339 timestamps throughout LureMandate and
+  its schemas, rejecting silent precision truncation and invalid offset
+  normalization. Rolling-window arithmetic also handles early Gregorian dates
+  without underflow while preserving inclusive boundary behavior.
+
+- Removed adjacent-checkout assumptions from producer compatibility tests.
+  Twenty-six exact artifact hashes are pinned to a producer commit and can be
+  checked offline or against Git using `scripts/check_producer_contract.py`.
+  Added a vendored receipt-schema fallback for editable dependency installs.
+
+- Added independently verified shared-state transition evidence: 41 cases over
+  ten budget/replay scenarios, packaged with the existing conformance schemas
+  and verified through the existing conformance CLI.
+
+- Hardened LureMandate schema versions, policy acceptance values, and report
+  recomputation against boolean/integer and float/integer equality aliases.
+  Verification now compares canonical JSON representations for derived reports.
+
+- Completed ordered operation-pair verification with CLI commands, a public
+  evidence bundle, schema validation and tamper tests, package data, and an
+  Evidence Explorer summary. The profile covers 25 ordered pairs across five
+  operations using isolated requester scopes.
+
 - Added an independent LureMandate verifier that imports no LureBench code,
   reproduces exact approval, separation-of-duty, replay, freshness, workload,
   rolling-budget, and observed-effect semantics; preserves all source bytes in

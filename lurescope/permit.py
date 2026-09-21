@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -162,6 +163,28 @@ def _canonical(value: Mapping[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _check_json_nesting(text: str) -> None:
+    """Bound structural depth before the platform JSON decoder allocates it."""
+    depth = 0
+    in_string = escaped = False
+    for character in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+        elif character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > 128:
+                raise ValueError("JSON nesting exceeds 128 container levels")
+        elif character in "]}":
+            depth -= 1
+
+
 def _strict(payload: bytes, label: str) -> Any:
     def no_duplicates(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
@@ -174,11 +197,22 @@ def _strict(payload: bytes, label: str) -> Any:
     def no_constants(value: str) -> None:
         raise ValueError(f"{label} contains non-standard JSON constant {value}")
 
+    def finite_float(value: str) -> float:
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError(f"{label} number exceeds finite floating-point range")
+        return number
+
     try:
+        text = payload.decode("utf-8")
+        _check_json_nesting(text)
         return json.loads(
-            payload.decode("utf-8"), object_pairs_hook=no_duplicates, parse_constant=no_constants
+            text,
+            object_pairs_hook=no_duplicates,
+            parse_constant=no_constants,
+            parse_float=finite_float,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError(f"{label} is not strict UTF-8 JSON") from exc
 
 

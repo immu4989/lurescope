@@ -150,7 +150,9 @@ def validate_mandate_conformance_challenge(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if challenge["schema"] != CHALLENGE_SCHEMA or challenge["schema_version"] != 1:
+    if challenge["schema"] != CHALLENGE_SCHEMA or (
+        type(challenge["schema_version"]) is not int or challenge["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance challenge schema")
     _id(challenge["challenge_id"], "challenge_id")
     generated = _instant(challenge["generated_at"], "generated_at")
@@ -175,7 +177,11 @@ def validate_mandate_conformance_challenge(value: Any) -> Dict[str, Any]:
         raise ValueError("conformance challenge requires one ordered stateful session")
     for index, item in enumerate(_bounded(challenge["cases"], "cases", 4096)):
         case = _exact(item, f"cases[{index}]", ("case_id", "sequence", "transaction"))
-        if case["case_id"] != f"case-{index + 1:04d}" or case["sequence"] != index + 1:
+        if (
+            case["case_id"] != f"case-{index + 1:04d}"
+            or type(case["sequence"]) is not int
+            or case["sequence"] != index + 1
+        ):
             raise ValueError("conformance cases must use opaque contiguous order")
         transaction = _exact(
             case["transaction"],
@@ -227,7 +233,9 @@ def validate_mandate_conformance_submission(
             "limitations",
         ),
     )
-    if submission["schema"] != SUBMISSION_SCHEMA or submission["schema_version"] != 1:
+    if submission["schema"] != SUBMISSION_SCHEMA or (
+        type(submission["schema_version"]) is not int or submission["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance submission schema")
     _id(submission["submission_id"], "submission_id")
     if _instant(submission["submitted_at"], "submitted_at") < _instant(
@@ -359,12 +367,14 @@ def validate_mandate_conformance_score(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if score["schema"] != SCORE_SCHEMA or score["schema_version"] != 1:
+    if score["schema"] != SCORE_SCHEMA or (
+        type(score["schema_version"]) is not int or score["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance score schema")
     expected = _score_value(
         score["challenge"], score["submission"], evaluated_at=score["evaluated_at"]
     )
-    if score != expected:
+    if _canonical(score) != _canonical(expected):
         raise ValueError("producer LureMandate conformance score does not independently reproduce")
     return dict(score)
 
@@ -444,7 +454,9 @@ def validate_mandate_conformance_verification(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if verification["schema"] != VERIFICATION_SCHEMA or verification["schema_version"] != 1:
+    if verification["schema"] != VERIFICATION_SCHEMA or (
+        type(verification["schema_version"]) is not int or verification["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance verification schema")
     _id(verification["verification_id"], "verification_id")
     if _exact(verification["engine"], "engine", ("name", "version")) != {
@@ -466,7 +478,7 @@ def validate_mandate_conformance_verification(value: Any) -> Dict[str, Any]:
         _document(documents["score"], "embedded score"),
         verified_at=verification["verified_at"],
     )
-    if verification != expected:
+    if _canonical(verification) != _canonical(expected):
         raise ValueError("LureMandate conformance verification does not independently reproduce")
     return dict(verification)
 

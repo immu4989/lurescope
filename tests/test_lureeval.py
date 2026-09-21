@@ -30,8 +30,8 @@ def _receipt_schema() -> dict:
     resource = importlib.resources.files("lurebench") / "spec/lureeval-receipt-v1.schema.json"
     if resource.is_file():
         return json.loads(resource.read_text(encoding="utf-8"))
-    source_checkout = Path(__file__).parents[2] / "lurebench/spec/lureeval-receipt-v1.schema.json"
-    return json.loads(source_checkout.read_text(encoding="utf-8"))
+    pinned_schema = Path(__file__).parent / "vendor/lureeval/receipt-v1.schema.json"
+    return json.loads(pinned_schema.read_text(encoding="utf-8"))
 
 
 def test_create_receipt_from_current_pilot_gate_is_private_and_schema_valid(tmp_path):

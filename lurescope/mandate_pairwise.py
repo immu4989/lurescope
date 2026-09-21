@@ -177,10 +177,12 @@ def validate_pairwise_mandate_assurance(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if report["schema"] != PAIRWISE_SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != PAIRWISE_SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate pairwise assurance schema")
     _id(report["report_id"], "pairwise report_id")
-    if report != _producer_value(report["score"]):
+    if _canonical(report) != _canonical(_producer_value(report["score"])):
         raise ValueError("LureMandate pairwise assurance does not independently reproduce")
     return dict(report)
 
@@ -245,7 +247,9 @@ def validate_pairwise_mandate_verification(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if verification["schema"] != VERIFICATION_SCHEMA or verification["schema_version"] != 1:
+    if verification["schema"] != VERIFICATION_SCHEMA or (
+        type(verification["schema_version"]) is not int or verification["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate pairwise verification schema")
     _id(verification["verification_id"], "pairwise verification_id")
     if verification["engine"] != {
@@ -257,7 +261,7 @@ def validate_pairwise_mandate_verification(value: Any) -> Dict[str, Any]:
         raise ValueError("pairwise verification checks or limitations are incomplete")
     payload = _document(verification["document"], "embedded pairwise report")
     expected = _verification_value(payload, verified_at=verification["verified_at"])
-    if verification != expected:
+    if _canonical(verification) != _canonical(expected):
         raise ValueError("LureMandate pairwise verification does not independently reproduce")
     return dict(verification)
 

@@ -20,7 +20,6 @@ from lurescope.mandate_pairwise import (
 
 ROOT = Path(__file__).parents[1]
 VECTOR = ROOT / "conformance" / "luremandate-pairwise-v1"
-PRODUCER = ROOT.parent / "lurebench" / "conformance" / "luremandate-pairwise-v1"
 
 
 def _load(name: str) -> dict:
@@ -36,7 +35,7 @@ def _registry() -> Registry:
     return Registry().with_resources(resources)
 
 
-def test_public_pairwise_sources_match_producer_and_recompute_independently():
+def test_public_pairwise_sources_match_producer_and_recompute_independently(assert_producer_copy):
     for name in (
         "plan.json",
         "run.json",
@@ -45,7 +44,7 @@ def test_public_pairwise_sources_match_producer_and_recompute_independently():
         "score.json",
         "pairwise-assurance.json",
     ):
-        assert (VECTOR / name).read_bytes() == (PRODUCER / name).read_bytes()
+        assert_producer_copy(f"conformance/luremandate-pairwise-v1/{name}")
     report = _load("pairwise-assurance.json")
     verification = _load("pairwise-verification.json")
     assert validate_pairwise_mandate_assurance(report) == report

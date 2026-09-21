@@ -22,7 +22,6 @@ from lurescope.mandate_conformance import (
 
 ROOT = Path(__file__).parents[1]
 VECTOR = ROOT / "conformance/luremandate-v1"
-PRODUCER = ROOT.parent / "lurebench"
 
 
 def _load(name: str) -> dict:
@@ -38,7 +37,7 @@ def _registry() -> Registry:
     return Registry().with_resources(resources)
 
 
-def test_public_conformance_sources_are_exact_producer_copies_and_recompute():
+def test_public_conformance_sources_are_exact_producer_copies_and_recompute(assert_producer_copy):
     challenge = _load("challenge.json")
     submission = _load("submission.json")
     score = _load("conformance-score.json")
@@ -50,9 +49,7 @@ def test_public_conformance_sources_are_exact_producer_copies_and_recompute():
         "submission.json",
         "conformance-score.json",
     ):
-        assert (VECTOR / name).read_bytes() == (
-            PRODUCER / "conformance/luremandate-v1" / name
-        ).read_bytes()
+        assert_producer_copy(f"conformance/luremandate-v1/{name}")
     assert validate_mandate_conformance_challenge(challenge) == challenge
     assert validate_mandate_conformance_submission(submission, challenge) == submission
     assert validate_mandate_conformance_score(score) == score

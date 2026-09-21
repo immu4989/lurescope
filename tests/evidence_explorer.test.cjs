@@ -4,6 +4,12 @@ const assert = require("node:assert/strict");
 const explorer = require("../lurescope/static/evidence-explorer.js");
 
 const sha = character => character.repeat(64);
+test("sequence evidence displays bounded operation coverage", () => {
+  const artifact = require("../conformance/luremandate-sequence-v1/sequence-verification.json");
+  const summary = explorer.summarizeArtifact(artifact);
+  assert.ok(summary.metrics.some(metric => metric.label === "Ordered pairs" && metric.value === "25 / 25"));
+  assert.ok(summary.warnings.some(warning => warning.includes("isolated")));
+});
 const receipt = {
   _type: "https://in-toto.io/Statement/v1",
   subject: [{name: "private-evaluation-cohort", digest: {sha256: sha("a")}}],

@@ -1,5 +1,10 @@
 # Browser Evidence Explorer
 
+Ordered LureMandate sequence verification is supported. The view displays
+priming cases, measured operations, and ordered pair coverage. Run
+`lurescope mandate check-sequence` for independent evidence verification;
+the browser displays claims without recomputing the embedded campaign.
+
 The [GitHub Pages lab](https://immu4989.github.io/lurescope/) can open operational
 evidence locally in the browser. Choose **Evidence JSON** near the bottom of the
 page to inspect:

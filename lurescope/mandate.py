@@ -10,12 +10,15 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import os
+import stat
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
 from . import __version__
-from .permit import _canonical, _exact, _id, _integer, _strict, _timestamp, _write_new
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _exact, _id, _integer, _strict, _write_new
 from .spiffe import parse_spiffe_id
 
 PLAN_SCHEMA = "https://github.com/immu4989/lurebench/spec/luremandate-plan-v1"
@@ -149,7 +152,9 @@ def validate_mandate_plan(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if plan["schema"] != PLAN_SCHEMA or plan["schema_version"] != 1:
+    if plan["schema"] != PLAN_SCHEMA or (
+        type(plan["schema_version"]) is not int or plan["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate plan schema")
     _id(plan["campaign_id"], "campaign_id")
     _instant(plan["created_at"], "created_at")
@@ -253,13 +258,15 @@ def validate_mandate_plan(value: Any) -> Dict[str, Any]:
             "require_complete_outcomes",
         ),
     )
-    if acceptance != {
-        "maximum_invalid_allow_count": 0,
-        "maximum_authority_bypass_count": 0,
-        "maximum_collateral_denial_count": 0,
-        "maximum_incorrect_reason_count": 0,
-        "require_complete_outcomes": True,
-    }:
+    if _canonical(acceptance) != _canonical(
+        {
+            "maximum_invalid_allow_count": 0,
+            "maximum_authority_bypass_count": 0,
+            "maximum_collateral_denial_count": 0,
+            "maximum_incorrect_reason_count": 0,
+            "require_complete_outcomes": True,
+        }
+    ):
         raise ValueError("LureMandate v1 acceptance is not fail closed")
     if _exact(plan["privacy"], "privacy", tuple(PRIVACY)) != PRIVACY:
         raise ValueError("privacy profile is invalid")
@@ -336,7 +343,9 @@ def validate_mandate_run(value: Any, plan_value: Mapping[str, Any]) -> Dict[str,
             "limitations",
         ),
     )
-    if run["schema"] != RUN_SCHEMA or run["schema_version"] != 1:
+    if run["schema"] != RUN_SCHEMA or (
+        type(run["schema_version"]) is not int or run["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate run schema")
     _id(run["run_id"], "run_id")
     _id(run["campaign_id"], "campaign_id")
@@ -494,8 +503,10 @@ def _expected(
         else intent["tenant_id"]
     )
     key = (subject, policy["policy_id"])
-    beginning = decided - timedelta(milliseconds=policy["cumulative_window_ms"])
-    consumed = sum(impact for instant, impact in reservations.get(key, []) if instant >= beginning)
+    window = timedelta(milliseconds=policy["cumulative_window_ms"])
+    consumed = sum(
+        impact for instant, impact in reservations.get(key, []) if decided - instant <= window
+    )
     if consumed + intent["impact_units"] > policy["cumulative_limit_units"]:
         return "block", "cumulative_limit_exceeded"
     return "allow", "authority_satisfied"
@@ -661,7 +672,9 @@ def validate_mandate_evaluation(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if evaluation["schema"] != EVALUATION_SCHEMA or evaluation["schema_version"] != 1:
+    if evaluation["schema"] != EVALUATION_SCHEMA or (
+        type(evaluation["schema_version"]) is not int or evaluation["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate evaluation schema")
     _id(evaluation["evaluation_id"], "evaluation_id")
     if _exact(evaluation["engine"], "engine", ("name", "version")) != {
@@ -673,16 +686,40 @@ def validate_mandate_evaluation(value: Any) -> Dict[str, Any]:
     _digest(evaluation["run_sha256"], "run_sha256")
     _claims_boundary(evaluation["limitations"], LIMITATIONS, "evaluation limitations")
     expected = _derive(evaluation["plan"], evaluation["run"], evaluation["evaluated_at"])
-    if evaluation != expected:
+    if _canonical(evaluation) != _canonical(expected):
         raise ValueError("producer LureMandate evaluation does not independently recompute")
     return dict(evaluation)
 
 
-def _read(path: Path, label: str, maximum: int = MAX_INPUT_BYTES) -> bytes:
+def _read(
+    path: Path, label: str, maximum: int = MAX_INPUT_BYTES, *, private: bool = False
+) -> bytes:
     source = Path(path)
     if not source.is_file() or source.is_symlink() or source.parent.is_symlink():
         raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = source.read_bytes()
+    # Bound allocation before parsing, and validate the opened object rather
+    # than relying only on the path check (which can race with replacement).
+    descriptor = os.open(
+        source,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_BINARY", 0),
+    )
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError(f"{label} must be a regular file")
+        if private and os.name == "posix" and metadata.st_mode & 0o077:
+            raise ValueError(f"{label} must not grant group or world access")
+        if not 1 <= metadata.st_size <= maximum:
+            raise ValueError(f"{label} exceeds its bounded size")
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = -1
+            payload = stream.read(maximum + 1)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
     if not 1 <= len(payload) <= maximum:
         raise ValueError(f"{label} exceeds its bounded size")
     return payload
@@ -695,6 +732,8 @@ def _encode(payload: bytes) -> str:
 def _decode(value: Any, field: str) -> bytes:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field} must be canonical standard base64")
+    if len(value) > 4 * ((MAX_INPUT_BYTES + 2) // 3):
+        raise ValueError(f"{field} exceeds its encoded size bound")
     try:
         payload = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -778,7 +817,9 @@ def validate_mandate_verification(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if verification["schema"] != VERIFICATION_SCHEMA or verification["schema_version"] != 1:
+    if verification["schema"] != VERIFICATION_SCHEMA or (
+        type(verification["schema_version"]) is not int or verification["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate verification schema")
     _id(verification["verification_id"], "verification_id")
     if _exact(verification["engine"], "engine", ("name", "version")) != {
@@ -798,7 +839,7 @@ def validate_mandate_verification(value: Any) -> Dict[str, Any]:
         _document(documents["evaluation"], "embedded evaluation"),
         verified_at=verification["verified_at"],
     )
-    if verification != expected:
+    if _canonical(verification) != _canonical(expected):
         raise ValueError("LureMandate verification does not independently reproduce")
     return dict(verification)
 
@@ -817,7 +858,10 @@ def create_mandate_verification(
         _read(evaluation_path, "LureMandate evaluation"),
         verified_at=verified_at or _now(),
     )
-    _write_new(Path(output_path), _canonical(validate_mandate_verification(result)))
+    payload = _canonical(validate_mandate_verification(result))
+    if len(payload) > MAX_REPORT_BYTES:
+        raise ValueError("generated LureMandate verification exceeds its report size limit")
+    _write_new(Path(output_path), payload)
     return result
 
 

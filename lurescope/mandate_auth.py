@@ -17,11 +17,13 @@ from . import __version__
 from .mandate import (
     APPROVAL_STATEMENT_SCHEMA,
     _derive,
+    _read,
     validate_mandate_evaluation,
     validate_mandate_plan,
     validate_mandate_run,
 )
-from .permit import _canonical, _exact, _id, _strict, _timestamp, _write_new
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _exact, _id, _strict, _write_new
 
 AUTHENTICATION_SCHEMA = (
     "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-verification/v1"
@@ -78,16 +80,6 @@ def _instant(value: Any, field: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
-def _read(path: Path, label: str, maximum: int = MAX_INPUT_BYTES) -> bytes:
-    source = Path(path)
-    if not source.is_file() or source.is_symlink() or source.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = source.read_bytes()
-    if not 1 <= len(payload) <= maximum:
-        raise ValueError(f"{label} exceeds its bounded size")
-    return payload
-
-
 def _encode(payload: bytes) -> str:
     return base64.b64encode(payload).decode("ascii")
 
@@ -95,6 +87,8 @@ def _encode(payload: bytes) -> str:
 def _decode(value: Any, field: str, maximum: int) -> bytes:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field} must be canonical standard base64")
+    if len(value) > 4 * ((maximum + 2) // 3):
+        raise ValueError(f"{field} exceeds its encoded size bound")
     try:
         payload = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -168,7 +162,9 @@ def validate_approval_statement(value: Any) -> Dict[str, Any]:
         "approval statement",
         ("schema", "schema_version", "campaign_id", "plan_sha256", "approval"),
     )
-    if statement["schema"] != APPROVAL_STATEMENT_SCHEMA or statement["schema_version"] != 1:
+    if statement["schema"] != APPROVAL_STATEMENT_SCHEMA or (
+        type(statement["schema_version"]) is not int or statement["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate approval statement schema")
     _id(statement["campaign_id"], "campaign_id")
     _digest(statement["plan_sha256"], "plan_sha256")
@@ -212,7 +208,7 @@ def sign_approval_statement(
     statement = validate_approval_statement(_strict(payload, "approval statement"))
     if payload != _canonical(statement):
         raise ValueError("approval statement must use canonical JSON bytes")
-    key = _private_key(_read(private_key_path, "private key", MAX_KEY_BYTES))
+    key = _private_key(_read(private_key_path, "private key", MAX_KEY_BYTES, private=True))
     public = key.public_key()
     public_der = public.public_bytes(
         serialization.Encoding.DER,
@@ -450,7 +446,9 @@ def validate_authenticated_mandate_verification(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if verification["schema"] != AUTHENTICATION_SCHEMA or verification["schema_version"] != 1:
+    if verification["schema"] != AUTHENTICATION_SCHEMA or (
+        type(verification["schema_version"]) is not int or verification["schema_version"] != 1
+    ):
         raise ValueError("unsupported authenticated LureMandate verification schema")
     _id(verification["verification_id"], "verification_id")
     if _exact(verification["engine"], "engine", ("name", "version")) != {
@@ -522,7 +520,7 @@ def validate_authenticated_mandate_verification(value: Any) -> Dict[str, Any]:
         envelope_values,
         verified_at=verification["verified_at"],
     )
-    if verification != expected:
+    if _canonical(verification) != _canonical(expected):
         raise ValueError("authenticated LureMandate verification does not reproduce")
     return dict(verification)
 

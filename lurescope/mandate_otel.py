@@ -25,7 +25,8 @@ from .mandate import (
     validate_mandate_run,
 )
 from .mandate import PRIVACY as RUN_PRIVACY
-from .permit import _canonical, _exact, _id, _integer, _strict, _timestamp
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _exact, _id, _integer, _strict
 
 OTEL_EXPORT_SCHEMA = "https://github.com/immu4989/lurebench/spec/luremandate-otel-log-export/v1"
 OTEL_PROJECTION_SCHEMA = "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1"
@@ -342,7 +343,9 @@ def _validate_export(value: Any, plan_value: Mapping[str, Any]) -> Dict[str, Any
             "limitations",
         ),
     )
-    if export["schema"] != OTEL_EXPORT_SCHEMA or export["schema_version"] != 1:
+    if export["schema"] != OTEL_EXPORT_SCHEMA or (
+        type(export["schema_version"]) is not int or export["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate OpenTelemetry export")
     for name in ("export_id", "campaign_id", "run_id"):
         _id(export[name], f"export.{name}")
@@ -457,7 +460,9 @@ def validate_mandate_otel_projection(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if projection["schema"] != OTEL_PROJECTION_SCHEMA or projection["schema_version"] != 1:
+    if projection["schema"] != OTEL_PROJECTION_SCHEMA or (
+        type(projection["schema_version"]) is not int or projection["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate OpenTelemetry projection")
     implementation = _exact(projection["implementation"], "implementation", ("name", "version"))
     if implementation["name"] != "lurebench":
@@ -470,7 +475,7 @@ def validate_mandate_otel_projection(value: Any) -> Dict[str, Any]:
         inputs.get("otel_log_export"),
         producer_version=implementation["version"],
     )
-    if projection != expected:
+    if _canonical(projection) != _canonical(expected):
         raise ValueError("LureMandate OpenTelemetry projection does not independently reproduce")
     return dict(projection)
 

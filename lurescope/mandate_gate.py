@@ -11,6 +11,7 @@ from .mandate import _instant, validate_mandate_verification
 from .mandate_auth import validate_authenticated_mandate_verification
 from .mandate_otel import validate_mandate_otel_projection
 from .mandate_otel_auth import validate_authenticated_mandate_otel_projection
+from .mandate_time import validate_mandate_timestamp as _timestamp
 from .permit import (
     _canonical,
     _digest,
@@ -19,7 +20,6 @@ from .permit import (
     _read,
     _sha256,
     _strict,
-    _timestamp,
     _timestamp_now,
     _write_new,
 )
@@ -96,7 +96,9 @@ def validate_approver_key_policy(value: Any) -> Dict[str, Any]:
             "approver_keys",
         ),
     )
-    if policy["schema"] != KEY_POLICY_SCHEMA or policy["schema_version"] != 1:
+    if policy["schema"] != KEY_POLICY_SCHEMA or (
+        type(policy["schema_version"]) is not int or policy["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate approver-key policy schema")
     _id(policy["policy_id"], "approver-key policy id")
     _timestamp(policy["created_at"], "approver-key policy created_at")
@@ -526,7 +528,9 @@ def verify_mandate_deployment_gate(
             "interpretation_boundary",
         ),
     )
-    if reviewed["schema"] != GATE_SCHEMA or reviewed["schema_version"] != 1:
+    if reviewed["schema"] != GATE_SCHEMA or (
+        type(reviewed["schema_version"]) is not int or reviewed["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate deployment gate schema")
     producer = _exact(reviewed["producer"], "deployment gate producer", ("name", "version"))
     if producer["name"] != "lurescope":
@@ -570,7 +574,9 @@ def verify_mandate_deployment_gate(
         expected_receiver_instance_id=expected_receiver_instance_id,
         expected_receiver_key_id=expected_receiver_key_id,
     )
-    if reviewed != expected or not secrets.compare_digest(gate_payload, _canonical(expected)):
+    if _canonical(reviewed) != _canonical(expected) or not secrets.compare_digest(
+        gate_payload, _canonical(expected)
+    ):
         raise ValueError("LureMandate deployment gate does not independently reproduce")
     return {
         "valid": True,

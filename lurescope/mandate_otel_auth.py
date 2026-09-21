@@ -15,13 +15,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from . import __version__
-from .mandate import _instant, validate_mandate_plan
+from .mandate import _instant, _read, validate_mandate_plan
 from .mandate_otel import _validate_export, validate_mandate_otel_projection
-from .permit import _canonical, _digest, _exact, _id, _strict, _timestamp, _write_new
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _digest, _exact, _id, _strict, _write_new
 
 AUTHENTICATION_SCHEMA = (
-    "https://github.com/immu4989/lurescope/spec/"
-    "luremandate-authenticated-otel-projection/v1"
+    "https://github.com/immu4989/lurescope/spec/luremandate-authenticated-otel-projection/v1"
 )
 PAYLOAD_TYPE = "application/vnd.luremandate.otel-log-export+json"
 MAX_INPUT_BYTES = 8 * 1024 * 1024
@@ -56,16 +56,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _read(path: Path, label: str, maximum: int) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = target.read_bytes()
-    if not 1 <= len(payload) <= maximum:
-        raise ValueError(f"{label} exceeds its bounded size")
-    return payload
-
-
 def _encode(payload: bytes) -> str:
     return base64.b64encode(payload).decode("ascii")
 
@@ -73,6 +63,8 @@ def _encode(payload: bytes) -> str:
 def _decode(value: Any, field: str, maximum: int) -> bytes:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field} must be canonical standard base64")
+    if len(value) > 4 * ((maximum + 2) // 3):
+        raise ValueError(f"{field} exceeds its encoded size bound")
     try:
         payload = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -110,9 +102,7 @@ def _private_key(payload: bytes) -> ec.EllipticCurvePrivateKey:
         key = serialization.load_pem_private_key(payload, password=None)
     except (TypeError, ValueError) as exc:
         raise ValueError("receiver private key must be unencrypted PEM") from exc
-    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(
-        key.curve, ec.SECP256R1
-    ):
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(key.curve, ec.SECP256R1):
         raise ValueError("receiver private key must be ECDSA P-256")
     return key
 
@@ -146,7 +136,7 @@ def sign_mandate_otel_export(
         ),
         plan,
     )
-    key = _private_key(_read(private_key_path, "receiver private key", MAX_KEY_BYTES))
+    key = _private_key(_read(private_key_path, "receiver private key", MAX_KEY_BYTES, private=True))
     public_der = key.public_key().public_bytes(
         serialization.Encoding.DER,
         serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -268,9 +258,7 @@ def create_authenticated_mandate_otel_projection(
     envelope_payload = _read(
         envelope_path, "LureMandate telemetry DSSE envelope", MAX_ENVELOPE_BYTES
     )
-    public_key_payload = _read(
-        receiver_public_key_path, "receiver public key", MAX_KEY_BYTES
-    )
+    public_key_payload = _read(receiver_public_key_path, "receiver public key", MAX_KEY_BYTES)
     key_id, _ = _public_key(public_key_payload)
     if not secrets.compare_digest(
         key_id, _digest(expected_receiver_key_id, "expected receiver key ID")
@@ -319,7 +307,9 @@ def validate_authenticated_mandate_otel_projection(value: Any) -> Dict[str, Any]
             "limitations",
         ),
     )
-    if report["schema"] != AUTHENTICATION_SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != AUTHENTICATION_SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported authenticated LureMandate telemetry schema")
     _id(report["verification_id"], "telemetry authentication verification_id")
     engine = _exact(report["engine"], "telemetry authentication engine", ("name", "version"))
@@ -367,7 +357,7 @@ def validate_authenticated_mandate_otel_projection(value: Any) -> Dict[str, Any]
         verified_at=report["verified_at"],
         producer_version=engine["version"],
     )
-    if report != expected:
+    if _canonical(report) != _canonical(expected):
         raise ValueError("authenticated LureMandate telemetry report does not reproduce")
     return dict(report)
 

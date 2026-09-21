@@ -1,0 +1,32 @@
+{
+  "repository": "https://github.com/immu4989/lurebench",
+  "commit": "811260a4655c7ce51b247551f0b0563629fcd6bf",
+  "files": {
+    "spec/lureartifact-campaign-v1.schema.json": "2eeb4d7c55675a3135f19fece44e8228457d472384d9a2b1232bd2272e2562ca",
+    "spec/lureartifact-plan-v1.schema.json": "d813070a916439eaa5396df7c61d86e3c213f777b5d46514eb62a1972e6d7f42",
+    "spec/lureartifact-observation-v1.schema.json": "eca7d7360cb6df86aa65e001045af91eeea2e7d365a907401863ff900f27e036",
+    "spec/lureartifact-evaluation-v1.schema.json": "793dd4a25700fe80bb8cdd416c827f335c0ede305f7eb03108d10af59d9fb488",
+    "conformance/lureartifact-v1/identity-plan.json": "dbf36e323ebd25ceb44dd258aa0956efcb81cb3edb19950ccc1b48738c13d771",
+    "conformance/lureartifact-v1/campaign.json": "e742af498af953d60dab58f73cba0a2c9f2da74905c127f686fc7c5c47ef8f7d",
+    "conformance/lureartifact-v1/plan.json": "f90e879c0272db1f64ee35e42161aa1128ae5d3be360d18ecb0b2a7d397f2f87",
+    "conformance/lureartifact-v1/observation.json": "5e81273b9f3d2c432dfe924d766229d4f25c2a8fd5b8735537cfac3d95c0fdb9",
+    "conformance/lureartifact-v1/evaluation.json": "59e83dadaa928fdbbc90d0592a7576de1d3b4f56334cc0dee3b1c678afddf874",
+    "conformance/luremandate-v1/conformance-plan.json": "86fc6246982526fbb0b2553894e8c8ba4b1bb833e02ff59f99b85dd5491232a0",
+    "conformance/luremandate-v1/conformance-run.json": "8eb02ce1233671cc37300cdb08bc4b096243ef146cb7b5d477d1f51e1004bdb6",
+    "conformance/luremandate-v1/challenge.json": "35fd7c937da7ab9bc3219c890e1928bf2a66109732084e15b5cd04ce15d32962",
+    "conformance/luremandate-v1/submission.json": "d7ff08d8661a9a9fb074d118175eef9109e4fcdb3ecc8fbdb93f25751431330e",
+    "conformance/luremandate-v1/conformance-score.json": "4cf1352a38eac44e7470c74a2e4a61f06c001dece6d58d35674e6ff0a721771f",
+    "conformance/luremandate-pairwise-v1/plan.json": "6996154e533a6b3248b60d9e70ed4c64d86999aa65692990045bc991d0483018",
+    "conformance/luremandate-pairwise-v1/run.json": "d400194b7b2aea8a07660b30cdac3e83ee87c8ea5b6db3c90a0f687c67646c68",
+    "conformance/luremandate-pairwise-v1/challenge.json": "8790964818c56571969904ab8e25b4eee89474bfbd30667d1f9bce3050c0f203",
+    "conformance/luremandate-pairwise-v1/submission.json": "6eabb46c6d0e7c01608d8f80f1fcfcbc8ef1535a1594dd6d65b34daa290383ba",
+    "conformance/luremandate-pairwise-v1/score.json": "d373279477050ab574ccec9bbe4cdb224545022212863696184d9da63b7acd00",
+    "conformance/luremandate-counterfactual-v1/plan.json": "ff46f75b35ef5999785f573843e1a1c45a6e34260db31e05bab999392ee12b8b",
+    "conformance/luremandate-counterfactual-v1/run.json": "860ce15942eaa6a1f066356bc74672a1f231a9bd2e075b2da6b902fedf8b8115",
+    "conformance/luremandate-counterfactual-v1/challenge.json": "be83d8ac58345811e942106e4300e576e2105199e5815005f130dec34990c13e",
+    "conformance/luremandate-counterfactual-v1/submission.json": "931e647c6d162cdb43117bdb6fd2d04ffc597f153e49be061a2068672ccf2393",
+    "conformance/luremandate-counterfactual-v1/score.json": "e4b33775cd40aa2d754ee4e9c73d032bae9c817e1deea798031e50ca75de3d3b",
+    "conformance/luremandate-pairwise-v1/pairwise-assurance.json": "8a28b5fee4dfbb6ed54be9cf35858c985d610775196b90e6ae528a3ae07249e9",
+    "conformance/luremandate-counterfactual-v1/counterfactual-assurance.json": "9e19c40860a85ac7f82f75639b4589867fc9001c4ddb0823e68a29fa6f9cef9c"
+  }
+}

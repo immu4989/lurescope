@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
-import os
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +15,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from . import __version__
-from .mandate import _instant
+from .mandate import _instant, _read
 from .mandate_conformance import (
     validate_mandate_conformance_challenge,
     validate_mandate_conformance_submission,
@@ -59,18 +58,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _read(path: Path, label: str, maximum: int, *, private: bool = False) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = target.read_bytes()
-    if not 1 <= len(payload) <= maximum:
-        raise ValueError(f"{label} exceeds its bounded size")
-    if private and os.name == "posix" and target.stat().st_mode & 0o077:
-        raise ValueError(f"{label} must not grant group or world access")
-    return payload
-
-
 def _encode(payload: bytes) -> str:
     return base64.b64encode(payload).decode("ascii")
 
@@ -78,6 +65,8 @@ def _encode(payload: bytes) -> str:
 def _decode(value: Any, field: str, maximum: int) -> bytes:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field} must be canonical standard base64")
+    if len(value) > 4 * ((maximum + 2) // 3):
+        raise ValueError(f"{field} exceeds its encoded size bound")
     try:
         payload = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -320,7 +309,9 @@ def validate_authenticated_mandate_conformance_verification(value: Any) -> Dict[
             "limitations",
         ),
     )
-    if report["schema"] != AUTHENTICATION_SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != AUTHENTICATION_SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported authenticated conformance schema")
     _id(report["verification_id"], "authentication verification_id")
     engine = _exact(report["engine"], "authentication engine", ("name", "version"))
@@ -374,13 +365,10 @@ def validate_authenticated_mandate_conformance_verification(value: Any) -> Dict[
         verified_at=report["verified_at"],
         producer_version=engine["version"],
     )
-    if (
-        not secrets.compare_digest(
-            _digest(envelope_record["payload_sha256"], "submission payload digest"),
-            expected["submission_envelope"]["payload_sha256"],
-        )
-        or report != expected
-    ):
+    if not secrets.compare_digest(
+        _digest(envelope_record["payload_sha256"], "submission payload digest"),
+        expected["submission_envelope"]["payload_sha256"],
+    ) or _canonical(report) != _canonical(expected):
         raise ValueError("authenticated conformance verification does not reproduce")
     return dict(report)
 

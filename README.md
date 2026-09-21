@@ -190,6 +190,11 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > or authorization.
 
 > **New — independently verify transaction-specific human authority.**
+>
+> **Start locally (unreleased):** `lurescope mandate selftest` checks ten
+> packaged authority profiles and their tamper-rejection probes, without
+> network calls. It tests the installation, not a production deployment.
+>
 > [LureMandate verification](docs/LUREMANDATE_VERIFICATION.md) reparses exact
 > plan, run, and producer-evaluation bytes and independently recomputes intent
 > digests, agent/workload/run binding, approval freshness, distinct authorized
@@ -220,7 +225,10 @@ Most fraud-scoring demos stop at "is this phishing? — 94%." That number is the
 > across 105 factor pairs alongside the exact gateway score. This is bounded
 > strength-2 input coverage—not higher-order, production-domain, proprietary
 > implementation-structure, or complete-mediation coverage.
-> An independent 40-case counterfactual verifier also reconstructs a valid
+> Ordered-operation evidence is also
+> available through `lurescope mandate verify-sequence` and `check-sequence`:
+> 46 cases cover all 25 ordered pairs across five operations, with isolated
+> requester scopes. The independent 40-case counterfactual profile reconstructs a valid
 > control and denial mutant for every guard and checks the exact semantic delta:
 > 18 single-dimension pairs and two explicitly dependency-coupled pairs. This
 > is contract sensitivity evidence—not MC/DC, proprietary source-code

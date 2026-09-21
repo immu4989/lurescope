@@ -55,6 +55,7 @@ def _keys(tmp_path: Path, approvers: list[str]) -> tuple[dict[str, Path], dict[s
                 serialization.NoEncryption(),
             )
         )
+        private_path.chmod(0o600)
         public_path.write_bytes(
             key.public_key().public_bytes(
                 serialization.Encoding.PEM,

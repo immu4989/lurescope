@@ -20,7 +20,6 @@ from lurescope.mandate_counterfactual import (
 
 ROOT = Path(__file__).parents[1]
 VECTOR = ROOT / "conformance" / "luremandate-counterfactual-v1"
-PRODUCER = ROOT.parent / "lurebench" / "conformance" / "luremandate-counterfactual-v1"
 
 
 def _load(name: str) -> dict:
@@ -36,7 +35,7 @@ def _registry() -> Registry:
     return Registry().with_resources(resources)
 
 
-def test_public_counterfactual_sources_match_and_independently_recompute():
+def test_public_counterfactual_sources_match_and_independently_recompute(assert_producer_copy):
     for name in (
         "plan.json",
         "run.json",
@@ -45,7 +44,7 @@ def test_public_counterfactual_sources_match_and_independently_recompute():
         "score.json",
         "counterfactual-assurance.json",
     ):
-        assert (VECTOR / name).read_bytes() == (PRODUCER / name).read_bytes()
+        assert_producer_copy(f"conformance/luremandate-counterfactual-v1/{name}")
     report = _load("counterfactual-assurance.json")
     verification = _load("counterfactual-verification.json")
     assert validate_counterfactual_mandate_assurance(report) == report

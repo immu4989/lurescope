@@ -56,8 +56,7 @@ def _registry() -> Registry:
     return Registry().with_resources(resources)
 
 
-def test_shared_lureartifact_vector_and_schemas_are_byte_identical():
-    producer = ROOT.parent / "lurebench"
+def test_shared_lureartifact_vector_and_schemas_are_byte_identical(assert_producer_copy):
     files = [
         "spec/lureartifact-campaign-v1.schema.json",
         "spec/lureartifact-plan-v1.schema.json",
@@ -70,7 +69,7 @@ def test_shared_lureartifact_vector_and_schemas_are_byte_identical():
         "conformance/lureartifact-v1/evaluation.json",
     ]
     for relative in files:
-        assert (ROOT / relative).read_bytes() == (producer / relative).read_bytes()
+        assert_producer_copy(relative)
 
 
 def test_independent_module_imports_no_lurebench_code():
