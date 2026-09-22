@@ -32,6 +32,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
+**[Review unreleased hardening and migration →](docs/HARDENING_MIGRATION.md)** ·
 **[Run one-command operational pilot →](docs/OPERATIONAL_PILOT.md)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[Compare Defender offline →](docs/MICROSOFT_DEFENDER_OFFLINE.md)** ·
@@ -50,6 +51,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Verify revocation convergence →](docs/LUREREVOKE_EVIDENCE.md)** ·
 **[Verify identity lifecycle closure →](docs/LUREIDENTITY_EVIDENCE.md)** ·
 **[Verify AI artifact authorization →](docs/LUREARTIFACT_VERIFICATION.md)** ·
+**[Verify pinned checkpoint bytes (unreleased) →](docs/CHECKPOINT_VERIFICATION.md)** ·
 **[Verify transitive artifact recall →](docs/LURERECALL_VERIFICATION.md)** ·
 **[Authenticate SLSA provenance →](docs/LUREATTEST_VERIFICATION.md)** ·
 **[Reconcile CycloneDX and SPDX twins →](docs/LUREBOM_VERIFICATION.md)** ·
@@ -842,7 +844,7 @@ The headline comparison above is toy-vs-toy on purpose (it runs with zero keys, 
 
 | Detector | What it is | Runs |
 |---|---|---|
-| `tfidf-logreg` | Trained TF-IDF + logistic-regression baseline (bundled) | always, default |
+| `tfidf-logreg` | Trained TF-IDF + logistic regression; [pinned data-only JSON inference](docs/PORTABLE_MODEL.md) | always, default |
 | `heuristic-v0` | Dependency-free keyword rules | always |
 | `llm-judge` | LLM-as-classifier — reads meaning, not tokens | set `LURESCOPE_LLM_ENGINE` + a provider key |
 | `openai-moderation` | Content-safety moderation API, used as a fraud proxy | `OPENAI_API_KEY` |

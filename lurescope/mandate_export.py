@@ -147,7 +147,9 @@ def _oscal_prop(name: str, value: Any) -> Dict[str, str]:
 
 
 def _effective_generated_at(gate: Mapping[str, Any], generated_at: Optional[str]) -> str:
-    candidate = _timestamp(generated_at or _timestamp_now(), "export generated_at")
+    candidate = _timestamp(
+        _timestamp_now() if generated_at is None else generated_at, "export generated_at"
+    )
     if _instant(candidate, "export generated_at") < _instant(
         gate["created_at"], "deployment gate created_at"
     ):

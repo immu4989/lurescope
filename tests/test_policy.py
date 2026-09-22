@@ -157,3 +157,86 @@ def test_policy_endpoint_exposes_configured_assurance(tmp_path, monkeypatch):
     assert payload["assurance_status"] == "finite_sample_fpr_control"
     assert payload["validation_recall"] == 1.0
     assert payload["risk_control"]["upper_confidence_bound"] <= payload["target_fpr"]
+
+
+def test_policy_path_cache_does_not_hide_replacement(tmp_path):
+    path = tmp_path / "policy.json"
+    _write_policy(path, threshold=.4)
+    assert load_policy(str(path)).threshold == .4
+    _write_policy(path, threshold=.8)
+    assert load_policy(str(path)).threshold == .8
+    path.write_text("not JSON")
+    with pytest.raises(ValueError):
+        load_policy(str(path))
+
+
+def test_optional_pin_checked_against_current_bytes(tmp_path, monkeypatch):
+    import hashlib
+
+    from lurescope.policy import configured_policy
+
+    path = tmp_path / "policy.json"
+    _write_policy(path)
+    pin = hashlib.sha256(path.read_bytes()).hexdigest()
+    monkeypatch.setenv("LURESCOPE_POLICY_PATH", str(path))
+    monkeypatch.setenv("LURESCOPE_POLICY_SHA256", pin)
+    assert configured_policy().threshold == .99
+    _write_policy(path, threshold=.1)
+    with pytest.raises(ValueError, match="digest mismatch"):
+        configured_policy()
+    monkeypatch.delenv("LURESCOPE_POLICY_PATH")
+    with pytest.raises(ValueError, match="requires"):
+        configured_policy()
+
+
+def test_duplicate_policy_fields_and_oversize_rejected(tmp_path):
+    from lurescope.policy import MAX_POLICY_BYTES
+
+    path = tmp_path / "policy.json"
+    _write_policy(path)
+    raw = path.read_text()
+    path.write_text(raw[:-1] + ', "threshold": 0.0}')
+    with pytest.raises(ValueError, match="duplicate"):
+        load_policy(str(path))
+    path.write_bytes(b" " * (MAX_POLICY_BYTES + 1))
+    with pytest.raises(ValueError, match="bounded size"):
+        load_policy(str(path))
+
+
+def test_policy_rejects_symlink_and_excessive_validation_work(tmp_path, monkeypatch):
+    import lurescope.policy as module
+
+    path = tmp_path / "policy.json"
+    _write_policy(path)
+    link = tmp_path / "link.json"
+    link.symlink_to(path)
+    with pytest.raises(ValueError, match="regular"):
+        load_policy(str(link))
+    _write_risk_controlled_policy(path, validation_records=10_000_001)
+    monkeypatch.setattr(module, "binomial_cdf", lambda *a: pytest.fail("expensive work"))
+    with pytest.raises(ValueError, match="provenance"):
+        load_policy(str(path))
+
+
+def test_risk_control_threshold_must_be_on_declared_grid(tmp_path):
+    path = tmp_path / "policy.json"
+    _write_risk_controlled_policy(path, threshold=.115)
+    with pytest.raises(ValueError, match="declared grid"):
+        load_policy(str(path))
+
+
+@pytest.mark.parametrize("value", [True, "1", 10 ** 400, float("nan"), float("inf")])
+def test_malformed_policy_probability_rejected(tmp_path, value):
+    path = tmp_path / "policy.json"
+    _write_policy(path, threshold=value)
+    with pytest.raises(ValueError):
+        load_policy(str(path))
+
+
+@pytest.mark.parametrize("value", [True, "0.5", -.1, 1.1, float("nan"), float("inf")])
+def test_service_rejects_bad_threshold_before_detector_work(monkeypatch, value):
+    monkeypatch.setattr(service, "_detector", lambda *a: pytest.fail("detector constructed"))
+    with pytest.raises(ValueError, match="threshold"):
+        service.score("example", threshold=value)
+    with pytest.raises(ValueError, match="threshold"):
+        service.attack("example", "homoglyph", threshold=value)

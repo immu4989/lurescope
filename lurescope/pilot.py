@@ -364,8 +364,9 @@ def pilot_plan_sha256(path: Path) -> str:
 def detector_artifact_sha256(detector: str) -> Optional[str]:
     """Return the bundled deterministic detector artifact bound by a new plan."""
     if detector == "tfidf-logreg":
-        model = Path(__file__).with_name("models") / "tfidf-logreg-fraud.joblib"
-        return hashlib.sha256(model.read_bytes()).hexdigest()
+        from .service import _detector
+
+        return _detector(detector).artifact_sha256
     if detector == "heuristic-v0":
         return None
     raise ValueError("Pilot Gate supports deterministic local LureProof detectors only")

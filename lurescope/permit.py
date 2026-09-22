@@ -217,14 +217,9 @@ def _strict(payload: bytes, label: str) -> Any:
 
 
 def _read(path: Path, *, private: bool = False) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{target} must be a regular local file")
-    if target.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError(f"{target.name} exceeds the 4 MiB limit")
-    if private and os.name == "posix" and target.stat().st_mode & 0o077:
-        raise ValueError(f"{target.name} must not grant group or world access")
-    return target.read_bytes()
+    from .local_io import read_regular_file
+
+    return read_regular_file(path, maximum=MAX_ARTIFACT_BYTES, private=private)
 
 
 def _write_new(path: Path, payload: bytes) -> None:

@@ -495,7 +495,7 @@ def create_mandate_conformance_verification(
         _read(challenge_path, "LureMandate conformance challenge"),
         _read(submission_path, "LureMandate conformance submission"),
         _read(score_path, "LureMandate conformance score"),
-        verified_at=verified_at or _now(),
+        verified_at=_now() if verified_at is None else verified_at,
     )
     payload = _canonical(validate_mandate_conformance_verification(result))
     if len(payload) > MAX_REPORT_BYTES:

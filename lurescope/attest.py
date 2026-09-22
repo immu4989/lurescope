@@ -697,6 +697,8 @@ def _verification_value(
 
 
 def _read_evidence_directory(path: Path, expected_files: set[str]) -> Dict[str, bytes]:
+    from .local_io import read_regular_file
+
     root = Path(path)
     if root.is_symlink() or not root.is_dir():
         raise ValueError("evidence path must be a regular local directory")
@@ -710,11 +712,7 @@ def _read_evidence_directory(path: Path, expected_files: set[str]) -> Dict[str, 
     result = {}
     for name in sorted(expected_files):
         target = root / name
-        if target.is_symlink() or not target.is_file():
-            raise ValueError(f"{name} must be a regular non-symlink file")
-        if target.stat().st_size > MAX_ENVELOPE_BYTES:
-            raise ValueError(f"{name} exceeds the envelope byte limit")
-        result[name] = target.read_bytes()
+        result[name] = read_regular_file(target, maximum=MAX_ENVELOPE_BYTES, label="DSSE envelope")
     return result
 
 

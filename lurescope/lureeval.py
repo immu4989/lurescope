@@ -30,13 +30,9 @@ _POLICY_DIGEST = re.compile(r"^[a-f0-9]{64}$")
 
 
 def _read_regular(path: Path, max_bytes: int) -> bytes:
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link input: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    if path.stat().st_size > max_bytes:
-        raise ValueError(f"{path.name} exceeds the {max_bytes} byte safety limit")
-    return path.read_bytes()
+    from .local_io import read_regular_file
+
+    return read_regular_file(path, maximum=max_bytes, label="LureEval input", allow_empty=True)
 
 
 def _write_new(path: Path, payload: bytes) -> None:

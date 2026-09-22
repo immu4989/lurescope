@@ -222,7 +222,9 @@ def create_pairwise_mandate_verification(
     verified_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     payload = _read(report_path, "LureMandate pairwise assurance", MAX_REPORT_BYTES)
-    result = _verification_value(payload, verified_at=verified_at or _now())
+    result = _verification_value(
+        payload, verified_at=_now() if verified_at is None else verified_at
+    )
     encoded = _canonical(validate_pairwise_mandate_verification(result))
     if len(encoded) > MAX_VERIFICATION_BYTES:
         raise ValueError("pairwise verification exceeds its size limit")

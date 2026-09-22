@@ -42,7 +42,10 @@
         "duplicate_count": { "const": 1 },
         "detector": { "const": "tfidf-logreg" },
         "detector_artifact_sha256": {
-          "const": "84c7254c464ff9faa3ede012691c13d53da08ab1f26223633af7b9377d60ed0b"
+          "enum": [
+            "84c7254c464ff9faa3ede012691c13d53da08ab1f26223633af7b9377d60ed0b",
+            "12b30fae44d49f77c748c669552117ba25400cd9439bf4c9871bae31a8b16055"
+          ]
         },
         "threshold": { "const": 0.5 },
         "pilot_gate_verdict": { "const": "pass" }

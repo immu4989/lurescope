@@ -3,16 +3,19 @@
 LureScope is the deployable companion to LureBench. LureBench answers "how good is
 this detector on a benchmark"; LureScope wraps a detector behind an API so you can
 score a single message and — the differentiator — watch an attacker try to evade it
-in real time. All detection and attack logic is reused from the ``lurebench`` package
-so the service and the benchmark can never drift apart.
+in real time. Attacks and extended detectors reuse ``lurebench``. The default
+bundled classifier uses a data-only inference profile, tested against its original
+LureBench/scikit-learn model to an absolute probability tolerance of 1e-12.
 """
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from numbers import Real
 from typing import List, Optional
 
 from lurebench.attacks import available as attack_names
@@ -22,9 +25,11 @@ from lurebench.schema import Lure
 
 from .defense import apply_defense, available_defenses
 from .policy import configured_policy
+from .portable_tfidf import PortableTfidfDetector
 
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
-_DEFAULT_TFIDF = os.path.join(_MODEL_DIR, "tfidf-logreg-fraud.joblib")
+_DEFAULT_TFIDF = os.path.join(_MODEL_DIR, "tfidf-logreg-fraud.json")
+_DEFAULT_TFIDF_SHA256 = "12b30fae44d49f77c748c669552117ba25400cd9439bf4c9871bae31a8b16055"
 _TOKEN = re.compile(r"[a-z0-9']+")
 
 DEFAULT_DETECTOR = "tfidf-logreg"
@@ -73,6 +78,24 @@ class DetectorUnavailable(ValueError):
     """A known detector was requested but its key/dependency is not configured."""
 
 
+class DetectorOutputError(RuntimeError):
+    """A detector abstained or violated the finite probability contract."""
+
+
+def _probability(value) -> float:
+    if value is None:
+        raise DetectorOutputError("detector abstained; no risk decision is available")
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise DetectorOutputError("detector did not return a finite probability in [0, 1]")
+    try:
+        result = float(value)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise DetectorOutputError("detector probability cannot be represented") from exc
+    if not math.isfinite(result) or not 0 <= result <= 1:
+        raise DetectorOutputError("detector did not return a finite probability in [0, 1]")
+    return result
+
+
 def _as_lure(text: str) -> Lure:
     # Scoring only reads ``.text``; the other fields are valid placeholders.
     return Lure(id="scope-0", text=text, label=0, source="human", typology="benign")
@@ -81,7 +104,7 @@ def _as_lure(text: str) -> Lure:
 @lru_cache(maxsize=None)
 def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = None):
     if name == "tfidf-logreg":
-        return get_detector("tfidf-logreg", model_path=_DEFAULT_TFIDF)
+        return PortableTfidfDetector(_DEFAULT_TFIDF, expected_sha256=_DEFAULT_TFIDF_SHA256)
     if name == "llm-judge":
         engine = engine or os.environ.get("LURESCOPE_LLM_ENGINE")
         if not engine:
@@ -91,12 +114,12 @@ def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = No
         except DetectorUnavailable:
             raise
         except Exception as exc:  # noqa: BLE001 - missing key/dep -> clean 400
-            raise DetectorUnavailable(f"{_needs(name)} ({type(exc).__name__}: {exc})") from exc
+            raise DetectorUnavailable(_needs(name)) from exc
     if name in EXTENDED:
         try:
             return get_detector(name)
         except Exception as exc:  # noqa: BLE001 - missing key/dep -> clean 400
-            raise DetectorUnavailable(f"{_needs(name)} ({type(exc).__name__}: {exc})") from exc
+            raise DetectorUnavailable(_needs(name)) from exc
     return get_detector(name)
 
 
@@ -198,6 +221,8 @@ def score(
     engine: Optional[str] = None,
     model: Optional[str] = None,
 ) -> ScoreResult:
+    if threshold is not None:
+        threshold = _decision_threshold(threshold)
     policy = configured_policy()
     if threshold is not None:
         resolved_threshold = threshold
@@ -212,8 +237,7 @@ def score(
         policy_id = None
         threshold_source = "default"
     det = _detector(detector_name, engine, model)
-    prob = det.score(_as_lure(text))
-    prob = 0.0 if prob is None else float(prob)
+    prob = _probability(det.score(_as_lure(text)))
     return ScoreResult(
         text=text,
         detector=detector_name,
@@ -224,6 +248,13 @@ def score(
         policy_id=policy_id,
         threshold_source=threshold_source,
     )
+
+
+def _decision_threshold(value) -> float:
+    try:
+        return _probability(value)
+    except DetectorOutputError as exc:
+        raise ValueError("decision threshold must be a finite probability in [0, 1]") from exc
 
 
 def _build_attack(attack_name: str, detector, complete_fn=None):
@@ -251,6 +282,7 @@ def attack(
 ) -> AttackResult:
     """Score ``text``, apply ``attack_name``, re-score, and optionally re-score once
     more after a ``defense`` normalizes the attacked text."""
+    threshold = _decision_threshold(threshold)
     det = _detector(detector_name, engine, model)
 
     complete_fn = None
@@ -266,13 +298,13 @@ def attack(
         complete_fn = provider_complete_fn(engine, model)
 
     atk = _build_attack(attack_name, det, complete_fn)
-    attacked_text = atk.apply(text)
-
     def _p(t: str) -> float:
-        p = det.score(_as_lure(t))
-        return 0.0 if p is None else float(p)
+        return _probability(det.score(_as_lure(t)))
 
     clean_p = _p(text)
+    # Do not generate an attack (which may spend provider credit) if the clean
+    # detector has no valid decision. Never turn abstention into a benign score.
+    attacked_text = atk.apply(text)
     att_p = _p(attacked_text)
     clean_flag = clean_p >= threshold
     att_flag = att_p >= threshold

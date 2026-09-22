@@ -31,6 +31,15 @@ RAW = (
 FIXED_SALT = bytes(range(32))
 
 
+@pytest.mark.parametrize("value", ["", False, 0, [], {}, "2026-01-01T00:00:00"])
+def test_explicit_bad_creation_time_fails_before_scoring(monkeypatch, value):
+    import lurescope.proof as module
+
+    monkeypatch.setattr(module, "triage_email", lambda *a: pytest.fail("scoring started"))
+    with pytest.raises(ValueError):
+        create_email_proof(RAW, created_at=value)
+
+
 def _statement(**kwargs):
     return create_email_proof(
         RAW,

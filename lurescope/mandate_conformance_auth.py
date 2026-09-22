@@ -270,7 +270,7 @@ def create_authenticated_mandate_conformance_verification(
         verification_payload,
         public_key_payload,
         envelope_payload,
-        verified_at=verified_at or _now(),
+        verified_at=_now() if verified_at is None else verified_at,
         producer_version=__version__,
     )
     payload = _canonical(validate_authenticated_mandate_conformance_verification(result))

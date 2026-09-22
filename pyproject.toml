@@ -90,6 +90,7 @@ lurescope = [
   "static/*.webmanifest",
   "static/*.xml",
   "models/*.joblib",
+  "models/*.json",
   "data/pilot/*.eml",
 ]
 

@@ -4,6 +4,21 @@ LureScope remains local-first. Public mode adds a safe application boundary for
 single-process deployments; it does not replace TLS termination, a distributed
 rate limiter, an identity provider, or cloud billing controls.
 
+### Source-branch scoring failure semantics
+
+Unreleased serving changes reject detector abstentions, non-finite numbers,
+booleans, strings, and out-of-range probabilities. `/score`, `/attack`,
+`/triage/email`, and `/proof/email` return an error without a decision or proof;
+missing evidence is never converted to a benign probability of zero. A failed
+attacked/defended score cannot support an evasion or recovery claim. A valid
+probability of exactly zero remains valid.
+
+API failures use fixed messages or static capability guidance rather than raw
+provider exceptions, which may contain credentials, prompts, or filesystem
+paths. This covers these scoring routes, not arbitrary reverse-proxy logs or
+third-party instrumentation. Do not turn API failures into benign classifications
+in downstream integrations; retry or route to review under your own policy.
+
 ## What public mode changes
 
 Set `LURESCOPE_PUBLIC_MODE=true` to make LureScope fail closed unless at least one

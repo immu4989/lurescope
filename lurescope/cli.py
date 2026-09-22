@@ -4012,8 +4012,44 @@ def _mandate_evidence(argv: Sequence[str]) -> int:
         return 2
 
 
+def _checkpoint(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(prog="lurescope checkpoint-verify")
+    parser.add_argument("directory")
+    parser.add_argument("--report", required=True)
+    parser.add_argument("--expected-report-sha256", required=True,
+                        help="digest approved through a separate trusted channel")
+    parser.add_argument("--max-bytes", type=int, default=32 * 1024**3)
+    parser.add_argument("--out", help="new private verification report")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    from .checkpoint import verify_checkpoint
+    from .permit import _canonical, _write_new
+
+    try:
+        output = Path(args.out) if args.out else None
+        if output is not None and (output.exists() or output.is_symlink()):
+            raise FileExistsError("checkpoint verification output already exists")
+        result = verify_checkpoint(
+            Path(args.directory), Path(args.report),
+            expected_report_sha256=args.expected_report_sha256, max_total_bytes=args.max_bytes,
+        )
+        if output is not None:
+            _write_new(output, _canonical(result))
+        if args.json:
+            print(json.dumps(result, sort_keys=True, indent=2))
+        else:
+            print(f"CHECKPOINT BYTES: MATCH — shards={result['summary']['shard_count']}")
+            print("Boundary: pinned report byte equality; not independent model safety validation.")
+        return 0
+    except (OSError, ValueError) as exc:
+        print(f"! checkpoint verification rejected input ({type(exc).__name__})", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "checkpoint-verify":
+        return _checkpoint(args[1:])
     if args and args[0] == "triage":
         return _triage(args[1:])
     if args and args[0] == "inbox":

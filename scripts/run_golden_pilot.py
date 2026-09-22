@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE_DIR = ROOT / "examples" / "shadow-pilot" / "eml"
 RECEIPT_SCHEMA = "https://github.com/immu4989/lurescope/spec/golden-pilot-receipt/v1"
 EXPECTED_DETECTOR_SHA256 = (
-    "84c7254c464ff9faa3ede012691c13d53da08ab1f26223633af7b9377d60ed0b"
+    "12b30fae44d49f77c748c669552117ba25400cd9439bf4c9871bae31a8b16055"
 )
 
 FIXTURE_CONTRACT: Dict[str, Dict[str, str]] = {

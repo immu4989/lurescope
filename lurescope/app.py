@@ -98,9 +98,9 @@ def score(req: ScoreRequest) -> ScoreResponse:
             model=req.model,
         )
     except service.DetectorUnavailable as exc:  # detector needs a key/dep not configured
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, service._needs(req.detector)) from exc
     except Exception as exc:  # noqa: BLE001 - provider/model failure at score time
-        raise HTTPException(502, f"score failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(502, "score unavailable; no risk decision was produced") from exc
     return ScoreResponse(**r.__dict__)
 
 
@@ -134,9 +134,13 @@ def attack(req: AttackRequest) -> AttackResponse:
             defense=req.defense,
         )
     except ValueError as exc:  # llm attack/detector without a configured provider
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(
+            400, "attack unavailable; check detector/provider configuration and input"
+        ) from exc
     except Exception as exc:  # noqa: BLE001 - provider/model failure, keep it a 502
-        raise HTTPException(502, f"attack failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(
+            502, "attack evaluation unavailable; no resilience result was produced"
+        ) from exc
     return AttackResponse(**r.__dict__)
 
 
@@ -159,11 +163,11 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
             model=req.model,
         )
     except service.DetectorUnavailable as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, service._needs(req.detector)) from exc
     except (EmailTooLarge, ValueError) as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, "email triage rejected input or detector configuration") from exc
     except Exception as exc:  # noqa: BLE001 - provider failure at score time
-        raise HTTPException(502, f"triage failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(502, "email triage unavailable; no risk decision was produced") from exc
     return EmailTriageResponse(**result.as_dict())
 
 
@@ -184,11 +188,11 @@ def prove_email_message(req: LureProofRequest) -> dict:
             nonce=req.nonce,
         )
     except service.DetectorUnavailable as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, service._needs(req.detector)) from exc
     except (EmailTooLarge, ValueError) as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, "proof creation rejected input or detector configuration") from exc
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"proof creation failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(502, "proof creation unavailable; no proof was produced") from exc
 
 
 @app.post(

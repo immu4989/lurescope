@@ -26,6 +26,19 @@ from lurescope.operational_pilot import (
 ROOT = Path(__file__).parents[1]
 
 
+def test_receipt_cannot_substitute_the_other_reviewed_model_pin(tmp_path):
+    from lurescope.operational_pilot import LEGACY_DETECTOR_SHA256
+
+    output = tmp_path / "pilot"
+    run_operational_pilot(output)
+    path = output / "operational-pilot-receipt.json"
+    receipt = json.loads(path.read_text())
+    receipt["workflow"]["detector_artifact_sha256"] = LEGACY_DETECTOR_SHA256
+    path.write_text(json.dumps(receipt))
+    with pytest.raises(ValueError, match="control binding"):
+        verify_operational_pilot(output)
+
+
 def _property(document: dict, name: str) -> str:
     properties = document["assessment-results"]["metadata"]["props"]
     matches = [item["value"] for item in properties if item["name"] == name]

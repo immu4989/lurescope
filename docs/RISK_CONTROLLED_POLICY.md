@@ -55,6 +55,24 @@ export LURESCOPE_POLICY_PATH=/absolute/path/to/policies/tfidf-1pct-fpr-95.json
 uvicorn lurescope.app:app
 ```
 
+On this source branch, you can additionally set `LURESCOPE_POLICY_SHA256` to the
+64-character lowercase digest of policy bytes approved through your trusted
+release process. A changed file then fails closed; obtaining a hash from the
+same untrusted source as the file does not authenticate its author. A pin without
+`LURESCOPE_POLICY_PATH` is a configuration error.
+
+The loader checks the current file on each use, rejects symlinks, duplicate JSON
+keys and files over 64 KiB, and caches expensive validation by exact content rather
+than by pathname. Unpinned changes are revalidated, not silently ignored. Replace
+files atomically during deployment; concurrent in-place changes may be rejected.
+This serving profile supports up to 10 million validation records and verifies
+that a risk-controlled threshold belongs to its declared grid. These are local
+resource/consistency checks, not authentication or re-evaluation of unseen data.
+
+Revalidate a policy when changing the detector or model artifact, including a
+change of inference implementation. The portable-model parity tests are not a
+replacement for your organization's policy acceptance checks.
+
 When a `/score` request omits `threshold` and its detector matches the policy,
 LureScope uses the policy threshold and returns its `policy_id`. An explicit
 request threshold always overrides the configured policy and therefore does not

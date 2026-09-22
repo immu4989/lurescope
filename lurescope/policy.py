@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
-import json
+import hashlib
 import math
 import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from lurebench.calibration import binomial_cdf, clopper_pearson_upper
+from lurebench.receipts import loads_strict_json
+
+from .local_io import read_regular_file
 
 _SHA256 = re.compile(r"[a-f0-9]{64}")
 _RISK_CONTROL_METHOD = "learn_then_test_fixed_sequence_exact_binomial_v1"
+MAX_POLICY_BYTES = 64 * 1024
+MAX_VALIDATION_RECORDS = 10_000_000
 
 
 @dataclass(frozen=True)
@@ -50,9 +56,9 @@ class DecisionPolicy:
 
 def _validate_probability(value: float, name: str, *, open_interval: bool = False) -> None:
     numeric = isinstance(value, (int, float)) and not isinstance(value, bool)
-    valid = numeric and math.isfinite(value) and (
+    valid = numeric and (
         0 < value < 1 if open_interval else 0 <= value <= 1
-    )
+    ) and math.isfinite(value)
     if not valid:
         interval = "(0, 1)" if open_interval else "[0, 1]"
         raise ValueError(f"policy {name} must be in {interval}")
@@ -73,7 +79,7 @@ def _validate_policy(policy: DecisionPolicy) -> None:
     _validate_probability(policy.threshold, "threshold")
     if (
         type(policy.validation_records) is not int
-        or policy.validation_records < 1
+        or not 1 <= policy.validation_records <= MAX_VALIDATION_RECORDS
         or not isinstance(policy.validation_sha256, str)
         or not _SHA256.fullmatch(policy.validation_sha256)
     ):
@@ -91,6 +97,10 @@ def _validate_policy(policy: DecisionPolicy) -> None:
         raise ValueError("schema v2 policy requires created_at")
 
     if policy.schema_version == 1:
+        if policy.objective not in {"max_mcc", "target_fpr"}:
+            raise ValueError("unsupported empirical policy objective")
+        if policy.target_fpr is not None:
+            _validate_probability(policy.target_fpr, "target_fpr")
         if (
             policy.risk_control is not None
             or policy.evaluation_sha256 is not None
@@ -127,6 +137,9 @@ def _validate_policy(policy: DecisionPolicy) -> None:
         or not 2 <= control.threshold_grid_size <= 100_001
     ):
         raise ValueError("policy threshold_grid_size must be between 2 and 100001")
+    position = policy.threshold * (control.threshold_grid_size - 1)
+    if not math.isclose(position, round(position), rel_tol=0.0, abs_tol=1e-10):
+        raise ValueError("policy threshold is not on the declared grid")
     if (
         type(control.validation_negatives) is not int
         or not 1 <= control.validation_negatives <= policy.validation_records
@@ -178,23 +191,41 @@ def _validate_policy(policy: DecisionPolicy) -> None:
 
 
 @lru_cache(maxsize=8)
-def load_policy(path: str) -> DecisionPolicy:
-    with open(path, encoding="utf-8") as handle:
-        payload = json.load(handle)
+def _parse_policy(raw: bytes) -> DecisionPolicy:
+    payload = loads_strict_json(raw)
     if not isinstance(payload, dict):
         raise ValueError("policy JSON must be an object")
-    if payload.get("risk_control") is not None:
-        if not isinstance(payload["risk_control"], dict):
-            raise ValueError("policy risk_control must be an object")
-        payload["risk_control"] = RiskControl(**payload["risk_control"])
-    policy = DecisionPolicy(**payload)
+    try:
+        if payload.get("risk_control") is not None:
+            if not isinstance(payload["risk_control"], dict):
+                raise ValueError("policy risk_control must be an object")
+            payload["risk_control"] = RiskControl(**payload["risk_control"])
+        policy = DecisionPolicy(**payload)
+    except TypeError as exc:
+        raise ValueError("policy has missing or unsupported fields") from exc
     _validate_policy(policy)
     return policy
 
 
+def load_policy(path: str, *, expected_sha256: Optional[str] = None) -> DecisionPolicy:
+    """Validate current bytes; optionally bind them to an externally trusted pin."""
+    if expected_sha256 is not None and (
+        not isinstance(expected_sha256, str) or not _SHA256.fullmatch(expected_sha256)
+    ):
+        raise ValueError("policy pin must be a lowercase SHA-256 digest")
+    raw = read_regular_file(Path(path), maximum=MAX_POLICY_BYTES, label="decision policy")
+    if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("decision policy digest mismatch")
+    # Cache expensive count/bound consistency checks by exact content, not path.
+    return _parse_policy(raw)
+
+
 def configured_policy() -> Optional[DecisionPolicy]:
     path = os.environ.get("LURESCOPE_POLICY_PATH")
-    return load_policy(os.path.abspath(path)) if path else None
+    pin = os.environ.get("LURESCOPE_POLICY_SHA256")
+    if pin is not None and not path:
+        raise ValueError("a policy pin requires LURESCOPE_POLICY_PATH")
+    return load_policy(os.path.abspath(path), expected_sha256=pin) if path else None
 
 
 def policy_status(policy: Optional[DecisionPolicy]) -> Dict[str, Any]:

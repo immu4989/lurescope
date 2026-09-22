@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- Deployment policies now use bounded strict JSON reads, reject duplicate keys
+  and excessive validation counts, check threshold-grid membership, and cache by
+  exact bytes rather than a stale path. Optional `LURESCOPE_POLICY_SHA256` pins
+  approved bytes. Direct service thresholds and proof creation timestamps reject
+  invalid explicit values before detector work.
+
+- Default TF-IDF serving now uses externally pinned, full-precision data-only
+  JSON weights and fixed bounded inference, without joblib/pickle deserialization.
+  More than 1,000 parity inputs match the trusted original within 1e-12; positive
+  feature rankings are preserved. LureProof records the actual loaded JSON hash.
+  Original joblib/dependencies remain for trusted reproduction, not default loading.
+  Operational receipt, manifest, and proof control bindings must agree; historical
+  pre-change pilot bundles were also verified against the updated implementation.
+
+- Detector abstentions and invalid/non-finite probabilities now fail explicitly
+  instead of becoming zero-risk benign decisions. Attack evaluation stops before
+  generation on an invalid clean score and never claims evasion or recovery from
+  missing scores. API failures no longer expose raw provider exception messages.
+
+- Authority builders now default optional timestamps only when omitted/None;
+  explicit empty strings, false, zero, and empty containers are rejected rather
+  than silently stamped with the current time. Added creation-path regressions.
+
+- Hardened legacy permit, channel, BOM, recall, receipt-input, and attestation
+  evidence reads with descriptor checks, bounded allocation, and observed-change
+  rejection. Added special-file, growth/replacement, permissions, descriptor
+  cleanup, and protocol integration regressions; trusted parents remain required.
+
+- Added `checkpoint-verify` to compare local checkpoint index/header/shard
+  bytes with an externally pinned LureBench preflight report. The independent
+  byte verifier checks report arithmetic and bounds without importing producer
+  code or loading a model; it does not claim independent tensor validation.
+
 - Unified signed-authority file reads with the bounded opened-file reader.
   All three signing paths now require owner-only private-key permissions on
   POSIX, checked before reading. Oversized generated core verification reports

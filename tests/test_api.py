@@ -57,6 +57,56 @@ def test_health():
     assert r.json()["status"] == "ok"
 
 
+@pytest.mark.parametrize("endpoint,payload", [
+    ("/score", {"text": "synthetic message", "detector": "heuristic-v0"}),
+    ("/attack", {"text": "synthetic message", "detector": "heuristic-v0", "attack": "homoglyph"}),
+    ("/triage/email", {"raw_email": "From: test@example.org\n\nSynthetic body.",
+                       "detector": "heuristic-v0"}),
+    ("/proof/email", {"raw_email": "From: test@example.org\n\nSynthetic body.",
+                      "detector": "heuristic-v0"}),
+])
+@pytest.mark.parametrize("value", [None, float("nan"), True, 1.1])
+def test_invalid_detector_output_returns_no_decision(monkeypatch, endpoint, payload, value):
+    from lurescope import service
+
+    class InvalidDetector:
+        def score(self, lure):
+            return value
+
+    monkeypatch.setattr(service, "_detector", lambda *args: InvalidDetector())
+    response = client.post(endpoint, json=payload)
+    assert response.status_code == 502
+    assert set(response.json()) == {"detail"}
+
+
+@pytest.mark.parametrize("operation,endpoint,payload", [
+    ("score", "/score", {"text": "synthetic message"}),
+    ("attack", "/attack", {"text": "synthetic message", "attack": "homoglyph"}),
+    ("triage_email", "/triage/email", {"raw_email": "From: a@example.org\n\nBody."}),
+    ("create_email_proof", "/proof/email", {"raw_email": "From: a@example.org\n\nBody."}),
+])
+@pytest.mark.parametrize("exception", [RuntimeError, ValueError])
+def test_api_errors_never_echo_provider_exception(
+    monkeypatch, operation, endpoint, payload, exception,
+):
+    import importlib
+
+    from lurescope import service
+
+    app_module = importlib.import_module("lurescope.app")
+    sentinel = "PRIVATE_MESSAGE_PROVIDER_KEY_AND_LOCAL_PATH"
+
+    def fail(*args, **kwargs):
+        raise exception(sentinel)
+
+    target = service if operation in {"score", "attack"} else app_module
+    monkeypatch.setattr(target, operation, fail)
+    response = client.post(endpoint, json=payload)
+    assert response.status_code in {400, 502}
+    assert sentinel not in response.text
+    assert exception.__name__ not in response.text
+
+
 def test_public_mode_fails_closed_without_a_key_configuration(monkeypatch):
     monkeypatch.setenv("LURESCOPE_PUBLIC_MODE", "true")
     assert client.get("/health").status_code == 503

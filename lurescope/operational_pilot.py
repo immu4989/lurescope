@@ -32,6 +32,10 @@ from .shadow import (
 RECEIPT_SCHEMA = "https://github.com/immu4989/lurescope/spec/operational-pilot-receipt/v1"
 DEFAULT_FIXTURE_DIR = Path(__file__).with_name("data") / "pilot"
 EXPECTED_DETECTOR_SHA256 = (
+    "12b30fae44d49f77c748c669552117ba25400cd9439bf4c9871bae31a8b16055"
+)
+# Historical bundles remain verifiable; new runs require the JSON artifact above.
+LEGACY_DETECTOR_SHA256 = (
     "84c7254c464ff9faa3ede012691c13d53da08ab1f26223633af7b9377d60ed0b"
 )
 MAX_ARTIFACT_BYTES = 32 * 1024 * 1024
@@ -295,7 +299,10 @@ def _validate_receipt(receipt: Any) -> Dict[str, Any]:
         or workflow["unique_count"] != 5
         or workflow["duplicate_count"] != 1
         or workflow["detector"] != "tfidf-logreg"
-        or workflow["detector_artifact_sha256"] != EXPECTED_DETECTOR_SHA256
+        or not isinstance(workflow["detector_artifact_sha256"], str)
+        or workflow["detector_artifact_sha256"] not in {
+            EXPECTED_DETECTOR_SHA256, LEGACY_DETECTOR_SHA256,
+        }
         or workflow["threshold"] != 0.5
         or workflow["pilot_gate_verdict"] != "pass"
     ):
@@ -418,6 +425,12 @@ def verify_operational_pilot(bundle: Path) -> Dict[str, Any]:
             raise ValueError(f"operational pilot artifact binding failed: {filename}")
 
     entries = load_inbox_manifest(bundle / "manifest.jsonl")
+    for entry in entries:
+        if entry["status"] == "processed" and any(
+            entry["assessment"][field] != receipt["workflow"][field]
+            for field in ("detector", "detector_artifact_sha256", "threshold")
+        ):
+            raise ValueError("operational pilot receipt control binding disagrees with manifest")
     proof_names = {
         entry["proof"]["file"] for entry in entries if entry["status"] == "processed"
     }
@@ -479,6 +492,10 @@ def verify_operational_pilot(bundle: Path) -> Dict[str, Any]:
             "statement_sha256"
         ]:
             raise ValueError(f"LureProof binding failed: {entry['proof']['file']}")
+        assessment = proof["predicate"]["assessment"]
+        if any(assessment[field] != entry["assessment"][field]
+               for field in ("detector", "detector_artifact_sha256", "threshold")):
+            raise ValueError("operational pilot proof control binding disagrees with manifest")
     _verify_oscal(bundle)
     _verify_exports(bundle, entries)
     return receipt

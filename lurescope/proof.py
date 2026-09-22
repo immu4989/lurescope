@@ -182,8 +182,8 @@ def _sha256(value: bytes) -> str:
 def _model_digest(detector_name: str) -> Optional[str]:
     if detector_name != "tfidf-logreg":
         return None
-    model_path = Path(__file__).with_name("models") / "tfidf-logreg-fraud.joblib"
-    return _sha256(model_path.read_bytes())
+    # Bind the loaded bytes, not a potentially replaced file read after scoring.
+    return service._detector(detector_name).artifact_sha256
 
 
 def _subject(raw: bytes, privacy_profile: str, salt: Optional[bytes]) -> tuple[dict, dict]:
@@ -283,6 +283,11 @@ def create_email_proof(
     subject_salt: Optional[bytes] = None,
 ) -> Dict[str, Any]:
     """Create a strict statement; optionally return it in a signed DSSE envelope."""
+    if created_at is None:
+        created_at = _timestamp()
+    elif not isinstance(created_at, str):
+        raise ValueError("created_at must be a timezone-aware ISO 8601 timestamp")
+    _Predicate.timestamp_has_timezone(created_at)
     if detector_name not in service.ALWAYS_ON:
         raise ValueError(
             "the reference LureProof producer accepts deterministic local detectors only"
@@ -324,7 +329,7 @@ def create_email_proof(
         "predicate": {
             "spec": "lureproof",
             "spec_version": SPEC_VERSION,
-            "generated_at": created_at or _timestamp(),
+            "generated_at": created_at,
             "issuer": issuer,
             "nonce": nonce,
             "privacy": privacy,
@@ -338,7 +343,7 @@ def create_email_proof(
             "assessment": {
                 "detector": triage.detector,
                 "detector_model": (
-                    "tfidf-logreg-fraud.joblib"
+                    "tfidf-logreg-fraud.json"
                     if detector_name == "tfidf-logreg"
                     else "builtin-rules"
                 ),
