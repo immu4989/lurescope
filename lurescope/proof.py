@@ -26,6 +26,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from sklearn import __version__ as sklearn_version
 
 from . import __version__, service
+from .local_io import read_regular_file
+from .permit import _strict
 from .triage import MAX_SCORE_TEXT, parse_email, triage_email
 
 SPEC_VERSION = "0.2"
@@ -34,6 +36,9 @@ PREDICATE_TYPE = "https://github.com/immu4989/lurescope/spec/lureproof/v0.2"
 DSSE_PAYLOAD_TYPE = "application/vnd.in-toto+json"
 LOCAL_ATTACKS = ("homoglyph", "leet", "zero-width", "whitespace")
 DEFENSE = "normalize"
+MAX_PROOF_BYTES = 2 * 1024 * 1024
+MAX_PUBLIC_KEY_BYTES = 16 * 1024
+MAX_SIGNATURE_BASE64 = 256
 
 
 class _StrictModel(BaseModel):
@@ -419,8 +424,11 @@ def sign_statement(statement: Dict[str, Any], private_key_pem: bytes) -> Dict[st
     ):
         raise ValueError("signing key must be an unencrypted ECDSA P-256 private key")
     payload = _json_bytes(statement)
+    if len(payload) > MAX_PROOF_BYTES:
+        raise ValueError("LureProof exceeds the bounded size")
+    _strict(payload, "LureProof statement")
     signature = key.sign(_pae(DSSE_PAYLOAD_TYPE, payload), ec.ECDSA(hashes.SHA256()))
-    return {
+    envelope = {
         "payloadType": DSSE_PAYLOAD_TYPE,
         "payload": base64.b64encode(payload).decode("ascii"),
         "signatures": [{
@@ -428,6 +436,9 @@ def sign_statement(statement: Dict[str, Any], private_key_pem: bytes) -> Dict[st
             "sig": base64.b64encode(signature).decode("ascii"),
         }],
     }
+    if len(_json_bytes(envelope)) > MAX_PROOF_BYTES:
+        raise ValueError("signed LureProof exceeds the bounded size")
+    return envelope
 
 
 def _decode_envelope(proof: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], bytes, List[str]]:
@@ -455,6 +466,8 @@ def _decode_envelope(proof: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], b
             if len(keyid) != 64 or any(char not in "0123456789abcdef" for char in keyid):
                 errors.append("signature keyid must be 64 lowercase hex characters")
             try:
+                if len(item["sig"]) > MAX_SIGNATURE_BASE64:
+                    raise ValueError
                 base64.b64decode(item["sig"], validate=True)
             except (ValueError, binascii.Error):
                 errors.append("signature sig must be valid base64")
@@ -465,10 +478,10 @@ def _decode_envelope(proof: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], b
         if len(encoded) > 2 * 1024 * 1024:
             return None, b"", [*errors, "payload exceeds the 2 MB safety limit"]
         payload = base64.b64decode(encoded, validate=True)
-        statement = json.loads(payload)
+        statement = _strict(payload, "LureProof payload")
         if not isinstance(statement, dict):
             raise ValueError
-    except (ValueError, json.JSONDecodeError, binascii.Error):
+    except (ValueError, TypeError, binascii.Error):
         return None, b"", [*errors, "payload must be base64-encoded JSON object bytes"]
     return statement, payload, errors
 
@@ -479,6 +492,26 @@ def verify_proof(
     require_signature: bool = False,
 ) -> Dict[str, Any]:
     """Validate a statement and authenticate a DSSE signature against a trust key."""
+    if type(require_signature) is not bool:
+        raise ValueError("require_signature must be boolean")
+    try:
+        if not isinstance(proof, dict):
+            raise ValueError
+        # Bound serialized input for direct Python callers too. HTTP and CLI
+        # enforce earlier byte limits; this is not a bound on caller allocations.
+        size = 0
+        for chunk in json.JSONEncoder(ensure_ascii=False, allow_nan=False).iterencode(proof):
+            size += len(chunk.encode("utf-8"))
+            if size > MAX_PROOF_BYTES:
+                raise ValueError
+        _strict(_json_bytes(proof), "LureProof")
+    except (ValueError, TypeError, RecursionError):
+        return {
+            "valid": False, "schema_valid": False, "authenticated": False,
+            "artifact_type": "invalid", "statement_sha256": "", "signature_count": 0,
+            "key_ids": [], "errors": ["proof must be a bounded strict JSON object"],
+            "warnings": [],
+        }
     errors: List[str] = []
     warnings: List[str] = []
     authenticated = False
@@ -500,6 +533,8 @@ def verify_proof(
 
     if is_envelope and public_key_pem is not None and not envelope_errors:
         try:
+            if not isinstance(public_key_pem, bytes) or len(public_key_pem) > MAX_PUBLIC_KEY_BYTES:
+                raise ValueError
             key = serialization.load_pem_public_key(public_key_pem)
             if not isinstance(key, ec.EllipticCurvePublicKey) or not isinstance(
                 key.curve, ec.SECP256R1
@@ -525,8 +560,8 @@ def verify_proof(
                     continue
             if candidates and not authenticated:
                 errors.append("signature verification failed")
-        except (ValueError, TypeError) as exc:
-            errors.append(str(exc))
+        except (ValueError, TypeError):
+            errors.append("verification key must be a bounded ECDSA P-256 public PEM key")
     elif is_envelope:
         warnings.append("signature present but not authenticated: provide a trusted public key")
     else:
@@ -541,7 +576,10 @@ def verify_proof(
     key_ids = []
     if is_envelope and isinstance(proof.get("signatures"), list):
         key_ids = [
-            item.get("keyid", "") for item in proof["signatures"] if isinstance(item, dict)
+            item["keyid"] for item in proof["signatures"][:16]
+            if isinstance(item, dict) and isinstance(item.get("keyid"), str)
+            and len(item["keyid"]) == 64
+            and all(c in "0123456789abcdef" for c in item["keyid"])
         ]
     return {
         "valid": not errors,
@@ -554,6 +592,15 @@ def verify_proof(
         "errors": errors,
         "warnings": warnings,
     }
+
+
+def load_proof(path: Path) -> Dict[str, Any]:
+    """Read strict, bounded evidence from a regular non-symlink local file."""
+    value = _strict(read_regular_file(path, maximum=MAX_PROOF_BYTES, label="LureProof"),
+                    "LureProof")
+    if not isinstance(value, dict):
+        raise ValueError("LureProof must be an object")
+    return value
 
 
 def generate_keypair(private_path: Path, public_path: Path) -> str:

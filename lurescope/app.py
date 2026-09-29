@@ -12,10 +12,12 @@ from __future__ import annotations
 import os
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__, service
+from .http_boundary import RequestBodyLimit
 from .models import (
     AttackRequest,
     AttackResponse,
@@ -46,6 +48,14 @@ app = FastAPI(
         "against attacks a real fraudster would run. Deployable companion to LureBench."
     ),
 )
+app.add_middleware(RequestBodyLimit)
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(_request, _exc):
+    # Framework defaults can include raw field values or the submitted body.
+    # Email/message content must not become diagnostic response material.
+    return JSONResponse({"detail": "request validation failed"}, status_code=422)
 
 
 @app.get("/health")
@@ -202,9 +212,12 @@ def prove_email_message(req: LureProofRequest) -> dict:
 )
 def verify_lureproof(req: LureProofVerifyRequest) -> LureProofVerifyResponse:
     public_key = req.public_key_pem.encode("utf-8") if req.public_key_pem else None
-    return LureProofVerifyResponse(
-        **verify_proof(req.proof, public_key, req.require_signature)
-    )
+    result = verify_proof(req.proof, public_key, req.require_signature)
+    if not result["valid"]:
+        # Local verification retains detailed field diagnostics; the HTTP
+        # endpoint must not echo arbitrary submitted property names or values.
+        result["errors"] = ["proof validation failed"]
+    return LureProofVerifyResponse(**result)
 
 
 @app.get("/")

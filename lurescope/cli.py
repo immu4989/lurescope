@@ -6,12 +6,22 @@ import argparse
 import hashlib
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 MAX_BATCH_INPUT_BYTES = 64 * 1024 * 1024
 MAX_BATCH_MESSAGES = 1_000
+
+
+def _read_signing_key(path: Optional[str]) -> Optional[bytes]:
+    """Read an explicitly configured private key through the shared boundary."""
+    if path is None:
+        return None
+    from .local_io import read_regular_file
+
+    return read_regular_file(Path(path), maximum=64 * 1024, label="signing key", private=True)
 
 
 def _serve(argv: Sequence[str]) -> int:
@@ -35,11 +45,12 @@ def _input_messages(
     max_total_bytes: int = MAX_BATCH_INPUT_BYTES,
 ) -> List[Tuple[str, bytes]]:
     """Discover and bound a batch before reading any message into memory."""
+    from .local_io import read_regular_prefix
     from .triage import MAX_EMAIL_BYTES
 
-    if max_messages < 1 or max_messages > MAX_BATCH_MESSAGES:
+    if type(max_messages) is not int or not 1 <= max_messages <= MAX_BATCH_MESSAGES:
         raise ValueError(f"max_messages must be between 1 and {MAX_BATCH_MESSAGES}")
-    if max_total_bytes < 1 or max_total_bytes > MAX_BATCH_INPUT_BYTES:
+    if type(max_total_bytes) is not int or not 1 <= max_total_bytes <= MAX_BATCH_INPUT_BYTES:
         raise ValueError(f"max_total_bytes must be between 1 and {MAX_BATCH_INPUT_BYTES}")
 
     sources: List[Tuple[str, Optional[Path]]] = []
@@ -50,6 +61,8 @@ def _input_messages(
             sources.append(("stdin", None))
         else:
             path = Path(value)
+            if path.is_symlink():
+                raise ValueError("inbox inputs must not be symbolic links")
             if path.is_dir():
                 pattern = "**/*.eml" if recursive else "*.eml"
                 sources.extend(
@@ -68,10 +81,11 @@ def _input_messages(
 
     # Oversized files are read only to MAX_EMAIL_BYTES + 1 so the parser can emit
     # a per-message EmailTooLarge result without allocating the complete file.
-    bounded_sizes = [
-        MAX_EMAIL_BYTES + 1 if path is None else min(path.stat().st_size, MAX_EMAIL_BYTES + 1)
-        for _, path in sources
-    ]
+    snapshots = [path.lstat() if path is not None else None for _, path in sources]
+    if any(info is not None and not stat.S_ISREG(info.st_mode) for info in snapshots):
+        raise ValueError("inbox messages must be regular non-symlink files")
+    bounded_sizes = [MAX_EMAIL_BYTES + 1 if info is None else
+                     min(info.st_size, MAX_EMAIL_BYTES + 1) for info in snapshots]
     if sum(bounded_sizes) > max_total_bytes:
         raise ValueError(
             f"bounded inbox input exceeds the {max_total_bytes} byte batch limit; "
@@ -79,12 +93,12 @@ def _input_messages(
         )
 
     messages: List[Tuple[str, bytes]] = []
-    for (source, path), bounded_size in zip(sources, bounded_sizes, strict=True):
+    for (source, path), info in zip(sources, snapshots, strict=True):
         if path is None:
             raw = sys.stdin.buffer.read(MAX_EMAIL_BYTES + 1)
         else:
-            with path.open("rb") as stream:
-                raw = stream.read(bounded_size)
+            assert info is not None
+            raw = read_regular_prefix(path, maximum=MAX_EMAIL_BYTES + 1, expected=info)
         messages.append((source, raw))
     return messages
 
@@ -191,7 +205,7 @@ def _inbox(argv: Sequence[str]) -> int:
         )
         from .inbox import process_inbox
 
-        signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+        signing_key = _read_signing_key(args.signing_key)
         run = process_inbox(
             messages,
             Path(args.out),
@@ -243,10 +257,13 @@ def _proof(argv: Sequence[str]) -> int:
     parser.add_argument("--signing-key", help="unencrypted ECDSA P-256 private PEM key")
     args = parser.parse_args(argv)
     try:
-        raw = sys.stdin.buffer.read() if args.input == "-" else Path(args.input).read_bytes()
+        from .local_io import read_regular_file
         from .proof import create_email_proof, dumps_proof, verify_proof
+        from .triage import MAX_EMAIL_BYTES
 
-        signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+        raw = (sys.stdin.buffer.read(MAX_EMAIL_BYTES + 1) if args.input == "-" else
+               read_regular_file(Path(args.input), maximum=MAX_EMAIL_BYTES, label="email"))
+        signing_key = _read_signing_key(args.signing_key)
         proof = create_email_proof(
             raw,
             args.detector,
@@ -417,7 +434,7 @@ def _shadow(argv: Sequence[str]) -> int:
         if args.shadow_command == "run":
             from .shadow import run_shadow_inbox
 
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             run = run_shadow_inbox(
                 [Path(value) for value in args.input],
                 Path(args.out),
@@ -515,7 +532,7 @@ def _defender(argv: Sequence[str]) -> int:
         if args.defender_command == "import":
             from .defender import import_defender_shadow
 
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = import_defender_shadow(
                 Path(args.csv),
                 [Path(value) for value in args.input],
@@ -600,7 +617,7 @@ def _lureeval(argv: Sequence[str]) -> int:
         if args.lureeval_command == "create":
             from .lureeval import create_lureeval_receipt
 
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             artifact = create_lureeval_receipt(
                 Path(args.bundle),
                 Path(args.out),
@@ -842,7 +859,7 @@ def _assurance(argv: Sequence[str]) -> int:
                 Path(args.bundle),
                 Path(args.plan),
                 Path(args.out),
-                signing_key=Path(args.signing_key) if args.signing_key else None,
+                signing_key=Path(args.signing_key) if args.signing_key is not None else None,
             )
             gate_verdict = result["gate"]["verdict"]
             evidence = result["evidence"]
@@ -873,7 +890,7 @@ def _assurance(argv: Sequence[str]) -> int:
                 Path(args.before),
                 Path(args.after),
                 Path(args.out),
-                signing_key=Path(args.signing_key) if args.signing_key else None,
+                signing_key=Path(args.signing_key) if args.signing_key is not None else None,
                 source_public_key=(
                     Path(args.source_public_key) if args.source_public_key else None
                 ),
@@ -951,13 +968,12 @@ def _verify(argv: Sequence[str]) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        from .proof import verify_proof
+        from .local_io import read_regular_file
+        from .proof import MAX_PUBLIC_KEY_BYTES, load_proof, verify_proof
 
-        proof_path = Path(args.proof)
-        if proof_path.stat().st_size > 2 * 1024 * 1024:
-            raise ValueError("proof exceeds the 2 MB safety limit")
-        proof = json.loads(proof_path.read_text(encoding="utf-8"))
-        public_key = Path(args.public_key).read_bytes() if args.public_key else None
+        proof = load_proof(Path(args.proof))
+        public_key = (read_regular_file(Path(args.public_key), maximum=MAX_PUBLIC_KEY_BYTES,
+                                       label="LureProof public key") if args.public_key else None)
         result = verify_proof(proof, public_key, args.require_signature)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"! {exc}", file=sys.stderr)
@@ -1223,7 +1239,7 @@ def _monitor(argv: Sequence[str]) -> int:
             return 0
 
         if args.monitor_command == "append":
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             entry = append_monitor_batch(
                 Path(args.bundle),
                 batch_id=args.batch_id,
@@ -1412,7 +1428,7 @@ def _boundary(argv: Sequence[str]) -> int:
             return 0
 
         if args.boundary_command == "append":
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             entry = append_boundary_evaluation(
                 Path(args.bundle),
                 Path(args.evaluation),
@@ -1530,7 +1546,7 @@ def _boundary_watch(argv: Sequence[str]) -> int:
         if args.command == "append":
             from .boundary_watch import append_boundary_watch_batch
 
-            key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            key = _read_signing_key(args.signing_key)
             entry = append_boundary_watch_batch(
                 Path(args.bundle),
                 batch_id=args.batch_id,
@@ -1615,7 +1631,7 @@ def _agent_assurance(argv: Sequence[str]) -> int:
             signer_public = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             portfolio = create_assurance_portfolio(
                 Path(args.out),
                 portfolio_id=args.portfolio_id,
@@ -1737,7 +1753,7 @@ def _witness(argv: Sequence[str]) -> int:
                 Path(args.request),
                 Path(args.out),
                 witness_id=args.witness_id,
-                signing_key_pem=Path(args.signing_key).read_bytes(),
+                signing_key_pem=_read_signing_key(args.signing_key),
             )
             print(f"WITNESS RECEIPT ISSUED: {receipt['witness']['witness_id']} — {args.out}")
             return 0
@@ -1850,7 +1866,7 @@ def _invariant(argv: Sequence[str]) -> int:
             public_key = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = create_invariant_bundle(
                 Path(args.out),
                 bundle_id=args.bundle_id,
@@ -1980,7 +1996,7 @@ def _range_evidence(argv: Sequence[str]) -> int:
             public_key = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = create_range_bundle(
                 Path(args.out),
                 bundle_id=args.bundle_id,
@@ -2130,7 +2146,7 @@ def _runtime_evidence(argv: Sequence[str]) -> int:
             signer_public = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = create_runtime_bundle(
                 Path(args.out),
                 bundle_id=args.bundle_id,
@@ -2517,7 +2533,7 @@ def _revocation_evidence(argv: Sequence[str]) -> int:
             signer_public = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = create_revocation_bundle(
                 Path(args.out),
                 bundle_id=args.bundle_id,
@@ -2570,7 +2586,7 @@ def _revocation_evidence(argv: Sequence[str]) -> int:
                 Path(args.registry),
                 Path(args.bundle),
                 registry_public_key_pem=Path(args.registry_public_key).read_bytes(),
-                registry_signing_key_pem=Path(args.registry_signing_key).read_bytes(),
+                registry_signing_key_pem=_read_signing_key(args.registry_signing_key),
                 bundle_public_key_pem=Path(args.bundle_public_key).read_bytes(),
                 registered_at=args.registered_at,
             )
@@ -2900,7 +2916,7 @@ def _identity_evidence(argv: Sequence[str]) -> int:
             signer_public = (
                 Path(args.signer_public_key).read_bytes() if args.signer_public_key else None
             )
-            signing_key = Path(args.signing_key).read_bytes() if args.signing_key else None
+            signing_key = _read_signing_key(args.signing_key)
             result = create_identity_bundle(
                 Path(args.out),
                 bundle_id=args.bundle_id,
@@ -4046,8 +4062,39 @@ def _checkpoint(argv: Sequence[str]) -> int:
         return 2
 
 
+def _capacity(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(prog="lurescope capacity-plan")
+    parser.add_argument("counts", help="reviewed fraud decision-count JSON, including abstentions")
+    parser.add_argument("--messages-per-period", type=int, required=True)
+    parser.add_argument("--prevalence", type=float, nargs="+", required=True)
+    parser.add_argument("--review-minutes", type=float, required=True)
+    parser.add_argument("--available-review-hours", type=float, required=True)
+    parser.add_argument("--confidence", type=float, default=None,
+                        help="optional simultaneous sampling envelope for expected review demand")
+    args = parser.parse_args(argv)
+    from .capacity import load_decision_counts, plan_capacity, plan_capacity_envelope
+
+    try:
+        planner = plan_capacity if args.confidence is None else plan_capacity_envelope
+        options = {} if args.confidence is None else {"confidence": args.confidence}
+        result = planner(
+            load_decision_counts(Path(args.counts)),
+            messages_per_period=args.messages_per_period, prevalences=args.prevalence,
+            review_minutes_per_case=args.review_minutes,
+            available_review_hours=args.available_review_hours,
+            **options,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
+        return 0
+    except (OSError, ValueError) as exc:
+        print(f"! capacity scenario rejected input ({type(exc).__name__})", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "capacity-plan":
+        return _capacity(args[1:])
     if args and args[0] == "checkpoint-verify":
         return _checkpoint(args[1:])
     if args and args[0] == "triage":

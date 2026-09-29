@@ -70,6 +70,14 @@ def verify(base_url: str) -> None:
         if "LureScopeEvidence" not in explorer or "MAX_ARTIFACT_BYTES" not in explorer:
             raise AssertionError("browser Evidence Explorer is missing or incomplete")
 
+    for asset, marker in (
+        ("capacity-planner.js", "LureScopeCapacity"),
+        ("capacity-ui.js", "capacityForm"),
+    ):
+        with _get(f"{base}/static/{asset}") as response:
+            if marker not in response.read().decode("utf-8"):
+                raise AssertionError("browser capacity planner asset is missing")
+
     try:
         _get(f"{base}/capabilities")
     except urllib.error.HTTPError as exc:

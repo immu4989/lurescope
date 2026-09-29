@@ -421,7 +421,7 @@ def security_status() -> dict:
     limitations = [
         "Rate and provider budgets are process-local; use a shared gateway for multiple replicas.",
         "The provider budget counts attempted calls and is not a monetary billing guarantee.",
-        "Terminate TLS and enforce total request-body limits at the deployment gateway.",
+        "Bodies are capped at 8 MiB; enforce transport/header limits and TLS at the gateway.",
     ]
     if not settings.public_mode:
         limitations.insert(0, "Local mode does not require authentication unless API keys are set.")

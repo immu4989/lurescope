@@ -4,10 +4,21 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class ScoreRequest(BaseModel):
+class _StrictRequest(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid", str_min_length=1, str_max_length=512)
+
+    @field_validator("*")
+    @classmethod
+    def no_lone_surrogates(cls, value):
+        if isinstance(value, str) and any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+            raise ValueError("request strings must be valid Unicode")
+        return value
+
+
+class ScoreRequest(_StrictRequest):
     text: str = Field(..., min_length=1, max_length=20000, description="Message to score")
     detector: str = Field("tfidf-logreg", description="Detector to use")
     threshold: Optional[float] = Field(
@@ -31,7 +42,7 @@ class ScoreResponse(BaseModel):
     threshold_source: str = "default"
 
 
-class AttackRequest(BaseModel):
+class AttackRequest(_StrictRequest):
     text: str = Field(..., min_length=1, max_length=20000)
     attack: str = Field(..., description="Attack id, e.g. homoglyph / leet / llm-paraphrase")
     detector: str = Field("tfidf-logreg")
@@ -120,7 +131,7 @@ class PolicyStatusResponse(BaseModel):
     limitations: List[str] = Field(default_factory=list)
 
 
-class EmailTriageRequest(BaseModel):
+class EmailTriageRequest(_StrictRequest):
     raw_email: str = Field(
         ..., min_length=1, max_length=5 * 1024 * 1024,
         description="Raw RFC 5322 email source; parsed locally and never dereferenced",
@@ -168,7 +179,7 @@ class LureProofRequest(EmailTriageRequest):
     nonce: Optional[str] = Field(None, min_length=8, max_length=256)
 
 
-class LureProofVerifyRequest(BaseModel):
+class LureProofVerifyRequest(_StrictRequest):
     proof: Dict[str, Any]
     public_key_pem: Optional[str] = Field(None, max_length=16_384)
     require_signature: bool = False

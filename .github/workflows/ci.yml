@@ -60,7 +60,9 @@ jobs:
           tests/test_assurance.py tests/test_scuba.py tests/test_drift.py
       - name: Test browser engine
         if: matrix.python-version == '3.12'
-        run: node --test tests/browser_engine.test.cjs tests/evidence_explorer.test.cjs
+        run: >-
+          node --test tests/browser_engine.test.cjs tests/evidence_explorer.test.cjs
+          tests/capacity_planner.test.cjs tests/capacity_ui.test.cjs
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: uv build

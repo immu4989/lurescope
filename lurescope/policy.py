@@ -72,7 +72,9 @@ def _validate_policy(policy: DecisionPolicy) -> None:
         (policy.detector, "detector"),
         (policy.objective, "objective"),
     ):
-        if not isinstance(value, str) or not value or len(value) > 256:
+        if not isinstance(value, str) or not value or len(value) > 256 or any(
+            ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value
+        ):
             raise ValueError(f"policy {name} must be a non-empty string")
     if policy.task != "fraud":
         raise ValueError("LureScope only serves fraud decision policies")

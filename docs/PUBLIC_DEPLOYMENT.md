@@ -19,6 +19,42 @@ paths. This covers these scoring routes, not arbitrary reverse-proxy logs or
 third-party instrumentation. Do not turn API failures into benign classifications
 in downstream integrations; retry or route to review under your own policy.
 
+### Source-branch HTTP input boundary
+
+All HTTP routes now enforce an **8 MiB total body-byte limit before routing and
+JSON parsing**, in local and public mode. The middleware counts actual ASGI
+body chunks; absent or understated `Content-Length` cannot bypass the limit.
+Oversize requests return `413`. Malformed/duplicate length headers or a mismatch
+with received bytes return `400`. Non-identity `Content-Encoding` returns `415`;
+the application does not decompress request bodies. Request-validation errors
+return a fixed `422` message rather than echoing submitted field values or email
+content. This changes the diagnostic response shape from framework defaults.
+
+Declared JSON (`application/json`, `application/*+json`, or the API's absent-header
+default) is checked for duplicate keys, nonfinite numbers, overflowing literals,
+and excessive nesting before framework decoding. Those failures return `422`.
+Request models reject unknown fields and coercion of controls: thresholds must
+be JSON numbers (not strings or booleans), and `require_signature` must be a JSON
+boolean. This deliberately exposes misspelled options rather than ignoring them.
+
+`/proof/verify` returns redacted diagnostics for invalid evidence. Local Python
+and CLI verification retain field-level diagnostics. A successful HTTP response
+is not proof validity: inspect `valid`, `schema_valid`, and `authenticated`.
+
+The byte limit includes JSON syntax and escaping. Existing field-character and
+decoded-email limits still apply; a heavily escaped email may exceed the HTTP
+limit before reaching the decoded-email limit. Submit UTF-8 JSON without needless
+ASCII escaping. No API body is streamed through to a route before the bound is
+checked. This bounded buffering is intentional for the current non-streaming APIs.
+
+The implementation follows the [ASGI HTTP receive-event contract](https://asgi.readthedocs.io/en/latest/specs/www.html#request-receive-event).
+The server has already allocated incoming chunks and processed transfer framing
+before middleware receives them. The application does not bound headers,
+transport buffers, concurrent request counts, JSON object expansion, or slow-client
+connection lifetime. Enforce those at the server/gateway. Authentication remains
+a route dependency; the size bound applies before it, not an authentication-before-
+upload guarantee. No request content is logged by this middleware.
+
 ## What public mode changes
 
 Set `LURESCOPE_PUBLIC_MODE=true` to make LureScope fail closed unless at least one
@@ -167,7 +203,7 @@ it. Enforce the real monetary ceiling at the provider account and gateway too.
 For an internet-facing service, the gateway should additionally enforce:
 
 - TLS, real user or workload identity, and key rotation;
-- a total request-body byte limit before JSON parsing;
+- transport/header/body limits in addition to the application's 8 MiB byte bound;
 - distributed rate, concurrency, and monetary limits;
 - timeouts and egress allowlists for provider endpoints;
 - logs that exclude message bodies, authorization headers, and provider keys;

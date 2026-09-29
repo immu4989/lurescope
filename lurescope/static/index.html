@@ -177,12 +177,25 @@
   .artifact-signature { margin-top: 12px; color: var(--muted); font: 10px var(--mono); }
   footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px 2px 0; color: var(--muted); font-size: 11px; }
   footer a { color: var(--ink-2); }
+  .capacity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+  .capacity-grid input { width: 100%; min-height: 42px; padding: 8px 12px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+  .capacity-grid label { line-height: 1.6; letter-spacing: .05em; }
+  .capacity-group { border: 0; padding: 0; margin: 22px 0; min-width: 0; }
+  .capacity-group legend { color: var(--ink-2); font-size: 13px; font-weight: 700; }
+  .capacity-table-wrap { overflow-x: auto; margin-top: 20px; }
+  .capacity-table { width: 100%; border-collapse: collapse; font: 12px/1.6 var(--mono); text-align: left; }
+  .capacity-table caption { text-align: left; color: var(--ink-2); margin-bottom: 12px; }
+  .capacity-table th, .capacity-table td { padding: 14px 10px; border-bottom: 1px solid var(--line); }
+  .capacity-table th { color: var(--ink-2); font-weight: 600; }
+  .capacity-over { color: var(--amber); }
+  .capacity-note { color: var(--muted); font-size: 12px; line-height: 1.7; }
   @media (max-width: 860px) {
     .hero { grid-template-columns: 1fr; padding-top: 58px; } .hero-side { display: none; }
     .workspace { grid-template-columns: 1fr; } .compose { border-right: 0; border-bottom: 1px solid var(--line); }
     .score-empty { min-height: 220px; } .timeline { grid-template-columns: 1fr; } .artifact-metrics { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 620px) {
+    .capacity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .shell { padding: 20px 14px 48px; } .status { display: none; } .top-actions { gap: 8px; } .repo-link { font-size: 9px; } .mode-note { margin-bottom: -22px; } .hero { padding: 50px 2px 38px; }
     h1 { font-size: 52px; } .compose, .panel, .attack-lab { padding: 20px; }
     .controls, .attack-grid { grid-template-columns: 1fr; } .primary, .secondary { width: 100%; }
@@ -293,10 +306,52 @@
     </div>
   </section>
 
+  <section class="email-lab" id="capacity" aria-labelledby="capacityTitle">
+    <span class="step">05 / Operational planning · local only</span>
+    <h2 id="capacityTitle">Can your team review the alerts?</h2>
+    <p class="email-copy">Explore how fraud prevalence changes review demand. Every flag and abstention goes to human review. No messages, uploads, or model calls are needed.</p>
+    <p class="artifact-warning" id="capacitySource">Synthetic illustration — these defaults are not measured LureScope performance.</p>
+    <form id="capacityForm">
+      <fieldset class="capacity-group"><legend>Validation outcomes from one fixed detector and threshold</legend>
+        <div class="capacity-grid">
+          <div><label for="capacityDetector">Declared detector</label><input id="capacityDetector" value="synthetic-example" required maxlength="256"></div>
+          <div><label for="capacityThreshold">Fixed decision threshold</label><input id="capacityThreshold" type="number" value="0.5" min="0" max="1" step="any" required></div>
+          <div><label for="capacity_tp">Fraud flagged (TP)</label><input id="capacity_tp" type="number" value="96" min="0" max="10000000" step="1" required></div>
+          <div><label for="capacity_fn">Fraud called benign (FN)</label><input id="capacity_fn" type="number" value="4" min="0" max="10000000" step="1" required></div>
+          <div><label for="capacity_fp">Benign flagged (FP)</label><input id="capacity_fp" type="number" value="2" min="0" max="10000000" step="1" required></div>
+          <div><label for="capacity_tn">Benign called benign (TN)</label><input id="capacity_tn" type="number" value="98" min="0" max="10000000" step="1" required></div>
+          <div><label for="capacity_abstained_positive">Fraud abstentions</label><input id="capacity_abstained_positive" type="number" value="0" min="0" max="10000000" step="1" required></div>
+          <div><label for="capacity_abstained_negative">Benign abstentions</label><input id="capacity_abstained_negative" type="number" value="0" min="0" max="10000000" step="1" required></div>
+        </div>
+      </fieldset>
+      <fieldset class="capacity-group"><legend>Assumptions — use the same period for volume and hours</legend>
+        <div class="capacity-grid">
+          <div><label for="capacityVolume">Messages per period</label><input id="capacityVolume" type="number" value="1000000" min="1" max="1000000000" step="1" required></div>
+          <div><label for="capacityMinutes">Review minutes per case</label><input id="capacityMinutes" type="number" value="5" min="0.001" max="1440" step="any" required></div>
+          <div><label for="capacityHours">Available review hours</label><input id="capacityHours" type="number" value="1000" min="0" max="1000000000" step="any" required></div>
+          <div><label for="capacityLow">Scenario A: fraud prevalence %</label><input id="capacityLow" type="number" value="0.1" min="0" max="100" step="any" required></div>
+          <div><label for="capacityMiddle">Scenario B: fraud prevalence %</label><input id="capacityMiddle" type="number" value="1" min="0" max="100" step="any" required></div>
+          <div><label for="capacityHigh">Scenario C: fraud prevalence %</label><input id="capacityHigh" type="number" value="5" min="0" max="100" step="any" required></div>
+        </div>
+      </fieldset>
+      <button class="primary" type="submit">Calculate review scenarios →</button>
+      <button class="chip" id="capacityDownload" type="button" disabled>Download assumptions + results</button>
+      <div class="error" id="capacityError" role="alert"></div>
+    </form>
+    <div id="capacityResult" hidden aria-live="polite"><div class="capacity-table-wrap">
+      <table class="capacity-table"><caption>Expected outcomes, not observed incidents or confidence bounds</caption>
+        <thead><tr><th scope="col">Fraud prevalence</th><th scope="col">Review cases</th><th scope="col">Fraud share of flags</th><th scope="col">Review hours</th><th scope="col">Capacity comparison</th></tr></thead>
+        <tbody id="capacityRows"></tbody>
+      </table>
+    </div></div>
+    <p class="capacity-note">Assumes stable class-conditional outcome rates. Sampling uncertainty, drift, arrival bursts, reviewer accuracy, and handling-time variation are not modeled. Zero observed false positives does not mean zero population risk. Within supplied hours does not mean safe to deploy. <a href="https://github.com/immu4989/lurescope/blob/feat/lurepermit-lurerange/docs/CAPACITY_PLANNING.md">Method and limitations ↗</a></p>
+  </section>
   <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a id="docsLink" href="/docs">API docs</a></span></footer>
 </main>
 <script src="static/browser-engine.js"></script>
 <script src="static/evidence-explorer.js"></script>
+<script src="static/capacity-planner.js"></script>
+<script src="static/capacity-ui.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const pct = (value) => `${Math.round(value * 100)}%`;

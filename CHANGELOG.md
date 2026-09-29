@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Inbox CLI preflight now binds each bounded read to observed file metadata and
+  rejects growth, shrinkage, replacement, symlinks, and special files instead of
+  silently scoring a truncated changed message. Oversized stable messages still
+  receive the existing per-message size failure; batch limits reject coerced types.
+
+- Added offline `capacity-plan` scenarios from six-outcome validation counts.
+  Explicit prevalence, volume, review-time, and capacity assumptions project
+  flags, abstentions, review hours, and shortfalls without model calls or message
+  intake. Abstentions remain pending review; outputs are not forecasts or CIs.
+  Optional CLI `--confidence` adds conservative simultaneous Hoeffding bounds
+  for expected review demand under explicit fixed-model/i.i.d. assumptions;
+  these are not prediction intervals for realized future traffic.
+
+- Unified byte-oriented CLI signing-key intake behind the bounded regular-file
+  reader with POSIX owner-only permission checks. Empty supplied key paths no
+  longer silently select unsigned output. Added an AST regression guard against
+  reintroducing direct unbounded private-key reads in these commands.
+
+- LureProof verification now rejects ambiguous/nonfinite/deep JSON even inside
+  correctly signed DSSE payloads, bounds direct-object and signature/key input,
+  and safely reports malformed signature identifiers. CLI proof/key reads use
+  bounded regular-file intake. HTTP request controls are strict, unknown options
+  fail, and duplicate JSON keys are rejected before framework decoding.
+
+- Added an 8 MiB pre-routing HTTP body limit based on actual ASGI bytes, including
+  chunked/undeclared input. Invalid length metadata and unsupported compressed
+  bodies fail before handlers. Validation errors no longer echo submitted data.
+  Gateway transport, concurrency, and timeout controls remain necessary.
+
 - Deployment policies now use bounded strict JSON reads, reject duplicate keys
   and excessive validation counts, check threshold-grid membership, and cache by
   exact bytes rather than a stale path. Optional `LURESCOPE_POLICY_SHA256` pins

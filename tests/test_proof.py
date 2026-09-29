@@ -14,8 +14,10 @@ pytest.importorskip("sklearn")
 from lurescope.cli import main
 from lurescope.proof import (
     DSSE_PAYLOAD_TYPE,
+    MAX_PROOF_BYTES,
     create_email_proof,
     generate_keypair,
+    load_proof,
     sign_statement,
     verify_proof,
 )
@@ -201,3 +203,76 @@ def test_cli_signed_create_and_required_verify(tmp_path, capsys):
     ]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["authenticated"] is True
+
+
+def test_valid_signature_cannot_make_duplicate_key_payload_acceptable(tmp_path):
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from lurescope.proof import _pae
+
+    private, public = tmp_path / "private.pem", tmp_path / "public.pem"
+    generate_keypair(private, public)
+    envelope = sign_statement(_statement(), private.read_bytes())
+    original = base64.b64decode(envelope["payload"])
+    payload = original.replace(b'"spec":"lureproof"', b'"spec":"other","spec":"lureproof"')
+    assert payload != original
+    key = serialization.load_pem_private_key(private.read_bytes(), password=None)
+    signature = key.sign(_pae(DSSE_PAYLOAD_TYPE, payload), ec.ECDSA(hashes.SHA256()))
+    envelope["payload"] = base64.b64encode(payload).decode()
+    envelope["signatures"][0]["sig"] = base64.b64encode(signature).decode()
+    result = verify_proof(envelope, public.read_bytes(), require_signature=True)
+    assert not result["valid"] and not result["schema_valid"] and not result["authenticated"]
+
+
+@pytest.mark.parametrize("payload", [b'{"x":NaN}', b'{"x":1e999}', b'{"x":1,"x":2}',
+                                      b'[' * 130 + b'0' + b']' * 130, b'\xff'])
+def test_proof_loader_rejects_ambiguous_or_non_utf8_bytes(tmp_path, payload):
+    path = tmp_path / "proof.json"
+    path.write_bytes(payload)
+    with pytest.raises(ValueError):
+        load_proof(path)
+
+
+@pytest.mark.parametrize("value", [None, [], 1, {"x": float("nan")}, {"x": "\ud800"},
+                                    {"x": "a" * MAX_PROOF_BYTES}])
+def test_direct_verifier_invalid_objects_return_bounded_failure(value):
+    result = verify_proof(value)
+    assert not result["valid"] and not result["authenticated"]
+    assert len(json.dumps(result)) < 1000
+
+
+@pytest.mark.parametrize("option", [0, 1, "false", None])
+def test_direct_verifier_signature_requirement_cannot_be_coerced(option):
+    with pytest.raises(ValueError, match="boolean"):
+        verify_proof({}, require_signature=option)
+
+
+def test_proof_loader_rejects_symlink_and_oversized_file(tmp_path):
+    path = tmp_path / "proof.json"
+    path.write_text("{}")
+    link = tmp_path / "link.json"
+    link.symlink_to(path)
+    with pytest.raises(ValueError):
+        load_proof(link)
+    with path.open("wb") as handle:
+        handle.truncate(MAX_PROOF_BYTES + 1)
+    with pytest.raises(ValueError):
+        load_proof(path)
+
+
+def test_api_malformed_signature_ids_do_not_crash_or_echo_fields(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from lurescope.app import app
+
+    monkeypatch.delenv("LURESCOPE_PUBLIC_MODE", raising=False)
+    monkeypatch.delenv("LURESCOPE_API_KEY_SCRYPT", raising=False)
+    envelope = {"payloadType": DSSE_PAYLOAD_TYPE,
+                "payload": base64.b64encode(b"{}").decode(),
+                "signatures": [{"keyid": {"PRIVATE_SENTINEL": True}, "sig": ""}]}
+    response = TestClient(app).post("/proof/verify", json={"proof": envelope})
+    assert response.status_code == 200
+    assert response.json()["valid"] is False
+    assert response.json()["key_ids"] == []
+    assert "PRIVATE_SENTINEL" not in response.text

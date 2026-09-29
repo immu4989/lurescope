@@ -22,6 +22,20 @@ artifact. Review and register a new plan before evaluating the changed deploymen
 
 ## API clients
 
+Requests now reject unknown fields, coerced thresholds/signature options,
+duplicate JSON keys, nonfinite values, and excessive nesting. Validation failures
+return a fixed redacted `422` response. All HTTP bodies are capped at 8 MiB before
+routing; see [deployment boundaries](PUBLIC_DEPLOYMENT.md). LureProof verification
+uses strict bounded payload decoding even for cryptographically signed bytes;
+CLI proof/key intake now uses bounded non-symlink regular-file reads.
+
+CLI signing-key inputs across legacy commands now require regular, non-symlink
+files of at most 64 KiB and owner-only permissions on POSIX. Review ownership
+and use `chmod 600` on the intended private file if appropriate; do not change
+permissions on unrelated files or publish keys. Only an omitted key option means
+unsigned output; an explicitly empty path is an error. Direct Python byte-input
+signing APIs cannot inspect the permissions of a file they were not given.
+
 Detector abstentions and invalid/non-finite scores no longer become zero-risk
 benign results. Score/triage/proof calls fail without issuing a decision or proof.
 Provider exception content is redacted from HTTP error responses. Clients should
@@ -64,3 +78,14 @@ Local wheels still named 0.11.0 are test artifacts: do not upload them over an
 existing release. Versioning, protected-branch review, live CI, and publishing are
 separate release steps. No government certification, procurement approval, model
 safety guarantee, or production-readiness claim follows from passing these tests.
+# Inbox input consistency (unreleased)
+
+Inbox CLI message files must now be regular non-symlink files. Copy mail exports
+into a trusted directory before processing; symbolic-link aliases are rejected.
+Count and total-prefix-byte limits are checked before content reads, and each
+read must match its preflight device, inode, size, and modification/change times.
+Observed mutations fail the batch rather than silently scoring a partial message.
+This is not an atomic filesystem snapshot: trust ancestor directories and avoid
+concurrent writers. Stable oversized messages still use a bounded size-rejection
+prefix, never a successful assessment of the truncated content. Standard input
+has a byte bound but no filesystem identity guarantee.

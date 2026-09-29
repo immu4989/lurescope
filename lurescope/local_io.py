@@ -20,12 +20,37 @@ def read_regular_file(
     private: bool = False, allow_empty: bool = False,
 ) -> bytes:
     """Read at most maximum+1 bytes and reject observed source changes."""
+    return _read_regular(
+        path, maximum=maximum, label=label, private=private, allow_empty=allow_empty,
+    )
+
+
+def read_regular_prefix(
+    path: Path, *, maximum: int, expected: os.stat_result, label: str = "message",
+) -> bytes:
+    """Read a bounded prefix, checking the whole file against preflight metadata.
+
+    This is for oversized-message rejection, NOT evidence verification. Callers
+    must not treat a full-length prefix as proof that the complete file was read.
+    """
+    return _read_regular(
+        path, maximum=maximum, label=label, allow_empty=True,
+        prefix=True, expected=expected,
+    )
+
+
+def _read_regular(
+    path: Path, *, maximum: int, label: str, private: bool = False,
+    allow_empty: bool = False, prefix: bool = False, expected: os.stat_result | None = None,
+) -> bytes:
     if type(maximum) is not int or maximum < 1:
         raise ValueError("file byte limit must be a positive integer")
     source = Path(path)
     before = source.lstat()
     if not stat.S_ISREG(before.st_mode) or source.parent.is_symlink():
         raise ValueError(f"{label} must be a regular non-symlink local file")
+    if expected is not None and _identity(before) != _identity(expected):
+        raise ValueError(f"{label} changed since batch preflight")
     fd = os.open(
         source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
         | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0),
@@ -37,14 +62,14 @@ def read_regular_file(
         if private and os.name == "posix" and opened.st_mode & 0o077:
             raise ValueError(f"{label} must not grant group or world access")
         minimum = 0 if allow_empty else 1
-        if not minimum <= opened.st_size <= maximum:
+        if opened.st_size < minimum or (not prefix and opened.st_size > maximum):
             raise ValueError(f"{label} exceeds its bounded size")
         with os.fdopen(fd, "rb") as stream:
             fd = -1
-            payload = stream.read(maximum + 1)
+            payload = stream.read(maximum if prefix else maximum + 1)
             if (
                 not minimum <= len(payload) <= maximum
-                or len(payload) != opened.st_size
+                or len(payload) != (min(opened.st_size, maximum) if prefix else opened.st_size)
                 or _identity(os.fstat(stream.fileno())) != _identity(opened)
             ):
                 raise ValueError(f"{label} changed or exceeds its bounded size")

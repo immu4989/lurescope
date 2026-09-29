@@ -38,6 +38,8 @@ jobs:
           cp lurescope/static/index.html _site/404.html
           cp lurescope/static/browser-engine.js _site/static/browser-engine.js
           cp lurescope/static/evidence-explorer.js _site/static/evidence-explorer.js
+          cp lurescope/static/capacity-planner.js _site/static/capacity-planner.js
+          cp lurescope/static/capacity-ui.js _site/static/capacity-ui.js
           cp lurescope/static/site.webmanifest _site/static/site.webmanifest
           cp lurescope/static/robots.txt _site/robots.txt
           cp lurescope/static/sitemap.xml _site/sitemap.xml

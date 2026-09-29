@@ -40,6 +40,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Explore evidence in-browser →](https://immu4989.github.io/lurescope/#evidence)** ·
 **[Verify the Golden Pilot →](examples/shadow-pilot/README.md)** ·
 **[Pre-register a Pilot Gate →](docs/PILOT_GATE.md)** ·
+**[Plan analyst review capacity (unreleased) →](docs/CAPACITY_PLANNING.md)** ·
 **[Export federal OSCAL evidence →](docs/FEDERAL_EMAIL_ASSURANCE.md)** ·
 **[Bridge CISA SCuBA evidence →](docs/SCUBA_BRIDGE.md)** ·
 **[Track signed assurance drift →](docs/SCUBA_DRIFT.md)** ·
