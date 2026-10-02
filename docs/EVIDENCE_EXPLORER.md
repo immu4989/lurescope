@@ -1,5 +1,12 @@
 # Browser Evidence Explorer
 
+Unreleased comparison-panel support shows LureBench's planned baseline comparisons,
+co-answered coverage, raw and Holm-adjusted p-values, logical completion bounds,
+and the all-model common cohort. It never declares a winner or deployment pass.
+Synthetic tutorial outputs are labelled as illustrations, not performance evidence.
+Reproduce results with `lurebench compare-panel` and reviewed dataset/plan/cache
+files; browser display does not recalculate inference or prove preregistration.
+
 Ordered LureMandate sequence verification is supported. The view displays
 priming cases, measured operations, and ordered pair coverage. Run
 `lurescope mandate check-sequence` for independent evidence verification;
@@ -61,6 +68,21 @@ The file is bounded to 8 MiB, read with the browser File API, parsed in the tab,
 and never sent to the LureScope API or another origin. The explorer shows the
 artifact type, decision state, core metrics, SHA-256 byte bindings, privacy
 exclusions, and machine-readable limitations.
+
+Unreleased intake rejects invalid UTF-8, duplicate JSON keys (including equivalent
+escaped keys), lone surrogates, nonfinite numbers, integers outside JavaScript's
+safe range, depth beyond 64, and more than 100,000 values. These browser limits
+may reject an artifact accepted by a different verifier. The same strict JSON
+profile applies inside DSSE payloads, whose base64 must be canonical and whose
+decoded bytes must be valid UTF-8. None of these parsing checks authenticates
+the supplied artifact or its declared hashes.
+
+Workbench script URLs include SHA-256 content identifiers, checked in CI. After
+editing browser code, run `python scripts/stamp_static_assets.py`, then its
+`--check` mode. Local API HTML and assets use cache revalidation headers. Content
+identifiers prevent accidental stale-script reuse; they are not publisher trust
+anchors or subresource integrity enforcement. Pages deployments copy the same
+stamped HTML; hosting/CDN cache policy is still controlled by the host.
 
 This is an explanation surface, not the normative verifier. It performs bounded
 shape inspection and decodes an in-toto DSSE payload, but it does not accept a

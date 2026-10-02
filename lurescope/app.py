@@ -166,7 +166,7 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
     enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         result = triage_email(
-            req.raw_email.encode("utf-8", errors="surrogateescape"),
+            req.email_bytes(),
             detector_name=req.detector,
             threshold=req.threshold,
             engine=req.engine,
@@ -189,7 +189,7 @@ def prove_email_message(req: LureProofRequest) -> dict:
     enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         return create_email_proof(
-            req.raw_email.encode("utf-8", errors="surrogateescape"),
+            req.email_bytes(),
             detector_name=req.detector,
             threshold=req.threshold,
             engine=req.engine,
@@ -222,8 +222,15 @@ def verify_lureproof(req: LureProofVerifyRequest) -> LureProofVerifyResponse:
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(os.path.join(_STATIC, "index.html"))
+    return FileResponse(os.path.join(_STATIC, "index.html"), headers={"Cache-Control": "no-cache"})
 
 
-# Serve any other static assets (currently just the single-page demo).
-app.mount("/static", StaticFiles(directory=_STATIC), name="static")
+class RevalidatingStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+# Revalidate assets rather than pairing new HTML with a stale cached script.
+app.mount("/static", RevalidatingStaticFiles(directory=_STATIC), name="static")

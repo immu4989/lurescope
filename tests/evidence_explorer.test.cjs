@@ -4,6 +4,106 @@ const assert = require("node:assert/strict");
 const explorer = require("../lurescope/static/evidence-explorer.js");
 
 const sha = character => character.repeat(64);
+
+test('strict JSON rejects ambiguous keys, resource excess, invalid Unicode and numbers', () => {
+  for (const text of [
+    '{"a":1,"a":2}', '{"a":1,"\\u0061":2}', '{"x":{"k":0,"k":1}}',
+    '{"__proto__":{},"__proto__":{}}', '{"n":1e400}', '{"n":9007199254740993}',
+    '"\\ud800"', '"\\udc00"', '"x\n"', '[1,]', '{"a":1,}', 'true false',
+    '\ufeff{}', '['.repeat(66) + '0' + ']'.repeat(66),
+    '[' + '0,'.repeat(100_000) + '0]',
+  ]) assert.throws(() => explorer.parseStrictJson(text), SyntaxError, text.slice(0, 80));
+  assert.deepEqual(explorer.parseStrictJson('{"a":1,"nested":{"a":2}}'), {a:1,nested:{a:2}});
+  assert.deepEqual(explorer.parseStrictJson('{"__proto__":{"polluted":true}}'),
+    JSON.parse('{"__proto__":{"polluted":true}}'));
+  assert.equal({}.polluted, undefined);
+});
+
+test('strict JSON matches native parsing for bounded valid escaped and nested fixtures', () => {
+  const atoms = [null, true, false, 0, -0, .125, 1e-12, 9007199254740991,
+    '', '📄', 'quotes " and slash \\', '\n\t\r', 'é中', '__proto__'];
+  for (let index = 0; index < 1000; index++) {
+    const value = {a: atoms[index % atoms.length],
+      nested: [{b: atoms[(index * 7) % atoms.length]}, index, ['a', 'b']]};
+    const text = JSON.stringify(value, null, index % 3);
+    assert.deepEqual(explorer.parseStrictJson(text), JSON.parse(text));
+  }
+  assert.equal(explorer.parseStrictJson('"\\ud83d\\udcc4"'), '📄');
+});
+
+test('DSSE payload bytes use strict JSON, UTF-8, and canonical base64 in Node and browser paths', () => {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  const context = {TextEncoder, TextDecoder, atob, btoa};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../lurescope/static/evidence-explorer.js'), 'utf8'), context);
+  for (const implementation of [explorer, context.LureScopeEvidence]) {
+    for (const payload of [Buffer.from('{"a":1,"a":2}').toString('base64'),
+      Buffer.from([255]).toString('base64'), 'e31=']) {
+      assert.throws(() => implementation.unwrap({payloadType:'application/vnd.in-toto+json',
+        payload, signatures:[{keyid:'synthetic',sig:'AAAA'}]}), /JSON|base64/);
+    }
+    const envelope = {payloadType:'application/vnd.in-toto+json',
+      payload:Buffer.from('{"ok":"📄"}').toString('base64'), signatures:[{sig:'AAAA'}]};
+    assert.equal(implementation.unwrap(envelope).statement.ok, '📄');
+  }
+});
+
+function panelFixture() {
+  return {
+    schema_version: 1, analysis: 'planned_baseline_detector_comparisons',
+    comparisons: {candidate: {
+      overall: {records: 10, coanswered: 8, coanswered_coverage: .8, coanswered_accuracy_delta: .25,
+        all_record_binary_completion_delta_bounds: {lower: 0, upper: .4}},
+      paired_test: {method: 'exact_two_sided_block_sign_flip', p_value: .5},
+    }},
+    family_adjustment: {method: 'holm_step_down_bonferroni', planned_comparisons: 1,
+      available_tests: 1, adjusted_p_values: {candidate: .5}},
+    all_models_coanswered: {records: 8, excluded_records: 2, coverage: .8,
+      positive_records: 4, negative_records: 4, baseline_accuracy: .5,
+      candidate_accuracies: {candidate: .75}},
+    plan_sha256: sha('a'),
+  };
+}
+
+test('comparison panel shows common coverage and uncertainty without declaring a winner', () => {
+  const report = panelFixture();
+  const summary = explorer.parseArtifact(JSON.stringify(report));
+  assert.equal(summary.kind, 'LureBench comparison panel');
+  assert.equal(summary.status, 'Comparison only');
+  assert.equal(summary.tone, 'neutral');
+  assert.equal(summary.signature.authenticated, false);
+  assert.ok(summary.metrics.some(m => m.label === 'All-model common cohort' && m.value === '8 / 10'));
+  assert.ok(summary.metrics.some(m => m.label === 'candidate · raw / Holm p' && m.value === '0.5000 / 0.5000'));
+  assert.ok(summary.warnings.some(w => w.includes('not confidence intervals')));
+  report.demonstration = {synthetic: true};
+  assert.equal(explorer.summarizeArtifact(report).status, 'Synthetic illustration');
+  report.comparisons.candidate.paired_test.p_value = null;
+  report.family_adjustment.adjusted_p_values.candidate = null;
+  report.family_adjustment.available_tests = 0;
+  assert.ok(explorer.summarizeArtifact(report).metrics.some(m => m.value === 'Unavailable / Unavailable'));
+});
+
+test('comparison panel rejects coerced, missing, or contradictory display values', () => {
+  for (const mutate of [
+    r => r.schema_version = true,
+    r => r.comparisons.candidate.overall.records = '10',
+    r => r.comparisons.candidate.overall.coanswered = 11,
+    r => r.comparisons.candidate.overall.coanswered_coverage = .7,
+    r => r.comparisons.candidate.overall.coanswered_accuracy_delta = NaN,
+    r => r.comparisons.candidate.paired_test.p_value = undefined,
+    r => r.family_adjustment.adjusted_p_values.candidate = .01,
+    r => r.family_adjustment.adjusted_p_values.extra = .5,
+    r => r.family_adjustment.available_tests = 0,
+    r => r.all_models_coanswered.excluded_records = 1,
+    r => r.all_models_coanswered.positive_records = 5,
+    r => r.all_models_coanswered.baseline_accuracy = null,
+    r => r.plan_sha256 = 'not a hash',
+  ]) {
+    const report = panelFixture();
+    mutate(report);
+    assert.throws(() => explorer.summarizeArtifact(report), /Invalid planned comparison panel/);
+  }
+});
 test("sequence evidence displays bounded operation coverage", () => {
   const artifact = require("../conformance/luremandate-sequence-v1/sequence-verification.json");
   const summary = explorer.summarizeArtifact(artifact);

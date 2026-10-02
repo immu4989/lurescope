@@ -7,6 +7,7 @@ on:
       - ".github/workflows/pages.yml"
       - "lurescope/static/**"
       - "space/model.json"
+      - "scripts/stamp_static_assets.py"
       - "docs/assets/lurescope-live.png"
       - "docs/assets/lurescope-social-card.png"
   workflow_dispatch:
@@ -33,6 +34,7 @@ jobs:
           persist-credentials: false
       - name: Assemble static site
         run: |
+          python3 scripts/stamp_static_assets.py --check
           mkdir -p _site/static
           cp lurescope/static/index.html _site/index.html
           cp lurescope/static/index.html _site/404.html

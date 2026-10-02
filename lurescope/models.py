@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+MAX_EMAIL_INPUT_BYTES = 5 * 1024 * 1024
 
 
 class _StrictRequest(BaseModel):
@@ -132,14 +136,39 @@ class PolicyStatusResponse(BaseModel):
 
 
 class EmailTriageRequest(_StrictRequest):
-    raw_email: str = Field(
-        ..., min_length=1, max_length=5 * 1024 * 1024,
-        description="Raw RFC 5322 email source; parsed locally and never dereferenced",
+    raw_email: Optional[str] = Field(
+        None, min_length=1, max_length=MAX_EMAIL_INPUT_BYTES,
+        description="UTF-8 email text; supply this OR raw_email_base64, not both",
+    )
+    raw_email_base64: Optional[str] = Field(
+        None, min_length=1, max_length=4 * ((MAX_EMAIL_INPUT_BYTES + 2) // 3),
+        description="Canonical base64 of original RFC 5322 bytes, preserving non-UTF-8 mail",
     )
     detector: str = Field("tfidf-logreg")
     threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
     engine: Optional[str] = None
     model: Optional[str] = None
+
+    def email_bytes(self) -> bytes:
+        if (self.raw_email is None) == (self.raw_email_base64 is None):
+            raise ValueError("supply exactly one email representation")
+        if self.raw_email is not None:
+            payload = self.raw_email.encode("utf-8")
+        else:
+            try:
+                payload = base64.b64decode(self.raw_email_base64, validate=True)
+            except (ValueError, binascii.Error) as exc:
+                raise ValueError("invalid email base64") from exc
+            if base64.b64encode(payload).decode("ascii") != self.raw_email_base64:
+                raise ValueError("email base64 must be canonical")
+        if not 1 <= len(payload) <= MAX_EMAIL_INPUT_BYTES:
+            raise ValueError("email bytes exceed the intake bounds")
+        return payload
+
+    @model_validator(mode="after")
+    def validate_email_representation(self):
+        self.email_bytes()
+        return self
 
 
 class TriageEvidence(BaseModel):

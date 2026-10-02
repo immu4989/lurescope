@@ -1,53 +1,76 @@
 #!/usr/bin/env python3
-"""Export the bundled tfidf-logreg model to space/model.json for the static Space.
+"""Export reviewed data-only weights for the packaged lab and static Space.
 
-The Hugging Face Static Space (space/index.html) runs inference in the browser, so
-it needs the trained model as JSON: for each vocabulary term its idf weight and its
-logistic-regression coefficient, plus the intercept. The JS in index.html replicates
-sklearn's TfidfVectorizer transform (sublinear tf, L2 norm) exactly — verified to
-match the Python service to 4 decimals.
-
-    python scripts/export_static_model.py
-
-Requires the model artifact at lurescope/models/tfidf-logreg-fraud.joblib.
+No pickle deserialization, model frameworks, training, or downloads. The browser
+profile rounds IDF/coefficients to five decimals and the intercept to six; it is
+not the full-precision Python serving artifact. Use --check in CI without writes.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import stat
+import tempfile
+from pathlib import Path
 
-import joblib
+from lurescope.local_io import read_regular_file
+from lurescope.portable_tfidf import PortableTfidfDetector
+from lurescope.service import _DEFAULT_TFIDF_SHA256
 
-HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL = os.path.join(HERE, "lurescope", "models", "tfidf-logreg-fraud.joblib")
-OUT = os.path.join(HERE, "space", "model.json")
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "lurescope/models/tfidf-logreg-fraud.json"
+OUTPUTS = (ROOT / "space/model.json", ROOT / "lurescope/static/model.json")
 
 
-def main() -> None:
-    d = joblib.load(MODEL)
-    pipe = d["pipeline"]
-    vec = pipe.named_steps["tfidf"]
-    clf = pipe.named_steps["clf"]
-    idf = vec.idf_
-    coef = clf.coef_[0]
-
-    vocab = {
-        term: [round(float(idf[idx]), 5), round(float(coef[idx]), 5)]
-        for term, idx in vec.vocabulary_.items()
-    }
+def render(source: Path = SOURCE, expected_sha256: str = _DEFAULT_TFIDF_SHA256) -> bytes:
+    detector = PortableTfidfDetector(source, expected_sha256=expected_sha256)
     model = {
-        "intercept": round(float(clf.intercept_[0]), 6),
-        "ngram_max": vec.ngram_range[1],
-        "sublinear_tf": bool(vec.sublinear_tf),
-        "norm": vec.norm,
-        "vocab": vocab,
+        "intercept": round(detector._intercept, 6), "ngram_max": 2,
+        "sublinear_tf": True, "norm": "l2",
+        "vocab": {term: [round(idf, 5), round(coefficient, 5)]
+                  for term, (_, idf, coefficient) in sorted(detector._features.items())},
     }
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w") as f:
-        json.dump(model, f, separators=(",", ":"))
-    print(f"wrote {OUT}  ({os.path.getsize(OUT) / 1e6:.2f} MB, {len(vocab)} features)")
+    return json.dumps(model, separators=(",", ":"), allow_nan=False).encode("utf-8")
+
+
+def write_atomic(destination: Path, payload: bytes) -> None:
+    if destination.is_symlink() or (
+        destination.exists() and not stat.S_ISREG(destination.stat().st_mode)
+    ):
+        raise ValueError("browser model output must be a regular non-symlink path")
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            # Bundled public weights must remain readable in non-root containers.
+            if os.name == "posix":
+                os.fchmod(stream.fileno(), 0o644)
+        os.replace(temporary, destination)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check", action="store_true", help="verify both artifacts without changing them"
+    )
+    args = parser.parse_args(argv)
+    payload = render()
+    for destination in OUTPUTS:
+        if args.check:
+            actual = read_regular_file(destination, maximum=8 * 1024 * 1024, label="browser model")
+            if actual != payload:
+                raise ValueError("browser model does not match the pinned data-only source")
+        else:
+            write_atomic(destination, payload)
+    action = "verified" if args.check else "wrote"
+    print(f"{action} both browser models from pinned data-only weights")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

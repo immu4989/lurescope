@@ -9,6 +9,13 @@ include scripts/check_mandate_wheel.py
 include scripts/check_installed_mandate.py
 include scripts/check_producer_contract.py
 include scripts/verify_mandate_independence.py
+include scripts/export_static_model.py
+include scripts/stamp_static_assets.py
+include scripts/check_installed_model.py
+include scripts/check_installed_browser.cjs
+include scripts/check_browser_sdist.py
+include space/model.json
+recursive-include tests *.cjs
 include tests/producer-contract.json
 include tests/PRODUCER_CONTRACT.md
 recursive-include docs *.md

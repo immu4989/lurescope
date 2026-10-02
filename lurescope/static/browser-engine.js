@@ -2,7 +2,7 @@
  *
  * This module powers the GitHub Pages edition. The TF-IDF arithmetic and local
  * attacks mirror the Python implementation, while email parsing is deliberately
- * labeled as a bounded browser preview rather than the RFC-complete Python path.
+ * labeled as a bounded browser preview rather than the fuller Python parser.
  */
 (function (root, factory) {
   const api = factory();
@@ -23,6 +23,11 @@
   const ARCHIVE_EXTENSIONS = new Set([".7z", ".gz", ".img", ".rar", ".tar", ".zip"]);
   let model = null;
 
+  // Python's Unicode word boundary is not JavaScript's ASCII-oriented \b.
+  // These fixed internal patterns use only literal words, groups and \d/\b.
+  const WORD = "[\\p{L}\\p{N}_]";
+  const WORD_BOUNDARY = `(?:(?<=${WORD})(?!${WORD})|(?<!${WORD})(?=${WORD}))`;
+
   const H_SIGNALS = [
     [/\b(urgent|immediately|right away|within \d+ (?:hours|minutes)|expire|suspend|final notice|act now|as soon as possible|asap|deadline|last chance)\b/i, 1.1, "urgency"],
     [/\b(it (?:support|department|team)|help ?desk|security team|your bank|account team|compliance|hr department|ceo|cfo|director|administrator)\b/i, 0.8, "authority"],
@@ -30,7 +35,9 @@
     [/\b(wire transfer|gift ?card|bitcoin|crypto|usdt|bank details|routing number|invoice|payment|refund|prize|winnings|inheritance|beneficiary|investment)\b/i, 1.1, "payment"],
     [/(<<link>>|<<contact>>|https?:\/\/|wa\.me\/|t\.me\/|whatsapp|telegram)/i, 0.9, "handoff"],
     [/\b(do not tell|keep this (?:between us|confidential)|discreet|private matter)\b/i, 1.0, "secrecy"],
-  ];
+  ].map(([pattern, weight, name]) => [new RegExp(
+    pattern.source.replaceAll("\\b", WORD_BOUNDARY).replaceAll("\\d", "\\p{Nd}"), "iu"
+  ), weight, name]);
   const H_BIAS = -1.6;
   const HOMOGLYPHS = {a:"а",c:"с",e:"е",o:"о",p:"р",x:"х",y:"у",i:"і",s:"ѕ",j:"ј",A:"А",B:"В",C:"С",E:"Е",H:"Н",K:"К",M:"М",O:"О",P:"Р",T:"Т",X:"Х"};
   const LEET = {a:"4",e:"3",i:"1",o:"0",s:"5",t:"7",l:"1",b:"8"};
@@ -59,15 +66,32 @@
   }
 
   function setModel(value) {
-    if (!value || typeof value.intercept !== "number" || !value.vocab || !value.ngram_max) {
+    const finiteWeight = (weight) => typeof weight === "number" && Number.isFinite(weight) && Math.abs(weight) <= 1e6;
+    if (!value || !finiteWeight(value.intercept) || value.norm !== "l2" ||
+        typeof value.sublinear_tf !== "boolean" || !Number.isInteger(value.ngram_max) ||
+        value.ngram_max < 1 || value.ngram_max > 3 || !value.vocab ||
+        typeof value.vocab !== "object" || Array.isArray(value.vocab)) {
       throw new Error("Invalid browser model artifact");
     }
-    model = value;
+    const entries = Object.entries(value.vocab);
+    if (!entries.length || entries.length > 100_000) throw new Error("Invalid browser model vocabulary size");
+    // A null-prototype copy makes arbitrary message tokens safe dictionary keys.
+    // Copy and freeze nested weights so callers cannot alter an installed model.
+    const vocab = Object.create(null);
+    for (const [term, weights] of entries) {
+      if (!term.length || term.length > MAX_TEXT || !Array.isArray(weights) ||
+          weights.length !== 2 || !weights.every(finiteWeight) || weights[0] <= 0) {
+        throw new Error("Invalid browser model vocabulary entry");
+      }
+      vocab[term] = Object.freeze(weights.slice());
+    }
+    model = Object.freeze({intercept: value.intercept, ngram_max: value.ngram_max,
+      sublinear_tf: value.sublinear_tf, norm: value.norm, vocab: Object.freeze(vocab)});
     return model;
   }
 
   async function loadModel(url) {
-    const response = await fetch(url, {cache: "force-cache"});
+    const response = await fetch(url, {cache: "no-cache"});
     if (!response.ok) throw new Error(`Could not load browser model (${response.status})`);
     return setModel(await response.json());
   }
@@ -104,13 +128,21 @@
   }
 
   function scoreHeuristic(text) {
+    text = heuristicText(text);
     let logit = H_BIAS;
     for (const [pattern, weight] of H_SIGNALS) if (pattern.test(text)) logit += weight;
     return sigmoid(logit);
   }
 
   function heuristicSignals(text) {
+    text = heuristicText(text);
     return H_SIGNALS.filter(([pattern]) => pattern.test(text)).map(([, , name]) => name);
+  }
+
+  function heuristicText(text) {
+    // Python re.I additionally matches dotted/dotless I against ASCII i.
+    // Unicode JS case folding already handles long s and Kelvin sign.
+    return text.replace(/[İı]/g, "i");
   }
 
   function validateText(text) {
@@ -126,6 +158,9 @@
 
   function scoreMessage(text, detector = "tfidf-logreg", threshold = THRESHOLD) {
     validateText(text);
+    if (typeof threshold !== "number" || !Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+      throw new Error("Threshold must be a finite number between zero and one");
+    }
     const scored = rawScore(text, detector);
     return {
       text,
@@ -135,7 +170,7 @@
       threshold,
       signals: scored.signals,
       policy_id: null,
-      threshold_source: "browser-default",
+      threshold_source: threshold === THRESHOLD ? "browser-default" : "browser-override",
     };
   }
 
@@ -252,6 +287,8 @@
   }
 
   function splitMessage(raw) {
+    if (raw.startsWith("\r\n")) return {headers: new Map(), body: raw.slice(2)};
+    if (raw.startsWith("\n")) return {headers: new Map(), body: raw.slice(1)};
     const match = /\r?\n\r?\n/.exec(raw);
     if (!match) return {headers: parseHeaders(raw), body: ""};
     return {
@@ -261,14 +298,20 @@
   }
 
   function base64Text(value) {
-    const compact = value.replace(/\s/g, "");
+    const compact = value.replace(/[ \t\r\n]/g, "");
+    if (compact.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(compact)) {
+      throw new Error("Invalid base64 in browser email preview; use the full local API");
+    }
     let bytes;
     if (typeof Buffer !== "undefined") bytes = Uint8Array.from(Buffer.from(compact, "base64"));
     else bytes = Uint8Array.from(atob(compact), (character) => character.charCodeAt(0));
-    return new TextDecoder("utf-8", {fatal: false}).decode(bytes);
+    return new TextDecoder("utf-8", {fatal: true}).decode(bytes);
   }
 
   function quotedPrintableText(value) {
+    if (/=(?![0-9a-f]{2}|\r?\n)/i.test(value)) {
+      throw new Error("Invalid quoted-printable in browser email preview; use the full local API");
+    }
     const unfolded = value.replace(/=\r?\n/g, "");
     const bytes = [];
     for (let i = 0; i < unfolded.length; i += 1) {
@@ -276,20 +319,25 @@
         bytes.push(parseInt(unfolded.slice(i + 1, i + 3), 16));
         i += 2;
       } else {
-        bytes.push(...new TextEncoder().encode(unfolded[i]));
+        const codepoint = unfolded.codePointAt(i);
+        if (codepoint >= 0xd800 && codepoint <= 0xdfff) {
+          throw new Error("Invalid Unicode in browser email preview; use the full local API");
+        }
+        bytes.push(...new TextEncoder().encode(String.fromCodePoint(codepoint)));
+        if (codepoint > 0xffff) i += 1;
       }
     }
-    return new TextDecoder("utf-8", {fatal: false}).decode(Uint8Array.from(bytes));
+    return new TextDecoder("utf-8", {fatal: true}).decode(Uint8Array.from(bytes));
   }
 
   function decodeTransfer(body, encoding) {
-    try {
-      if (/\bbase64\b/i.test(encoding)) return base64Text(body);
-      if (/quoted-printable/i.test(encoding)) return quotedPrintableText(body);
-    } catch (_) {
-      return body;
+    const kind = encoding.trim().toLowerCase();
+    if (kind === "base64") return base64Text(body);
+    if (kind === "quoted-printable") {
+      return quotedPrintableText(body);
     }
-    return body;
+    if (["", "7bit", "8bit", "binary"].includes(kind)) return body;
+    throw new Error("Unsupported transfer encoding in browser email preview; use the full local API");
   }
 
   function decodeEncodedWords(value) {
@@ -302,29 +350,65 @@
     });
   }
 
+  function htmlReferences(value) {
+    // Deliberately smaller than HTML5: reject unsupported references instead of
+    // leaving encoded readable words in the text that reaches the detector.
+    const named = {amp: "&", AMP: "&", lt: "<", LT: "<", gt: ">", GT: ">",
+      quot: '"', QUOT: '"', apos: "'", nbsp: "\u00a0"};
+    return value.replace(/&(?:#[xX][0-9a-fA-F]+;?|#[0-9]+;?|[A-Za-z][A-Za-z0-9]*;?)/g, (reference) => {
+      if (reference[1] !== "#") {
+        const name = reference.slice(1, reference.endsWith(";") ? -1 : undefined);
+        if (!reference.endsWith(";") || !Object.hasOwn(named, name)) {
+          throw new Error("Unsupported HTML character reference; use the full local API");
+        }
+        return named[name];
+      }
+      const hex = /^&#x/i.test(reference);
+      const digits = reference.slice(hex ? 3 : 2).replace(/;$/, "");
+      const codepoint = parseInt(digits, hex ? 16 : 10);
+      if (!Number.isSafeInteger(codepoint) || codepoint <= 0 || codepoint > 0x10ffff ||
+          (codepoint >= 0xd800 && codepoint <= 0xdfff) ||
+          (codepoint < 32 && ![9, 10, 13].includes(codepoint)) ||
+          (codepoint >= 127 && codepoint <= 159) ||
+          (codepoint >= 0xfdd0 && codepoint <= 0xfdef) || (codepoint & 0xffff) >= 0xfffe) {
+        throw new Error("Unsupported HTML character reference; use the full local API");
+      }
+      return String.fromCodePoint(codepoint);
+    });
+  }
+
   function stripHtml(value) {
     const withoutActive = value.replace(/<(script|style|head)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
-    return withoutActive
+    return htmlReferences(withoutActive
       .replace(/<(br|p|div|li|tr)\b[^>]*>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&amp;/gi, "&")
-      .replace(/&lt;/gi, "<")
-      .replace(/&gt;/gi, ">")
-      .replace(/&#39;/gi, "'")
-      .replace(/&quot;/gi, '"')
+      .replace(/<[^>]+>/g, " "))
       .replace(/[ \t]+/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
   }
 
   function parameter(value, name) {
-    const pattern = new RegExp(`${name}\\s*=\\s*(?:"([^"]+)"|([^;\\s]+))`, "i");
+    if (new RegExp(`(?:^|;)\\s*${name}\\*`, "i").test(value)) {
+      throw new Error("Extended MIME parameters require the full local API");
+    }
+    const declarations = new RegExp(`(?:^|;)\\s*${name}\\s*=`, "gi");
+    if (Array.from(value.matchAll(declarations)).length > 1) {
+      throw new Error("Duplicate MIME parameter in browser preview; use the full local API");
+    }
+    const pattern = new RegExp(`(?:^|;)\\s*${name}\\s*=\\s*(?:"([^"]*)"|([^;\\s]+))`, "i");
     const match = pattern.exec(value);
-    return match ? decodeEncodedWords(match[1] || match[2]) : null;
+    return match ? decodeEncodedWords(match[1] !== undefined ? match[1] : match[2]) : null;
   }
 
   function parseMimeBody(headers, body) {
+    function checkHeaders(partHeaders) {
+      for (const name of ["content-type", "content-transfer-encoding", "content-disposition"]) {
+        if (headerValues(partHeaders, name).length > 1) {
+          throw new Error("Ambiguous MIME headers in browser email preview; use the full local API");
+        }
+      }
+    }
+    checkHeaders(headers);
     const contentType = firstHeader(headers, "content-type") || "text/plain";
     const boundary = parameter(contentType, "boundary");
     const plain = [];
@@ -333,26 +417,57 @@
     const hrefs = [];
 
     function consume(partHeaders, partBody) {
+      checkHeaders(partHeaders);
       const partType = firstHeader(partHeaders, "content-type") || "text/plain";
       const disposition = firstHeader(partHeaders, "content-disposition");
-      const filename = parameter(disposition, "filename") || parameter(partType, "name");
+      const filename = parameter(disposition, "filename") ?? parameter(partType, "name");
       if (filename) attachments.push(filename);
-      if (/\battachment\b/i.test(disposition)) return;
+      if (filename !== null || /^attachment(?:\s*;|\s*$)/i.test(disposition)) return;
+      if (!/^text\/(?:plain|html)(?:\s*;|\s*$)/i.test(partType)) {
+        throw new Error("Unsupported or nested MIME body in browser preview; use the full local API");
+      }
+      const charset = parameter(partType, "charset");
+      if (charset && !/^(?:utf-8|us-ascii)$/i.test(charset)) {
+        throw new Error("Unsupported charset in browser email preview; use the full local API");
+      }
       const decoded = decodeTransfer(partBody, firstHeader(partHeaders, "content-transfer-encoding"));
       if (/^text\/plain\b/i.test(partType)) plain.push(decoded.trim());
       if (/^text\/html\b/i.test(partType)) {
         html.push(stripHtml(decoded));
-        for (const match of decoded.matchAll(/\bhref\s*=\s*["'](https?:\/\/[^"']+)["']/gi)) hrefs.push(match[1]);
+        for (const match of decoded.matchAll(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
+          const href = htmlReferences(match[1] ?? match[2]);
+          if (/^https?:\/\//i.test(href)) hrefs.push(href);
+        }
       }
     }
 
-    if (/^multipart\//i.test(contentType) && boundary) {
-      const marker = `--${boundary}`;
-      for (const rawPart of body.split(marker).slice(1)) {
-        if (rawPart.startsWith("--")) break;
-        const part = splitMessage(rawPart.replace(/^\r?\n/, "").replace(/\r?\n$/, ""));
-        consume(part.headers, part.body);
+    const rootDisposition = firstHeader(headers, "content-disposition");
+    const rootFilename = parameter(rootDisposition, "filename") ?? parameter(contentType, "name");
+    if (rootFilename !== null || /^attachment(?:\s*;|\s*$)/i.test(rootDisposition)) {
+      if (rootFilename) attachments.push(rootFilename);
+      return {body: "", attachments, hrefs};
+    }
+    if (/^multipart\//i.test(contentType)) {
+      if (!/^multipart\/(?:mixed|alternative|related)(?:\s*;|\s*$)/i.test(contentType) ||
+          !boundary || boundary.length > 70 || !/^[A-Za-z0-9'()+_,.\/:=? -]+$/.test(boundary) || boundary.endsWith(" ")) {
+        throw new Error("Unsupported multipart boundary or subtype; use the full local API");
       }
+      const escaped = boundary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const delimiters = new RegExp(`(?:^|\\r?\\n)--${escaped}(--)?[ \\t]*(?:\\r?\\n|$)`, "g");
+      let previous = null;
+      let closed = false;
+      let parts = 0;
+      for (const match of body.matchAll(delimiters)) {
+        if (previous !== null) {
+          parts += 1;
+          if (parts > 128) throw new Error("Too many MIME parts for browser preview; use the full local API");
+          const part = splitMessage(body.slice(previous, match.index));
+          consume(part.headers, part.body);
+        }
+        if (match[1]) { closed = true; break; }
+        previous = match.index + match[0].length;
+      }
+      if (!closed || !parts) throw new Error("Incomplete multipart email; use the full local API");
     } else consume(headers, body);
 
     const selected = plain.some((item) => item) ? plain : html;
@@ -390,8 +505,15 @@
       evidence.push({code:"reply_to_domain_mismatch", severity:"medium", title:"Reply-To domain differs", detail:`From uses ${fromDomain}; replies go to ${replyDomain}.`});
     }
     const domains = new Set();
+    let malformedUrls = 0;
     for (const url of parsed.urls) {
-      try { domains.add(new URL(url).hostname); } catch (_) { /* Ignore malformed display URLs. */ }
+      try {
+        const domain = new URL(url).hostname;
+        if (domain) domains.add(domain); else malformedUrls++;
+      } catch (_) { malformedUrls++; }
+    }
+    if (malformedUrls) {
+      evidence.push({code:"malformed_url", severity:"medium", title:"Malformed link requires review", detail:`${malformedUrls} extracted link(s) could not be parsed for domain checks; inspect them without opening them. No link was fetched.`});
     }
     for (const domain of Array.from(domains).sort()) {
       const normalized = domain.toLowerCase();
@@ -427,6 +549,7 @@
     const subject = decodeEncodedWords(firstHeader(message.headers, "subject")).trim();
     const scoreText = [subject, mime.body].filter(Boolean).join("\n\n").trim();
     if (!scoreText) throw new Error("Email has no subject or readable text body");
+    if (scoreText.length > MAX_TEXT) throw new Error("Email text exceeds the scoring limit; manual review is required");
     const urls = Array.from(new Set([...(mime.body.match(URL_RE) || []), ...mime.hrefs].map((item) => item.replace(/[.,);\]]+$/, "")))).sort();
     const parsed = {
       subject,
@@ -439,7 +562,7 @@
       attachments: Array.from(new Set(mime.attachments)),
       authentication_results: headerValues(message.headers, "authentication-results"),
     };
-    const scored = scoreMessage(scoreText.slice(0, MAX_TEXT), detector, threshold);
+    const scored = scoreMessage(scoreText, detector, threshold);
     const evidence = emailEvidence(parsed);
     const severities = new Set(evidence.map((item) => item.severity));
     let riskTier;
@@ -463,7 +586,7 @@
       content_probability: scored.fraud_probability,
       content_label: scored.label,
       threshold,
-      threshold_source: "browser-default",
+      threshold_source: scored.threshold_source,
       policy_id: null,
       subject: parsed.subject,
       from_address: parsed.from_address,

@@ -89,3 +89,87 @@ This is not an atomic filesystem snapshot: trust ancestor directories and avoid
 concurrent writers. Stable oversized messages still use a bounded size-rejection
 prefix, never a successful assessment of the truncated content. Standard input
 has a byte bound but no filesystem identity guarantee.
+
+## Email scoring coverage
+
+New Python triage and LureProof generation reject subject-plus-readable-body text
+over 20,000 characters **before any detector call**. Earlier versions scored only
+the prefix; historical proofs with a disclosed `truncated` flag remain readable,
+but are not reinterpreted as full-message assessments. Over-limit messages require
+manual review rather than being labeled low risk. The original 5 MiB email-byte
+limit still applies separately. Attachments and external resources are not scanned.
+
+Body extraction now stops at attachment dispositions, filename-bearing parts
+(including inline files), and `message/*` parts. Their children are not decoded
+for scoring, link extraction, image cues, or nested attachment-name reporting.
+Ordinary nested multipart bodies remain readable. This prevents attached mail
+from being mistaken for the outer message, but it can reduce the reported text
+and evidence compared with older versions. Inspect attachments separately in a
+controlled workflow. Python's MIME parser still constructs the message tree;
+this extraction boundary is not a parser memory or recursion sandbox.
+
+Browser preview also rejects over-limit text (its counter uses JavaScript UTF-16
+code units). Its deliberately limited MIME profile supports direct plain/HTML
+text and one-level mixed/alternative/related multipart with at most 128 parts.
+It rejects nested bodies, unsupported inline types/charsets, duplicate structural
+headers, malformed transfer encodings, and missing closing boundaries. Delimiters
+are recognized at line boundaries rather than inside arbitrary body text, following
+the framing rule in [RFC 2046](https://www.rfc-editor.org/rfc/rfc2046).
+Named inline files are excluded from body scoring. Extended MIME filename
+parameters require the full API. HTML preview decodes valid numeric character
+references and a small semicolon-terminated named set (`amp`, `lt`, `gt`, `quot`,
+`apos`, `nbsp`, plus HTML-defined uppercase aliases) exactly once in text and
+quoted links. Other named references, ambiguous bare ampersand words, invalid
+Unicode references, and legacy control-code mappings require the API. The full
+Python parser uses the broader [HTML character-reference rules](https://docs.python.org/3/library/html.html#html.unescape).
+Thirty-two synthetic numeric-reference email cases check browser/Python scoring
+and link extraction; this is not complete HTML5 parsing or visual-rendering parity.
+Use the full local parser for unsupported MIME, and manual review for over-limit
+content; neither route supplies a guarantee against fraud. No output is a safety
+or compliance certification.
+
+The browser model now ships inside the Python package. CI verifies installed
+browser scoring without fetching assets from the checkout. The static Space copy
+must match exactly. `python scripts/export_static_model.py` derives both copies
+from the SHA-256-pinned, data-only serving artifact without importing pickle,
+joblib, or model frameworks. `--check` verifies both outputs without writing.
+Export preserves the existing rounded weights, not full-precision Python parity.
+Each output replacement is atomic, but the two-file update is not a transaction;
+CI rejects mismatched copies. A schema/weight
+check prevents malformed model arithmetic; it does not authenticate model origin.
+
+Browser heuristic patterns now follow Unicode word boundaries and decimal-digit
+matching instead of JavaScript's ASCII-oriented defaults, with explicit handling
+for dotted/dotless I under Python's
+[case-insensitive matching rules](https://docs.python.org/3/library/re.html#re.IGNORECASE).
+Cross-language tests cover 2,048 synthetic cases against the Python heuristic,
+and 261 TF-IDF cases with absolute probability tolerance `1e-5` for rounded
+weights. This does not establish universal runtime/Unicode-version parity or
+multilingual detection quality. Browser scoring still has a UTF-16 input bound.
+
+The workbench invalidates displayed results when their inputs change. Request
+versions suppress delayed responses and file reads from older selections; proof
+downloads bind the triaged message, filename, and detector. This is a UI consistency
+guarantee, not cancellation of an already-started server request or provider charge.
+
+## Proof producer preflight
+
+New proof creation rejects invalid detector, threshold, privacy profile, nonce,
+issuer, salt, or signing-key settings before parsing or scoring the message.
+Inbox batches run the same shared-settings check before creating the output
+directory. Per-message failures still remain individual case errors; a successful
+preflight does not promise all messages will parse, nor does it validate the
+deployment policy or guarantee subsequent filesystem writes.
+
+Private signing keys must be unencrypted P-256 PEM bytes, at most 16 KiB. New
+caller-supplied salts must contain 16–1,024 bytes. Issuer and nonce retain their
+existing length limits but reject controls and lone surrogates. These restrictions
+apply to creation, not retroactively to the historical verification contract.
+
+Local email-to-proof generation uses the data-only serving path without importing
+pickle, joblib, NumPy, scikit-learn, or Torch. The legacy `sklearn_version` field
+now reads installed package metadata; `not-installed` is explicit when absent.
+It is not a statement that scikit-learn performed inference. Package dependencies
+have not been removed, and trusted model reproduction may still use them. The
+isolated installed-wheel smoke test exercises both scoring and proof verification
+with those imports blocked; this is not a process sandbox or an authenticity claim.

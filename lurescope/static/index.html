@@ -178,6 +178,7 @@
   footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px 2px 0; color: var(--muted); font-size: 11px; }
   footer a { color: var(--ink-2); }
   .capacity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+  .capacity-grid > div { display: flex; flex-direction: column; justify-content: flex-end; }
   .capacity-grid input { width: 100%; min-height: 42px; padding: 8px 12px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
   .capacity-grid label { line-height: 1.6; letter-spacing: .05em; }
   .capacity-group { border: 0; padding: 0; margin: 22px 0; min-width: 0; }
@@ -290,7 +291,12 @@
 
   <section class="evidence-lab" id="evidence" aria-label="Evidence Explorer">
     <div class="evidence-intro">
-      <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2><p class="evidence-copy">Inspect a LureEval receipt, Pilot Gate, Defender comparison, Shadow report, LureProof, SCuBA statement, LureWatch checkpoint, LureBoundary, LureRange, runtime-mediation, LureRevoke, LureIdentity, independent LureArtifact verification, a transitive LureRecall report, authenticated LureAttest provenance, a CycloneDX ↔ SPDX LureBOM Twin report, bounded cross-run LureChannel evidence, or transaction-specific LureMandate authority evidence with answer-free black-box conformance, 420/420 pairwise input-interaction coverage, 20/20 counterfactual guard pairs, externally pinned gateway-signed answers, P-256 DSSE approvals, receiver-signed body-free OpenTelemetry, preregistered key policy, and a fail-closed five-source deployment gate—including registry proofs and other deployment gates—plus LureInvariant, coverage/delegation/LureIR, combined agent-assurance, and witness artifacts. Parsing stays in this tab. The explorer reveals metrics, privacy boundaries, byte bindings, and limitations without uploading the file.</p></div>
+      <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2>
+        <p class="evidence-copy">Review aggregate model comparisons, operational evaluations, and control evidence. See coverage, uncertainty, declared byte bindings, and limits without uploading the file. This view does not authenticate signatures or authorize deployment.</p>
+        <details class="evidence-copy"><summary>Supported evidence formats</summary>
+          <p>LureBench comparison panels; LureEval receipts and Pilot Gates; Defender and Shadow reports; LureProof and SCuBA; LureWatch; boundary, range, runtime, invariant, coverage, delegation, incident-response, portfolio, and witness evidence; revocation, identity, artifact, recall, attestation, BOM, channel, and transaction-authority reports, including their supported conformance and registry artifacts.</p>
+        </details>
+      </div>
       <div><input id="evidenceFile" type="file" accept=".json,application/json" hidden><label class="file-button" for="evidenceFile">Choose evidence JSON</label></div>
     </div>
     <div class="error" id="evidenceErr" role="alert"></div>
@@ -338,7 +344,9 @@
       <button class="chip" id="capacityDownload" type="button" disabled>Download assumptions + results</button>
       <div class="error" id="capacityError" role="alert"></div>
     </form>
-    <div id="capacityResult" hidden aria-live="polite"><div class="capacity-table-wrap">
+    <div id="capacityResult" hidden aria-live="polite">
+    <p class="capacity-note" id="capacityScrollHint">On smaller screens, scroll the table horizontally to see the capacity comparison.</p>
+    <div class="capacity-table-wrap" tabindex="0" role="region" aria-label="Review capacity results" aria-describedby="capacityScrollHint">
       <table class="capacity-table"><caption>Expected outcomes, not observed incidents or confidence bounds</caption>
         <thead><tr><th scope="col">Fraud prevalence</th><th scope="col">Review cases</th><th scope="col">Fraud share of flags</th><th scope="col">Review hours</th><th scope="col">Capacity comparison</th></tr></thead>
         <tbody id="capacityRows"></tbody>
@@ -348,10 +356,10 @@
   </section>
   <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a id="docsLink" href="/docs">API docs</a></span></footer>
 </main>
-<script src="static/browser-engine.js"></script>
-<script src="static/evidence-explorer.js"></script>
-<script src="static/capacity-planner.js"></script>
-<script src="static/capacity-ui.js"></script>
+<script src="static/browser-engine.js?sha256=9c5466b7c6d38d3d5f34148a747e32c1488e728632809861af7cdaad6e197b5a"></script>
+<script src="static/evidence-explorer.js?sha256=672decb259b48fef7dcd49f2c9b2a0ecbf7da91c20a4d18ea944aff7f936ec3c"></script>
+<script src="static/capacity-planner.js?sha256=63c3bed02eea4ae40c2c40e4cb033566577ac579a20ce03c08002bef110cc5a7"></script>
+<script src="static/capacity-ui.js?sha256=4e4530037723bce568bc3137ef69d065643d7a856c609e318b6880b68f0334a4"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const pct = (value) => `${Math.round(value * 100)}%`;
@@ -363,6 +371,30 @@ const samples = {
   benign: "Hi team, the design review moved to Thursday at 2 PM. The agenda is in our shared project folder. Please add comments before Wednesday afternoon."
 };
 let currentEmail = null;
+let engineReady = false;
+const requestVersion = {score: 0, attack: 0, email: 0, proof: 0, evidence: 0};
+
+function invalidateAttack() {
+  requestVersion.attack += 1;
+  $("attackResult").style.display = "none"; $("attackErr").textContent = "";
+  $("attackBtn").disabled = !engineReady; $("attackBtn").textContent = "Launch controlled attack";
+}
+
+function invalidateMessage() {
+  requestVersion.score += 1;
+  $("scoreResult").style.display = "none"; $("scoreEmpty").style.display = "block";
+  $("scoreErr").textContent = "";
+  $("scoreBtn").disabled = !engineReady; $("scoreBtn").textContent = "Analyze message →";
+  invalidateAttack();
+}
+
+function invalidateEmail() {
+  requestVersion.email += 1; requestVersion.proof += 1; currentEmail = null;
+  $("triageResult").style.display = "none"; $("proofActions").style.display = "none";
+  $("triageErr").textContent = ""; $("proofStatus").textContent = "";
+  $("proofBtn").disabled = false;
+  $("proofBtn").textContent = standalone ? "Open full LureProof workflow ↗" : "Download salted LureProof";
+}
 const params = new URLSearchParams(window.location.search);
 const standalone = window.location.hostname.endsWith("github.io") || params.get("standalone") === "1";
 const directFile = window.location.protocol === "file:";
@@ -398,16 +430,20 @@ async function loadCapabilities() {
   $("detector").innerHTML = caps.detectors.map(name => `<option value="${safe(name)}" ${name === caps.default_detector ? "selected" : ""}>${safe(name)}</option>`).join("");
   $("attack").innerHTML = caps.attacks.map(name => `<option value="${safe(name)}">${safe(name)}</option>`).join("");
   $("defense").innerHTML = (caps.defenses || ["none"]).map(name => `<option value="${safe(name)}">${name === "none" ? "none / observe raw failure" : `${safe(name)} / normalize input`}</option>`).join("");
+  engineReady = true;
   $("scoreBtn").disabled = false;
   $("attackBtn").disabled = false;
 }
 
 async function analyze() {
+  const version = ++requestVersion.score;
+  $("scoreResult").style.display = "none"; $("scoreEmpty").style.display = "block";
   $("scoreErr").textContent = ""; $("scoreBtn").disabled = true; $("scoreBtn").textContent = "Analyzing…";
   try {
     const data = standalone
       ? browserEngine.scoreMessage($("text").value, $("detector").value)
       : await responseData(await fetch("score", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({text: $("text").value, detector: $("detector").value})}));
+    if (version !== requestVersion.score) return;
     const value = Math.round(data.fraud_probability * 100);
     $("probVal").innerHTML = `${value}<small>%</small>`; $("probVal").style.color = tone(data.fraud_probability, data.threshold);
     $("verdict").textContent = data.label === "fraud" ? "FRAUD LURE" : "LIKELY BENIGN"; $("verdict").className = `verdict ${data.label === "fraud" ? "fraud" : "benign"}`;
@@ -416,17 +452,20 @@ async function analyze() {
     $("detectorMeta").textContent = data.detector; $("policyMeta").textContent = data.policy_id || data.threshold_source || "default";
     $("signals").innerHTML = data.signals.length ? data.signals.map(signal => `<span>${safe(signal)}</span>`).join("") : "<span>No top terms present</span>";
     $("scoreEmpty").style.display = "none"; $("scoreResult").style.display = "block";
-  } catch (error) { $("scoreErr").textContent = error.message; }
-  finally { $("scoreBtn").disabled = false; $("scoreBtn").textContent = "Analyze message →"; }
+  } catch (error) { if (version === requestVersion.score) $("scoreErr").textContent = error.message; }
+  finally { if (version === requestVersion.score) { $("scoreBtn").disabled = false; $("scoreBtn").textContent = "Analyze message →"; } }
 }
 
 async function attack() {
+  const version = ++requestVersion.attack;
+  $("attackResult").style.display = "none";
   $("attackErr").textContent = ""; $("attackBtn").disabled = true; $("attackBtn").textContent = "Running attack…";
   try {
     const body = {text: $("text").value, detector: $("detector").value, attack: $("attack").value, defense: $("defense").value};
     const data = standalone
       ? browserEngine.attackMessage(body.text, body.attack, body.detector, body.defense)
       : await responseData(await fetch("attack", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}));
+    if (version !== requestVersion.attack) return;
     $("cleanText").textContent = data.original; $("attText").textContent = data.attacked; $("cleanP").textContent = pct(data.clean_probability); $("attP").textContent = pct(data.attacked_probability);
     $("cleanP").style.color = tone(data.clean_probability, data.threshold); $("attP").style.color = tone(data.attacked_probability, data.threshold);
     const defended = data.defense && data.defense !== "none" && data.defended_probability !== null;
@@ -439,63 +478,91 @@ async function attack() {
     else if (data.evaded) { outcome.className = "outcome evaded"; outcome.textContent = `EVADED — the detector caught the original, then lost it after the attack (${delta}).`; }
     else { outcome.className = "outcome held"; outcome.textContent = `HELD — the detector remained above threshold after the attack (${delta}).`; }
     $("attackResult").style.display = "block";
-  } catch (error) { $("attackErr").textContent = error.message; }
-  finally { $("attackBtn").disabled = false; $("attackBtn").textContent = "Launch controlled attack"; }
+  } catch (error) { if (version === requestVersion.attack) $("attackErr").textContent = error.message; }
+  finally { if (version === requestVersion.attack) { $("attackBtn").disabled = false; $("attackBtn").textContent = "Launch controlled attack"; } }
+}
+
+function emailInputBytes(bytes) {
+  if (standalone) {
+    try { return {raw_email: new TextDecoder("utf-8", {fatal: true}).decode(bytes)}; }
+    catch (_) { throw new Error("Browser preview requires valid UTF-8; use the full local API for original email bytes."); }
+  }
+  const chunks = [];
+  for (let i = 0; i < bytes.length; i += 32768) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 32768)));
+  return {raw_email_base64: btoa(chunks.join(""))};
 }
 
 async function triageFile(file) {
+  invalidateEmail();
+  const version = requestVersion.email;
+  const detector = $("detector").value;
   $("triageErr").textContent = ""; $("triageResult").style.display = "none"; $("proofActions").style.display = "none"; currentEmail = null;
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { $("triageErr").textContent = "Email exceeds the 5 MB safety limit."; return; }
   try {
-    const raw = await file.text();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (version !== requestVersion.email) return;
+    if (bytes.length > 5 * 1024 * 1024) throw new Error("Email exceeds the 5 MB safety limit.");
+    const input = emailInputBytes(bytes);
     const data = standalone
-      ? browserEngine.triageEmail(raw, $("detector").value)
-      : await responseData(await fetch("triage/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: raw, detector: $("detector").value})}));
+      ? browserEngine.triageEmail(input.raw_email, detector)
+      : await responseData(await fetch("triage/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...input, detector})}));
+    if (version !== requestVersion.email) return;
     $("riskTier").textContent = `${data.risk_tier.toUpperCase()} RISK`; $("riskTier").className = `risk ${data.risk_tier}`;
     $("triageSubject").textContent = data.subject || "No subject"; $("triageSender").textContent = data.from_address || "Unknown sender";
     $("triageScore").textContent = pct(data.content_probability); $("triageScore").style.color = tone(data.content_probability, data.threshold);
     $("triageEvidence").innerHTML = data.evidence.length ? data.evidence.map(item => `<div class="evidence-item"><b>${safe(item.severity.toUpperCase())}</b>${safe(item.title)} — ${safe(item.detail)}</div>`).join("") : '<div class="evidence-item">No deterministic header, link, or attachment flags found.</div>';
-    $("triageAction").textContent = data.recommended_action; currentEmail = {raw, name: file.name}; $("proofStatus").textContent = standalone ? "Strict LureProof generation and verification require the full local API." : "No message content or addresses are written to the proof."; $("proofActions").style.display = "flex"; $("triageResult").style.display = "block";
-  } catch (error) { $("triageErr").textContent = error.message; }
+    $("triageAction").textContent = data.recommended_action; currentEmail = {input, name: file.name, detector}; $("proofStatus").textContent = standalone ? "Strict LureProof generation and verification require the full local API." : "No message content or addresses are written to the proof."; $("proofActions").style.display = "flex"; $("triageResult").style.display = "block";
+  } catch (error) { if (version === requestVersion.email) $("triageErr").textContent = error.message; }
 }
 
 async function downloadProof() {
   if (!currentEmail) return;
+  const email = currentEmail;
+  const version = ++requestVersion.proof;
   if (standalone) {
     window.open("https://github.com/immu4989/lurescope#quickstart", "_blank", "noopener");
     return;
   }
   $("proofBtn").disabled = true; $("proofBtn").textContent = "Building resilience evidence…"; $("proofStatus").textContent = "Running four local attack and defense checks.";
   try {
-    const proof = await responseData(await fetch("proof/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({raw_email: currentEmail.raw, detector: $("detector").value, privacy_profile: "salted-commitment"})}));
+    const proof = await responseData(await fetch("proof/email", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...email.input, detector: email.detector, privacy_profile: "salted-commitment"})}));
+    if (version !== requestVersion.proof || currentEmail !== email) return;
     const signed = Boolean(proof.payloadType); const blob = new Blob([JSON.stringify(proof, null, 2) + "\n"], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a");
-    link.href = url; link.download = currentEmail.name.replace(/\.eml$/i, "") + (signed ? ".lureproof.dsse.json" : ".lureproof.json"); document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    link.href = url; link.download = email.name.replace(/\.eml$/i, "") + (signed ? ".lureproof.dsse.json" : ".lureproof.json"); document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
     $("proofStatus").textContent = signed ? "Signed DSSE envelope downloaded." : "Unsigned statement downloaded. It is schema-valid evidence, not authenticated issuer evidence.";
-  } catch (error) { $("proofStatus").textContent = error.message; }
-  finally { $("proofBtn").disabled = false; $("proofBtn").textContent = "Download salted LureProof"; }
+  } catch (error) { if (version === requestVersion.proof) $("proofStatus").textContent = error.message; }
+  finally { if (version === requestVersion.proof) { $("proofBtn").disabled = false; $("proofBtn").textContent = "Download salted LureProof"; } }
 }
 
 async function exploreEvidence(file) {
+  const version = ++requestVersion.evidence;
   $("evidenceErr").textContent = ""; $("evidenceResult").style.display = "none";
   if (!file) return;
   if (file.size > 8 * 1024 * 1024) { $("evidenceErr").textContent = "Evidence file exceeds the 8 MB safety limit."; return; }
   try {
     if (!evidenceEngine) throw new Error("Evidence Explorer failed to load");
-    const summary = evidenceEngine.parseArtifact(await file.text());
+    const raw = new TextDecoder("utf-8", {fatal: true}).decode(await file.arrayBuffer());
+    if (version !== requestVersion.evidence) return;
+    const summary = evidenceEngine.parseArtifact(raw);
     $("artifactKind").textContent = summary.kind; $("artifactTitle").textContent = summary.title; $("artifactDescription").textContent = summary.description;
     $("artifactState").textContent = summary.status; $("artifactState").className = `artifact-state ${summary.tone}`;
     $("artifactMetrics").innerHTML = summary.metrics.map(item => `<div class="artifact-metric"><small>${safe(item.label)}</small><strong>${safe(item.value)}</strong>${item.note ? `<em>${safe(item.note)}</em>` : ""}</div>`).join("") || '<div class="artifact-metric"><small>Metrics</small><strong>Bound artifact</strong></div>';
     $("artifactBindings").innerHTML = summary.bindings.length ? summary.bindings.map(item => `<li><b>${safe(item.label)}</b><br>${safe(item.value)}</li>`).join("") : "<li>No SHA-256 bindings exposed by this artifact type.</li>";
     $("artifactPrivacy").innerHTML = summary.privacy.length ? summary.privacy.map(item => `<li>${safe(String(item).replaceAll("_", " "))}</li>`).join("") : "<li>Read the artifact's interpretation boundary before sharing.</li>";
     $("artifactWarnings").innerHTML = `<b>Interpret carefully.</b> ${safe(summary.warnings.slice(0, 4).map(item => String(item).replaceAll("_", " ")).join(" · ") || "No machine-readable limitations were found.")}`;
-    $("artifactSignature").textContent = `${summary.signature.label}. Shape inspection is not strict semantic or cryptographic verification; use the artifact's LureScope CLI verifier with a trusted public key for that.`;
+    $("artifactSignature").textContent = `${summary.signature.label}. ` + (summary.kind === "LureBench comparison panel"
+      ? "Reproduce with LureBench compare-panel and the reviewed dataset, plan, and caches. This browser does not recompute statistical inference or authenticate the report."
+      : "Shape inspection is not strict semantic or cryptographic verification; use the artifact's LureScope CLI verifier with a trusted public key for that.");
     $("evidenceResult").style.display = "block";
-  } catch (error) { $("evidenceErr").textContent = error.message; }
+  } catch (error) { if (version === requestVersion.evidence) $("evidenceErr").textContent = error.message; }
 }
 
-document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { $("text").value = samples[button.dataset.sample]; analyze(); }));
-$("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack); $("detector").addEventListener("change", analyze);
+document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { invalidateMessage(); $("text").value = samples[button.dataset.sample]; analyze(); }));
+$("text").addEventListener("input", invalidateMessage);
+$("attack").addEventListener("change", invalidateAttack); $("defense").addEventListener("change", invalidateAttack);
+$("scoreBtn").addEventListener("click", analyze); $("attackBtn").addEventListener("click", attack);
+$("detector").addEventListener("change", () => { invalidateMessage(); invalidateEmail(); analyze(); });
 $("emailFile").addEventListener("change", event => triageFile(event.target.files[0]));
 $("evidenceFile").addEventListener("change", event => exploreEvidence(event.target.files[0]));
 $("proofBtn").addEventListener("click", downloadProof);

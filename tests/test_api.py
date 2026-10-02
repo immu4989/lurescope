@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+
 import pytest
 
 pytest.importorskip("sklearn")  # tfidf detector needs scikit-learn
@@ -55,6 +58,49 @@ def test_health():
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+
+
+def test_browser_model_is_served_by_local_application():
+    response = client.get("/static/model.json")
+    assert response.status_code == 200
+    model = response.json()
+    assert model["norm"] == "l2"
+    assert model["ngram_max"] == 2
+    assert len(model["vocab"]) == 50_000
+
+
+@pytest.mark.parametrize("endpoint", ["/triage/email", "/proof/email"])
+def test_long_readable_email_has_no_partial_success(endpoint):
+    response = client.post(endpoint, json={"raw_email": "Subject: Notes\n\n" + "a" * 20_001})
+    assert response.status_code == 400
+    assert "risk_tier" not in response.json()
+
+
+def test_original_non_utf8_bytes_survive_triage_and_proof_binding():
+    raw = (b'Subject: Notes\r\nContent-Type: text/plain; charset=iso-8859-1\r\n'
+           b'\r\nCafe\xe9 notes.\r\n')
+    payload = {"raw_email_base64": base64.b64encode(raw).decode(), "detector": "heuristic-v0"}
+    triage = client.post("/triage/email", json=payload)
+    assert triage.status_code == 200
+    proof = client.post("/proof/email", json={**payload, "privacy_profile": "correlatable"})
+    assert proof.status_code == 200
+    assert proof.json()["subject"][0]["digest"]["sha256"] == hashlib.sha256(raw).hexdigest()
+    replaced = raw.decode("utf-8", errors="replace").encode("utf-8")
+    assert proof.json()["subject"][0]["digest"]["sha256"] != hashlib.sha256(replaced).hexdigest()
+
+
+@pytest.mark.parametrize("endpoint", ["/triage/email", "/proof/email"])
+@pytest.mark.parametrize("payload", [
+    {}, {"raw_email": None}, {"raw_email_base64": None}, {"raw_email_base64": ""},
+    {"raw_email": "one", "raw_email_base64": "dHdv"},
+    {"raw_email_base64": "PRIVATE_CONTENT_NOT_BASE64!"},
+    {"raw_email_base64": "Zh=="}, {"raw_email_base64": "Zg==\n"},
+    {"raw_email_base64": "===="}, {"raw_email_base64": 123},
+])
+def test_email_representation_is_unambiguous_and_errors_are_redacted(endpoint, payload):
+    result = client.post(endpoint, json=payload)
+    assert result.status_code == 422
+    assert result.json() == {"detail": "request validation failed"}
 
 
 @pytest.mark.parametrize("endpoint,payload", [

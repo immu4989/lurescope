@@ -33,6 +33,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
 **[Review unreleased hardening and migration →](docs/HARDENING_MIGRATION.md)** ·
+[Local verification on 2 October 2026](docs/VERIFICATION_2026_10_02.md) ·
 **[Run one-command operational pilot →](docs/OPERATIONAL_PILOT.md)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[Compare Defender offline →](docs/MICROSOFT_DEFENDER_OFFLINE.md)** ·
@@ -733,6 +734,9 @@ LureProof**. The [API-backed web lab](lurescope/static/index.html) creates an
 unsigned, strict proof through `POST /proof/email`; signing remains an explicit
 offline CLI step.
 
+Unreleased byte-preserving intake uses `raw_email_base64` for saved files;
+legacy `raw_email` remains UTF-8 text. See [original-byte proof semantics](docs/LUREPROOF.md#original-email-bytes-in-the-web-lab).
+
 The default uses a fresh salted subject commitment, preventing direct hash-based
 matching between proofs; raw SHA-256 correlation is opt-in. Other fields can still
 act as a fingerprint, so this is not an anonymity claim. Signed proofs bind
@@ -748,6 +752,8 @@ visible message content and reports model evidence alongside deterministic email
 context: Reply-To mismatch, explicit SPF/DKIM/DMARC failures, punycode and
 IP-address links, risky attachment filename extensions, and bounded HTML cues for
 QR/scan language or image-dominant messages. Image bytes are not decoded.
+Attached and embedded messages are excluded from body scoring and link extraction;
+their contents require a separate controlled inspection.
 
 ```bash
 # Human-readable result; everything runs locally by default
@@ -947,7 +953,19 @@ Interactive OpenAPI docs are served at `/docs`.
 
 ## Live demo (runs in your browser)
 
-The [Hugging Face Space](https://huggingface.co/spaces/immu4989/lurescope) is a zero-backend build of the same demo: it exports the trained model to JSON ([`space/model.json`](space/model.json)) and runs both always-on detectors and all four character attacks **entirely client-side** — no server, nothing leaves the page. The in-browser scoring replicates scikit-learn's TfidfVectorizer transform and is verified to match the Python service to four decimals. Regenerate the exported model with `python scripts/export_static_model.py`. (The key-gated detectors and the LLM-based attacks need a backend, so they live only in the API above.)
+The [Hugging Face Space](https://huggingface.co/spaces/immu4989/lurescope) runs both
+always-on detectors and all four character attacks client-side: message processing
+stays in the page. The rounded JSON model implements the TF-IDF transform;
+regression parity is tested on specified fixtures, not guaranteed for all inputs
+or Unicode/runtime versions. Key-gated detectors and LLM attacks need the API.
+
+On this unreleased branch, `python scripts/export_static_model.py` regenerates both
+browser copies from pinned data-only weights without pickle or ML frameworks.
+Use `--check` to verify them without writes. After changing browser scripts, run
+`python scripts/stamp_static_assets.py` to update content-bound script URLs.
+See [migration and test boundaries](docs/HARDENING_MIGRATION.md) and the
+[local comparison-report viewer](docs/EVIDENCE_EXPLORER.md). Existing hosted
+deployments are not updated until these changes are reviewed and released.
 
 ## How it relates to LureBench
 

@@ -125,6 +125,31 @@ def test_batch_refuses_existing_output_and_message_limit(tmp_path):
         process_inbox(messages * 2, tmp_path / "too-many", max_messages=1)
 
 
+@pytest.mark.parametrize("limit", [True, False, 1.0, "1", None, 0, 1001])
+def test_python_batch_rejects_invalid_limit_before_outputs(tmp_path, limit):
+    output = tmp_path / "not-created"
+    with pytest.raises(ValueError, match="max_messages"):
+        process_inbox([("one.eml", b"Subject: Notes\n\nReview notes")],
+                      output, max_messages=limit)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("options", [
+    {"threshold": float("nan")}, {"threshold": False}, {"detector_name": "remote"},
+    {"privacy_profile": "unknown"}, {"nonce": "short"}, {"issuer": "x" * 201},
+    {"signing_key_pem": b"invalid"}, {"signing_key_pem": b""},
+])
+def test_invalid_shared_options_do_not_create_batch_outputs(tmp_path, monkeypatch, options):
+    import lurescope.inbox as module
+
+    monkeypatch.setattr(module, "create_email_proof",
+                        lambda *a, **kw: pytest.fail("batch began before preflight"))
+    output = tmp_path / "new-parent" / "not-created"
+    with pytest.raises(ValueError):
+        process_inbox([("one.eml", b"Subject: Notes\n\nReview notes")], output, **options)
+    assert not output.parent.exists()
+
+
 def test_cli_batch_limits_are_enforced_before_message_reads(tmp_path, monkeypatch):
     source = tmp_path / "reported"
     source.mkdir()

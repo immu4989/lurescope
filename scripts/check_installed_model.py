@@ -48,12 +48,19 @@ def main(argv=None):
         or result.label != "fraud" or not result.signals
     ):
         raise ValueError("installed default scoring changed from its reviewed anchor")
+    proof_module = importlib.import_module("lurescope.proof")
+    statement = proof_module.create_email_proof(
+        b"Subject: Team notes\n\nPlease review the project notes.",
+        created_at="2026-10-02T00:00:00Z", subject_salt=bytes(range(32)),
+    )
+    if not proof_module.verify_proof(statement)["valid"]:
+        raise ValueError("installed data-only proof failed verification")
     for name, module in list(sys.modules.items()):
         if name == "lurescope" or name.startswith("lurescope."):
             location = getattr(module, "__file__", None)
             if location is None or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("LureScope import escaped the installed root")
-    print("PASS installed data-only default model with executable model frameworks blocked")
+    print("PASS installed data-only scoring and email proof with model frameworks blocked")
     return 0
 
 

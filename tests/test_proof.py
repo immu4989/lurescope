@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,6 +33,73 @@ RAW = (
     b"Verify your account at http://192.0.2.10/payroll within 24 hours.\n"
 )
 FIXED_SALT = bytes(range(32))
+
+
+def test_local_email_proof_never_imports_model_frameworks():
+    code = '''
+import sys
+class Block:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'pickle', 'joblib', 'sklearn', 'numpy', 'torch'}:
+            raise ImportError('model framework forbidden')
+        return None
+sys.meta_path.insert(0, Block())
+sys.path.insert(0, sys.argv[1])
+from lurescope.proof import create_email_proof, verify_proof
+statement = create_email_proof(b'Subject: Team notes\\n\\nPlease review notes.',
+    created_at='2026-10-02T00:00:00Z', subject_salt=bytes(range(32)))
+assert verify_proof(statement)['valid']
+print('proof valid without model framework imports')
+'''
+    root = str(Path(__file__).resolve().parents[1])
+    result = subprocess.run([sys.executable, "-I", "-c", code, root],
+                            check=True, capture_output=True, text=True, timeout=30)
+    assert "proof valid" in result.stdout
+
+
+def test_missing_sklearn_distribution_is_explicit_metadata(monkeypatch):
+    import lurescope.proof as module
+
+    def missing(name):
+        raise module.PackageNotFoundError(name)
+
+    monkeypatch.setattr(module, "version", missing)
+    statement = _statement()
+    assert statement["predicate"]["implementation"]["sklearn_version"] == "not-installed"
+    assert verify_proof(statement)["valid"]
+
+
+@pytest.mark.parametrize("options", [
+    {"threshold": True}, {"threshold": float("nan")}, {"detector_name": []},
+    {"privacy_profile": "unknown"}, {"privacy_profile": []},
+    {"nonce": "short"}, {"nonce": "1234567\n"}, {"nonce": 12345678},
+    {"issuer": "unpaired\ud800"}, {"issuer": "x" * 201}, {"issuer": False},
+    {"subject_salt": "x" * 32}, {"subject_salt": b"x" * 15},
+    {"subject_salt": b"x" * 1025},
+    {"privacy_profile": "correlatable", "subject_salt": b"x" * 32},
+    {"signing_key_pem": b""}, {"signing_key_pem": b"not a key"},
+    {"signing_key_pem": "not bytes"}, {"signing_key_pem": b"x" * 16385},
+])
+def test_invalid_producer_settings_fail_before_message_parsing(monkeypatch, options):
+    import lurescope.proof as module
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("message parsing or scoring began before option validation")
+
+    monkeypatch.setattr(module, "parse_email", forbidden)
+    monkeypatch.setattr(module, "triage_email", forbidden)
+    with pytest.raises(ValueError):
+        create_email_proof(RAW, **options)
+
+
+def test_oversized_private_key_is_rejected_before_crypto_parser(monkeypatch):
+    import lurescope.proof as module
+
+    statement = _statement()
+    monkeypatch.setattr(module.serialization, "load_pem_private_key",
+                        lambda *a, **kw: pytest.fail("unbounded key reached crypto parser"))
+    with pytest.raises(ValueError, match="bounded PEM"):
+        sign_statement(statement, b"x" * (module.MAX_PRIVATE_KEY_BYTES + 1))
 
 
 @pytest.mark.parametrize("value", ["", False, 0, [], {}, "2026-01-01T00:00:00"])

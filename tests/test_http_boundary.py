@@ -167,3 +167,22 @@ def test_explicit_text_and_email_limits_override_identifier_default():
     assert len(ScoreRequest(text="x" * 20000, threshold=0).text) == 20000
     assert ScoreRequest(text="ok", threshold=1).threshold == 1.
     assert len(EmailTriageRequest(raw_email="x" * 30000).raw_email) == 30000
+
+
+def test_email_base64_bound_checks_decoded_bytes_not_just_encoded_length():
+    import base64
+
+    from pydantic import ValidationError
+
+    from lurescope.models import MAX_EMAIL_INPUT_BYTES, EmailTriageRequest
+    from lurescope.triage import MAX_EMAIL_BYTES
+
+    assert MAX_EMAIL_INPUT_BYTES == MAX_EMAIL_BYTES
+    maximum = b"a" * MAX_EMAIL_BYTES
+    request = EmailTriageRequest(raw_email_base64=base64.b64encode(maximum).decode())
+    assert request.email_bytes() == maximum
+    with pytest.raises(ValidationError):
+        EmailTriageRequest(raw_email_base64=base64.b64encode(maximum + b"a").decode())
+    # Legacy Unicode text is bounded by its actual UTF-8 bytes too.
+    with pytest.raises(ValidationError):
+        EmailTriageRequest(raw_email="é" * (MAX_EMAIL_BYTES // 2 + 1))

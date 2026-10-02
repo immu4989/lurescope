@@ -19,7 +19,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import service
-from .proof import create_email_proof, dumps_proof, sign_statement, verify_proof
+from .proof import (
+    create_email_proof,
+    dumps_proof,
+    sign_statement,
+    validate_creation_options,
+    verify_proof,
+)
 
 INBOX_SCHEMA = "https://github.com/immu4989/lurescope/spec/inbox-event/v1"
 INBOX_SUMMARY_SCHEMA = "https://github.com/immu4989/lurescope/spec/inbox-summary/v1"
@@ -144,7 +150,7 @@ def process_inbox(
     The output directory must not already exist, preventing accidental mixing or
     overwriting of case bundles.
     """
-    if max_messages < 1 or max_messages > MAX_INBOX_MESSAGES:
+    if type(max_messages) is not int or not 1 <= max_messages <= MAX_INBOX_MESSAGES:
         raise ValueError(f"max_messages must be between 1 and {MAX_INBOX_MESSAGES}")
     if not messages:
         raise ValueError("no .eml messages found")
@@ -153,6 +159,10 @@ def process_inbox(
             f"inbox contains {len(messages)} messages; configured limit is {max_messages}"
         )
 
+    validate_creation_options(
+        detector_name=detector_name, threshold=threshold, privacy_profile=privacy_profile,
+        nonce=nonce, issuer=issuer, signing_key_pem=signing_key_pem,
+    )
     output_dir = Path(output_dir)
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(mode=0o700, exist_ok=False)

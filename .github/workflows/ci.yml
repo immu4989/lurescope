@@ -35,6 +35,8 @@ jobs:
         run: uv sync --frozen --python "${{ matrix.python-version }}" --extra dev
       - name: Lint
         run: uv run --frozen ruff check lurescope tests scripts
+      - name: Verify content-bound workbench scripts
+        run: uv run --frozen python scripts/stamp_static_assets.py --check
       - name: Test
         run: uv run --frozen pytest -q
       - name: Check pinned producer contract without an adjacent checkout
@@ -62,13 +64,19 @@ jobs:
         if: matrix.python-version == '3.12'
         run: >-
           node --test tests/browser_engine.test.cjs tests/evidence_explorer.test.cjs
-          tests/capacity_planner.test.cjs tests/capacity_ui.test.cjs
+          tests/capacity_planner.test.cjs tests/capacity_ui.test.cjs tests/workbench_ui.test.cjs
+      - name: Verify browser weights against pinned data-only source
+        if: matrix.python-version == '3.12'
+        run: uv run --frozen python scripts/export_static_model.py --check
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: uv build
       - name: Check packaged authority code and evidence
         if: matrix.python-version == '3.12'
         run: uv run --frozen python scripts/check_mandate_wheel.py dist/*.whl --package lurescope
+      - name: Verify source-distribution browser reproduction inputs
+        if: matrix.python-version == '3.12'
+        run: uv run --frozen python scripts/check_browser_sdist.py dist/lurescope-*.tar.gz
       - name: Verify installed authority CLI outside the checkout
         if: matrix.python-version == '3.12'
         run: |
@@ -81,6 +89,8 @@ jobs:
           "$GITHUB_WORKSPACE/.venv/bin/python" \
             "$GITHUB_WORKSPACE/scripts/check_installed_model.py" \
             --installed-root "$mandate_smoke_root/installed"
+          node "$GITHUB_WORKSPACE/scripts/check_installed_browser.cjs" \
+            "$mandate_smoke_root/installed"
 
   container:
     runs-on: ubuntu-latest

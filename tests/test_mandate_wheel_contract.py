@@ -51,6 +51,21 @@ def test_exact_code_schema_and_corpus_are_required(tmp_path, source_and_members)
     assert contract.verify(wheel, root, package) == 3
 
 
+def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
+    package, root, members = source_and_members
+    relative = f"{package}/detectors/nested.py"
+    source = root / relative
+    source.parent.mkdir()
+    source.write_bytes(b"# nested detector\n")
+    with pytest.raises(ValueError, match="missing"):
+        contract.verify(wheel_at(tmp_path / "missing.whl", members), root, package)
+    members[relative] = b"# old nested detector\n"
+    with pytest.raises(ValueError, match="stale"):
+        contract.verify(wheel_at(tmp_path / "stale.whl", members), root, package)
+    members[relative] = source.read_bytes()
+    assert contract.verify(wheel_at(tmp_path / "complete.whl", members), root, package) == 4
+
+
 @pytest.mark.parametrize("kind", ["code", "schema", "corpus"])
 def test_missing_artifact_is_rejected(tmp_path, source_and_members, kind):
     package, root, members = source_and_members
@@ -84,3 +99,18 @@ def test_cli_reports_corrupt_archive_without_traceback(tmp_path, capsys):
         contract.main([str(wheel), "--package", "lurescope"])
     assert raised.value.code == 1
     assert "wheel authority contract failed" in capsys.readouterr().err
+
+
+def test_browser_asset_bytes_are_checked_when_present_in_source(tmp_path):
+    root = tmp_path / "source"
+    static = root / "lurescope/static"
+    static.mkdir(parents=True)
+    (static / "model.json").write_bytes(b'{"synthetic":true}')
+    with pytest.raises(ValueError, match="missing"):
+        contract.verify(wheel_at(tmp_path / "missing.whl", {}), root, "lurescope")
+    with pytest.raises(ValueError, match="stale"):
+        contract.verify(wheel_at(tmp_path / "stale.whl", {"lurescope/static/model.json": b"{}"}),
+                        root, "lurescope")
+    assert contract.verify(wheel_at(tmp_path / "valid.whl", {
+        "lurescope/static/model.json": b'{"synthetic":true}',
+    }), root, "lurescope") == 1

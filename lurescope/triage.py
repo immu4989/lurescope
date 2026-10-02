@@ -16,10 +16,11 @@ from email.parser import BytesParser
 from email.utils import getaddresses
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Iterator, List, Optional, Sequence
 from urllib.parse import urlsplit
 
 from . import service
+from .local_io import read_regular_file
 
 MAX_EMAIL_BYTES = 5 * 1024 * 1024
 MAX_SCORE_TEXT = 20_000
@@ -147,15 +148,36 @@ def _part_text(part: Message) -> str:
     return content if isinstance(content, str) else ""
 
 
+def _is_body_boundary(part: Message) -> bool:
+    return (
+        part.get_content_disposition() == "attachment"
+        or part.get_filename() is not None
+        or part.get_content_maintype() == "message"
+    )
+
+
+def _outer_parts(message: Message) -> Iterator[Message]:
+    """Visit outer-message parts, never descendants of attached/embedded mail.
+
+    BytesParser already builds the MIME tree. This only controls subsequent
+    extraction; it is not a bound on the parser's memory or recursion.
+    """
+    pending = [message]
+    while pending:
+        part = pending.pop()
+        yield part
+        if not _is_body_boundary(part) and part.is_multipart():
+            pending.extend(reversed(part.get_payload()))
+
+
 def _extract_body(message: EmailMessage) -> tuple[str, List[str], int, int]:
     plain: List[str] = []
     html: List[str] = []
     html_urls: List[str] = []
     inline_images = 0
     html_visible_text_length = 0
-    parts = message.walk() if message.is_multipart() else [message]
-    for part in parts:
-        if part.is_multipart() or part.get_content_disposition() == "attachment":
+    for part in _outer_parts(message):
+        if part.is_multipart() or _is_body_boundary(part):
             continue
         content_type = part.get_content_type()
         if content_type == "text/plain":
@@ -181,11 +203,10 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
     reply_addresses = _addresses(str(message.get("Reply-To", "")))
     recipients = _addresses(str(message.get("To", ""))) + _addresses(str(message.get("Cc", "")))
     attachments: List[str] = []
-    if message.is_multipart():
-        for part in message.walk():
-            filename = part.get_filename()
-            if filename:
-                attachments.append(str(filename))
+    for part in _outer_parts(message):
+        filename = part.get_filename()
+        if filename:
+            attachments.append(str(filename))
     body, html_urls, inline_images, html_visible_text_length = _extract_body(message)
     urls = sorted({
         item.rstrip(".,);]") for item in [*_URL.findall(body), *html_urls]
@@ -215,7 +236,23 @@ def _context_evidence(email: ParsedEmail) -> List[Evidence]:
             "reply_to_domain_mismatch", "medium", "Reply-To domain differs",
             f"From uses {from_domain}; replies go to {reply_domain}.",
         ))
-    domains = {domain for url in email.urls if (domain := urlsplit(url).hostname)}
+    domains = set()
+    malformed_urls = 0
+    for url in email.urls:
+        try:
+            domain = urlsplit(url).hostname
+        except ValueError:
+            domain = None
+        if domain:
+            domains.add(domain)
+        else:
+            malformed_urls += 1
+    if malformed_urls:
+        evidence.append(Evidence(
+            "malformed_url", "medium", "Malformed link requires review",
+            f"{malformed_urls} extracted link(s) could not be parsed for domain checks; "
+            "inspect them without opening them. No link was fetched.",
+        ))
     for domain in sorted(domains):
         normalized = domain.casefold()
         if normalized.startswith("xn--") or ".xn--" in normalized:
@@ -283,8 +320,10 @@ def triage_email(
     score_text = "\n\n".join(item for item in (parsed.subject, parsed.body) if item).strip()
     if not score_text:
         raise ValueError("email has no subject or readable text body")
+    if len(score_text) > MAX_SCORE_TEXT:
+        raise ValueError("email text exceeds the scoring limit; manual review is required")
     scored = service.score(
-        score_text[:MAX_SCORE_TEXT], detector_name=detector_name,
+        score_text, detector_name=detector_name,
         threshold=threshold, engine=engine, model=model,
     )
     evidence = _context_evidence(parsed)
@@ -321,4 +360,14 @@ def triage_email(
 
 
 def triage_files(paths: Sequence[Path], **kwargs) -> List[EmailTriageResult]:
-    return [triage_email(path.read_bytes(), **kwargs) for path in paths]
+    """Triage bounded regular files; callers must trust their parent directories.
+
+    This convenience helper is sequential, not an atomic batch: earlier files
+    may already have been assessed when a later file is rejected.
+    """
+    return [
+        triage_email(
+            read_regular_file(path, maximum=MAX_EMAIL_BYTES, label="email"), **kwargs
+        )
+        for path in paths
+    ]

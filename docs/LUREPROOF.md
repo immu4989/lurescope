@@ -43,6 +43,23 @@ as a complete PKI.
 
 ## Security semantics
 
+### Original email bytes in the web lab
+
+The unreleased API-backed web lab reads `.eml` files as bytes and submits
+`raw_email_base64` to both `/triage/email` and `/proof/email`. These endpoints
+accept exactly one non-null representation: canonical base64 for original bytes,
+or legacy `raw_email` text encoded as UTF-8. Both are bounded to 5 MiB decoded.
+Use the byte representation for saved mail, especially non-UTF-8 headers/bodies
+or binary content. Base64 is transport encoding, not encryption or redaction.
+
+Older browser versions used UTF-8 text decoding, which could replace invalid
+sequences before hashing. Existing proofs still bind the bytes actually submitted,
+not necessarily the original uploaded file. They must not be relabeled as byte-exact
+file evidence. Browser-only preview now rejects invalid UTF-8 and directs the
+operator to the local API; it still does not create strict proofs itself.
+
+### Authentication boundaries
+
 The unsigned form establishes only that a statement matches LureProof's strict
 schema and internal invariants. Anyone can create or replace it.
 

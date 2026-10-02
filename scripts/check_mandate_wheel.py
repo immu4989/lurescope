@@ -8,7 +8,12 @@ from zipfile import BadZipFile, ZipFile
 
 
 def verify(wheel: Path, root: Path, package: str) -> int:
-    sources = list((root / package).glob("*.py"))
+    sources = list((root / package).rglob("*.py"))
+    if package == "lurescope":
+        sources.extend(
+            path for path in (root / package / "static").glob("*")
+            if path.is_file() and path.suffix in {".html", ".js", ".json"}
+        )
     sources.extend((root / "spec").glob("luremandate*.schema.json"))
     for directory in (root / "conformance").glob("luremandate*-v1"):
         sources.extend(

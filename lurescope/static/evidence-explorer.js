@@ -84,15 +84,90 @@
     return value;
   }
 
+  function parseStrictJson(text) {
+    const fail = () => { throw new SyntaxError("Evidence JSON violates the bounded strict profile"); };
+    if (typeof text !== "string" || text.length > MAX_ARTIFACT_BYTES ||
+        new TextEncoder().encode(text).length > MAX_ARTIFACT_BYTES) fail();
+    let index = 0;
+    let nodes = 0;
+    const whitespace = () => { while (/[ \t\r\n]/.test(text[index] || "x")) index += 1; };
+    const string = () => {
+      if (text[index] !== '"') fail();
+      const start = index++;
+      while (index < text.length) {
+        const character = text[index++];
+        if (character === "\\") { index += 1; continue; }
+        if (character === '"') {
+          const decoded = JSON.parse(text.slice(start, index));
+          for (const point of decoded) {
+            const code = point.codePointAt(0);
+            if (code >= 0xd800 && code <= 0xdfff) fail();
+          }
+          return decoded;
+        }
+        if (character.charCodeAt(0) < 32) fail();
+      }
+      fail();
+    };
+    const scan = depth => {
+      if (depth > 64 || ++nodes > 100_000) fail();
+      whitespace();
+      if (text[index] === '"') { string(); return; }
+      if (text[index] === "{") {
+        index += 1; whitespace();
+        const keys = new Set();
+        if (text[index] === "}") { index += 1; return; }
+        while (true) {
+          whitespace();
+          const key = string();
+          if (keys.has(key)) fail();
+          keys.add(key);
+          whitespace();
+          if (text[index++] !== ":") fail();
+          scan(depth + 1); whitespace();
+          const separator = text[index++];
+          if (separator === "}") return;
+          if (separator !== ",") fail();
+        }
+      }
+      if (text[index] === "[") {
+        index += 1; whitespace();
+        if (text[index] === "]") { index += 1; return; }
+        while (true) {
+          scan(depth + 1); whitespace();
+          const separator = text[index++];
+          if (separator === "]") return;
+          if (separator !== ",") fail();
+        }
+      }
+      const start = index;
+      while (index < text.length && !/[,\]} \t\r\n]/.test(text[index])) index += 1;
+      if (start === index) fail();
+      const scalar = JSON.parse(text.slice(start, index));
+      if (typeof scalar === "number" && (!Number.isFinite(scalar) ||
+          (Number.isInteger(scalar) && !Number.isSafeInteger(scalar)))) fail();
+    };
+    scan(0); whitespace();
+    if (index !== text.length) fail();
+    return JSON.parse(text);
+  }
+
   function decodeBase64(value) {
-    if (typeof value !== "string" || value.length > MAX_ARTIFACT_BYTES * 2 ||
+    if (typeof value !== "string" || value.length > Math.ceil(MAX_ARTIFACT_BYTES / 3) * 4 ||
         value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
       throw new Error("DSSE payload is missing or oversized");
     }
     try {
-      if (typeof Buffer !== "undefined") return Buffer.from(value, "base64").toString("utf8");
-      const binary = atob(value);
-      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      let bytes;
+      if (typeof Buffer !== "undefined") {
+        bytes = Buffer.from(value, "base64");
+        if (bytes.toString("base64") !== value) throw new Error("Noncanonical base64");
+      } else {
+        const binary = atob(value);
+        if (btoa(binary) !== value) throw new Error("Noncanonical base64");
+        bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      }
+      if (bytes.length > MAX_ARTIFACT_BYTES) throw new Error("Oversized payload");
       return new TextDecoder("utf-8", {fatal: true}).decode(bytes);
     } catch (error) {
       throw new Error("DSSE payload is not valid base64 UTF-8");
@@ -115,7 +190,7 @@
     }
     let statement;
     try {
-      statement = JSON.parse(decodeBase64(artifact.payload));
+      statement = parseStrictJson(decodeBase64(artifact.payload));
     } catch (error) {
       if (error instanceof SyntaxError) throw new Error("DSSE payload is not JSON");
       throw error;
@@ -2350,11 +2425,86 @@
     throw new Error("Unsupported in-toto evidence predicate");
   }
 
+  function panelSummary(value, meta) {
+    const fail = () => { throw new Error("Invalid planned comparison panel"); };
+    const integer = n => Number.isSafeInteger(n) && n >= 0 && n <= 50_000;
+    const probability = p => p === null || (typeof p === "number" && Number.isFinite(p) && p >= 0 && p <= 1);
+    const delta = p => p === null || (typeof p === "number" && Number.isFinite(p) && p >= -1 && p <= 1);
+    const close = (a, b) => typeof a === "number" && Math.abs(a - b) < 1e-12;
+    const comparisons = object(value.comparisons, "panel comparisons");
+    const names = Object.keys(comparisons).sort();
+    const family = object(value.family_adjustment, "panel family adjustment");
+    const adjusted = object(family.adjusted_p_values, "panel adjusted p-values");
+    if (value.schema_version !== 1 || names.length < 1 || names.length > 32 ||
+        names.some(n => !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(n)) ||
+        family.method !== "holm_step_down_bonferroni" || family.planned_comparisons !== names.length ||
+        JSON.stringify(Object.keys(adjusted).sort()) !== JSON.stringify(names)) fail();
+    const synthetic = value.demonstration && value.demonstration.synthetic === true;
+    const summary = base("LureBench comparison panel", synthetic ? "Synthetic comparison tutorial" : "Planned detector comparisons",
+      "Cached baseline comparisons with declared-family adjustment. Descriptive evidence, not a winner or deployment decision.", meta);
+    summary.status = synthetic ? "Synthetic illustration" : "Comparison only";
+    summary.metrics.push({label: "Planned comparisons", value: count(names.length)});
+    let total = null;
+    let available = 0;
+    for (const name of names) {
+      const comparison = object(comparisons[name], "paired comparison");
+      const overall = object(comparison.overall, "comparison outcomes");
+      const test = object(comparison.paired_test, "comparison test");
+      const raw = test.p_value;
+      const corrected = adjusted[name];
+      if (!integer(overall.records) || !overall.records || !integer(overall.coanswered) ||
+          overall.coanswered > overall.records || !close(overall.coanswered_coverage, overall.coanswered / overall.records) ||
+          !delta(overall.coanswered_accuracy_delta) || (overall.coanswered === 0) !== (overall.coanswered_accuracy_delta === null) ||
+          !probability(raw) || !probability(corrected) || (raw === null) !== (corrected === null) ||
+          (raw !== null && corrected + 1e-12 < raw) ||
+          !["exact_two_sided_block_sign_flip", "exact_conditional_two_sided_mcnemar"].includes(test.method)) fail();
+      if (total !== null && total !== overall.records) fail();
+      total = overall.records;
+      available += raw !== null;
+      const bounds = object(overall.all_record_binary_completion_delta_bounds, "completion bounds");
+      if (!delta(bounds.lower) || !delta(bounds.upper) || bounds.lower === null || bounds.upper === null || bounds.lower > bounds.upper) fail();
+      const p = n => n === null ? "Unavailable" : n.toPrecision(4);
+      const d = n => n === null ? "Not measurable" : `${(n * 100).toFixed(2)} pp`;
+      summary.metrics.push(
+        {label: `${name} · paired coverage`, value: `${count(overall.coanswered)} / ${count(overall.records)}`},
+        {label: `${name} · accuracy difference`, value: d(overall.coanswered_accuracy_delta), note: "Candidate minus baseline; co-answered only"},
+        {label: `${name} · raw / Holm p`, value: `${p(raw)} / ${p(corrected)}`, note: test.method.replaceAll("_", " ")},
+        {label: `${name} · completion bounds`, value: `${d(bounds.lower)} to ${d(bounds.upper)}`, note: "All-record logical bounds, not confidence intervals"},
+      );
+    }
+    if (family.available_tests !== available) fail();
+    const common = object(value.all_models_coanswered, "common cohort");
+    const accuracies = object(common.candidate_accuracies, "common accuracies");
+    if (!integer(common.records) || !integer(common.excluded_records) ||
+        common.records + common.excluded_records !== total || !close(common.coverage, common.records / total) ||
+        !integer(common.positive_records) || !integer(common.negative_records) ||
+        common.positive_records + common.negative_records !== common.records ||
+        JSON.stringify(Object.keys(accuracies).sort()) !== JSON.stringify(names) ||
+        ![common.baseline_accuracy, ...Object.values(accuracies)].every(p => probability(p) && (common.records === 0) === (p === null))) fail();
+    summary.metrics.unshift(
+      {label: "All-model common cohort", value: `${count(common.records)} / ${count(total)}`, note: "Selected by every model answering; not necessarily representative"},
+      {label: "Common baseline accuracy", value: ratio(common.baseline_accuracy)},
+    );
+    for (const name of names) summary.metrics.push({label: `${name} · common accuracy`, value: ratio(accuracies[name])});
+    if (value.plan_sha256 !== undefined) {
+      if (!digest(value.plan_sha256)) fail();
+      summary.bindings.push(binding("Declared plan bytes", value.plan_sha256));
+    }
+    summary.privacy = ["Aggregate outcomes only; report display does not upload messages or caches."];
+    summary.warnings = [
+      synthetic ? "Fixed synthetic label-based scores, not measured model performance." : "No automatic winner, significance, equivalence, or deployment decision.",
+      "Browser checks display fields, not cache provenance, exact p-values, honest lineage, preregistration, or statistical assumptions. Reproduce with LureBench compare-panel.",
+      "Common-cohort accuracy excludes abstentions; completion bounds are not confidence intervals. Holm adjustment does not correct repeated peeking.",
+    ];
+    return summary;
+  }
+
   function summarizeArtifact(value) {
     const meta = unwrap(value);
     const statement = meta.statement;
     let summary;
-    if (statement.predicateType) summary = statementSummary(statement, meta);
+    if (statement.analysis === "planned_baseline_detector_comparisons") summary = panelSummary(statement, meta);
+    else if (statement.predicateType) summary = statementSummary(statement, meta);
     else if (statement.schema === PILOT_GATE) summary = pilotGateSummary(statement, meta);
     else if (statement.schema === DEFENDER_REPORT) summary = defenderSummary(statement, meta);
     else if (statement.schema === SHADOW_REPORT) summary = shadowSummary(statement, meta);
@@ -2422,10 +2572,10 @@
       throw new Error("Evidence file exceeds the 8 MB safety limit");
     }
     let value;
-    try { value = JSON.parse(text); }
+    try { value = parseStrictJson(text); }
     catch (error) { throw new Error("Evidence file is not valid JSON"); }
     return summarizeArtifact(value);
   }
 
-  return {MAX_ARTIFACT_BYTES, parseArtifact, summarizeArtifact, unwrap};
+  return {MAX_ARTIFACT_BYTES, parseStrictJson, parseArtifact, summarizeArtifact, unwrap};
 });

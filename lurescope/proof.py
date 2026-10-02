@@ -15,6 +15,7 @@ import os
 import platform
 import secrets
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
@@ -23,7 +24,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from lurebench import __version__ as lurebench_version
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
-from sklearn import __version__ as sklearn_version
 
 from . import __version__, service
 from .local_io import read_regular_file
@@ -38,7 +38,21 @@ LOCAL_ATTACKS = ("homoglyph", "leet", "zero-width", "whitespace")
 DEFENSE = "normalize"
 MAX_PROOF_BYTES = 2 * 1024 * 1024
 MAX_PUBLIC_KEY_BYTES = 16 * 1024
+MAX_PRIVATE_KEY_BYTES = 16 * 1024
+MAX_SUBJECT_SALT_BYTES = 1024
 MAX_SIGNATURE_BASE64 = 256
+
+
+def _sklearn_distribution_version() -> str:
+    """Legacy provenance field: installed distribution metadata, not an import.
+
+    Data-only scoring does not execute sklearn. Retain the field for compatible
+    historical consumers without importing the framework at runtime.
+    """
+    try:
+        return version("scikit-learn")
+    except PackageNotFoundError:
+        return "not-installed"
 
 
 class _StrictModel(BaseModel):
@@ -274,6 +288,54 @@ def _validate_statement(statement: Dict[str, Any]) -> List[str]:
     return errors
 
 
+def _load_signing_key(private_key_pem: bytes) -> ec.EllipticCurvePrivateKey:
+    if (not isinstance(private_key_pem, bytes)
+            or not 1 <= len(private_key_pem) <= MAX_PRIVATE_KEY_BYTES):
+        raise ValueError("signing key must be bounded PEM bytes")
+    try:
+        key = serialization.load_pem_private_key(private_key_pem, password=None)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("could not load an unencrypted PEM private key") from exc
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(key.curve, ec.SECP256R1):
+        raise ValueError("signing key must be an unencrypted ECDSA P-256 private key")
+    return key
+
+
+def validate_creation_options(
+    *, detector_name: str, threshold: Optional[float], privacy_profile: str,
+    nonce: Optional[str], issuer: Optional[str], signing_key_pem: Optional[bytes],
+    subject_salt: Optional[bytes] = None,
+) -> None:
+    """Reject invalid shared producer settings before scoring or creating batch outputs.
+
+    Does not load a detector, read a deployment policy, or validate individual mail.
+    Historical proof verification retains its existing compatibility rules.
+    """
+    if not isinstance(detector_name, str) or detector_name not in service.ALWAYS_ON:
+        raise ValueError(
+            "the reference LureProof producer accepts deterministic local detectors only"
+        )
+    if threshold is not None:
+        service._decision_threshold(threshold)
+    if not isinstance(privacy_profile, str) or privacy_profile not in (
+        "salted-commitment", "correlatable",
+    ):
+        raise ValueError("unsupported privacy profile")
+    for name, value, minimum, maximum in (("nonce", nonce, 8, 256), ("issuer", issuer, 0, 200)):
+        if value is not None and (not isinstance(value, str) or not minimum <= len(value) <= maximum
+                                 or any(ord(c) < 32 or ord(c) == 127 or
+                                        0xD800 <= ord(c) <= 0xDFFF for c in value)):
+            raise ValueError(f"{name} must be a bounded string without controls or lone surrogates")
+    if subject_salt is not None:
+        if privacy_profile != "salted-commitment":
+            raise ValueError("subject_salt is only valid with the salted-commitment profile")
+        if (not isinstance(subject_salt, bytes)
+                or not 16 <= len(subject_salt) <= MAX_SUBJECT_SALT_BYTES):
+            raise ValueError("subject_salt must contain 16 through 1024 bytes")
+    if signing_key_pem is not None:
+        _load_signing_key(signing_key_pem)
+
+
 def create_email_proof(
     raw: bytes,
     detector_name: str = service.DEFAULT_DETECTOR,
@@ -293,16 +355,16 @@ def create_email_proof(
     elif not isinstance(created_at, str):
         raise ValueError("created_at must be a timezone-aware ISO 8601 timestamp")
     _Predicate.timestamp_has_timezone(created_at)
-    if detector_name not in service.ALWAYS_ON:
-        raise ValueError(
-            "the reference LureProof producer accepts deterministic local detectors only"
-        )
+    validate_creation_options(
+        detector_name=detector_name, threshold=threshold, privacy_profile=privacy_profile,
+        nonce=nonce, issuer=issuer, signing_key_pem=signing_key_pem, subject_salt=subject_salt,
+    )
     if engine is not None or model is not None:
         raise ValueError("engine and model overrides are not valid for local LureProof detectors")
     parsed = parse_email(raw)
     triage = triage_email(raw, detector_name, threshold, engine, model)
     score_text = "\n\n".join(item for item in (parsed.subject, parsed.body) if item).strip()
-    scored_text = score_text[:MAX_SCORE_TEXT]
+    scored_text = score_text  # triage_email rejects over-limit text before any scoring.
 
     outcomes: List[Dict[str, Any]] = []
     for attack_name in LOCAL_ATTACKS:
@@ -379,7 +441,7 @@ def create_email_proof(
                 "attack_source": "lurebench",
                 "attack_source_version": lurebench_version,
                 "python_version": platform.python_version(),
-                "sklearn_version": sklearn_version,
+                "sklearn_version": _sklearn_distribution_version(),
             },
             "framework_mappings": {
                 "nist_ai_rmf_functions": ["MEASURE", "MANAGE"],
@@ -415,14 +477,7 @@ def sign_statement(statement: Dict[str, Any], private_key_pem: bytes) -> Dict[st
     errors = _validate_statement(statement)
     if errors:
         raise ValueError("cannot sign invalid LureProof: " + "; ".join(errors))
-    try:
-        key = serialization.load_pem_private_key(private_key_pem, password=None)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("could not load an unencrypted PEM private key") from exc
-    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(
-        key.curve, ec.SECP256R1
-    ):
-        raise ValueError("signing key must be an unencrypted ECDSA P-256 private key")
+    key = _load_signing_key(private_key_pem)
     payload = _json_bytes(statement)
     if len(payload) > MAX_PROOF_BYTES:
         raise ValueError("LureProof exceeds the bounded size")
