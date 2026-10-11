@@ -55,6 +55,14 @@ Each successful JSONL event contains:
 - attack eligibility, evasion, and normalization-recovery counts;
 - the proof filename, statement digest, artifact type, and signing-key IDs.
 
+Evidence codes are unique categories per message, not occurrence counts. Two
+IP-address links produce one `ip_literal_url` category and a URL count of two.
+Direct triage retains the separate detailed findings. Repeated categories do not
+make proof generation or inbox processing fail, and the minimized manifest still
+omits the actual URLs and attachment names. URL counts describe unique extracted
+URL strings; attachment counts describe collected nonempty filenames, not all
+MIME nodes or inspected attachment payloads.
+
 It intentionally excludes source paths, subjects, bodies, sender and recipient
 addresses, message IDs, URL values, attachment names, and transformed lure text.
 An error event contains only a random case ID, input order, timestamp, and error

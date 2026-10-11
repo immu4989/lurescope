@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 import importlib
 import math
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -55,6 +57,31 @@ def main(argv=None):
     )
     if not proof_module.verify_proof(statement)["valid"]:
         raise ValueError("installed data-only proof failed verification")
+    repeated = proof_module.create_email_proof(
+        b"Subject: Notes\n\nLinks http://192.0.2.1/ and http://192.0.2.2/",
+        created_at="2026-10-02T00:00:00Z", subject_salt=bytes(range(32)),
+    )
+    assessment = repeated["predicate"]["assessment"]
+    if (not proof_module.verify_proof(repeated)["valid"]
+            or assessment["evidence_codes"] != ["ip_literal_url"]
+            or assessment["url_count"] != 2):
+        raise ValueError("installed proof lost repeated findings or emitted duplicate categories")
+    with tempfile.TemporaryDirectory(prefix="lurescope-proof-write-") as directory:
+        output = Path(directory) / "proof.json"
+        publication = proof_module.write_proof(output, repeated)
+        before = output.read_bytes()
+        if not publication["valid"] or proof_module.load_proof(output) != repeated:
+            raise ValueError("installed proof publication changed the artifact")
+        if os.name == "posix" and output.stat().st_mode & 0o077:
+            raise ValueError("installed proof publication granted group/world access")
+        try:
+            proof_module.write_proof(output, statement)
+        except FileExistsError:
+            pass
+        else:
+            raise ValueError("installed proof publication replaced existing evidence")
+        if output.read_bytes() != before or list(Path(directory).glob(".lureproof-*.tmp")):
+            raise ValueError("installed proof publication changed evidence or leaked staging files")
     triage = importlib.import_module("lurescope.triage")
     nested = (b"Content-Type: message/rfc822\n\n" * 1200
               + b"Subject: Notes\n\nOrdinary notes")
@@ -76,7 +103,7 @@ def main(argv=None):
             location = getattr(module, "__file__", None)
             if location is None or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("LureScope import escaped the installed root")
-    print("PASS installed data-only scoring, email proof, and MIME/header limits "
+    print("PASS installed data-only scoring, private proof publication, and MIME/header limits "
           "with model frameworks blocked")
     return 0
 

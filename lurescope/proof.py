@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import secrets
+import tempfile
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -421,7 +422,10 @@ def create_email_proof(
                 "threshold": triage.threshold,
                 "threshold_source": triage.threshold_source,
                 "policy_id": triage.policy_id,
-                "evidence_codes": [item.code for item in triage.evidence],
+                # The minimized contract lists categories, not occurrences.
+                # Keep detailed per-link/per-attachment findings in triage and
+                # preserve first-seen order for existing unique-code statements.
+                "evidence_codes": list(dict.fromkeys(item.code for item in triage.evidence)),
                 "url_count": len(triage.urls),
                 "attachment_count": len(triage.attachments),
             },
@@ -656,6 +660,75 @@ def load_proof(path: Path) -> Dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("LureProof must be an object")
     return value
+
+
+def check_proof_destination(path: Path) -> None:
+    """Preflight a new output; publication must still enforce no replacement."""
+    path = Path(path)
+    if path.parent.is_symlink():
+        raise ValueError("proof output parent must not be a symlink")
+    if not path.parent.is_dir():
+        raise FileNotFoundError("proof output parent directory must already exist")
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return
+    raise FileExistsError("refusing to overwrite an existing proof destination")
+
+
+def write_proof(path: Path, proof: Dict[str, Any]) -> Dict[str, Any]:
+    """Publish a validated private proof without replacing any existing path.
+
+    Stage in the destination directory, fsync, then create a hard link at the
+    previously absent destination. Trusted parents and hard-link support are
+    required. This is not a power-loss durability or issuer-authentication claim.
+    Returns validation of the exact serialized artifact, not the mutable input.
+    """
+    destination = Path(path)
+    check_proof_destination(destination)
+    payload = bytearray()
+    try:
+        for chunk in json.JSONEncoder(
+            ensure_ascii=False, allow_nan=False, sort_keys=True, indent=2,
+        ).iterencode(proof):
+            encoded = chunk.encode("utf-8")
+            if len(payload) + len(encoded) + 1 > MAX_PROOF_BYTES:
+                raise ValueError("proof output exceeds its bounded size")
+            payload.extend(encoded)
+        payload.extend(b"\n")
+        snapshot = _strict(bytes(payload), "LureProof output")
+        result = verify_proof(snapshot)
+        if not result["valid"]:
+            raise ValueError("invalid proof")
+    except (ValueError, TypeError, RecursionError):
+        raise ValueError("proof output must be a bounded valid LureProof artifact") from None
+    temporary = None
+    published = False
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=destination.parent, prefix=".lureproof-", suffix=".tmp", delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            if stream.write(payload) != len(payload):
+                raise OSError("incomplete staged proof write")
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, destination)
+        except (NotImplementedError, AttributeError) as exc:
+            raise OSError("proof publication requires filesystem hard-link support") from exc
+        published = True
+    finally:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError as exc:
+                if published:
+                    raise OSError(
+                        "proof was published but temporary-file cleanup failed; inspect output"
+                    ) from exc
+                raise
+    return result
 
 
 def generate_keypair(private_path: Path, public_path: Path) -> str:

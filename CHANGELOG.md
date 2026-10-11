@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- The standalone proof CLI refuses existing output paths before reading or
+  scoring input. Its new `write_proof` helper validates bounded serialized bytes,
+  stages with owner-only POSIX permissions, fsyncs, and publishes without replacing
+  an existing destination. Concurrent creation, symlink destinations, and storage
+  failures cannot silently overwrite evidence. Hard-link support and trusted
+  parent directories are required; there is no overwrite fallback.
+
+- LureProof generation projects repeated triage findings into unique evidence
+  categories, preserving first-seen order and the existing strict schema.
+  Multiple IP links, punycode domains, or attachment warnings no longer cause
+  proof/API/inbox failures. Detailed triage findings, risk, and extracted URL and
+  attachment counts remain unchanged; supplied duplicate-code proofs still fail
+  verification. Regression coverage includes signed proofs and offline exports.
+
 - Email header intake now limits each source field to 16 KiB, total header bytes
   to 256 KiB, field count to 1,024, and unquoted/unescaped parenthesis nesting to
   32 levels before structured interpretation. Nested-comment recursion fails as

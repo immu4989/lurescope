@@ -258,9 +258,10 @@ def _proof(argv: Sequence[str]) -> int:
     args = parser.parse_args(argv)
     try:
         from .local_io import read_regular_file
-        from .proof import create_email_proof, dumps_proof, verify_proof
+        from .proof import check_proof_destination, create_email_proof, write_proof
         from .triage import MAX_EMAIL_BYTES
 
+        check_proof_destination(Path(args.out))
         raw = (sys.stdin.buffer.read(MAX_EMAIL_BYTES + 1) if args.input == "-" else
                read_regular_file(Path(args.input), maximum=MAX_EMAIL_BYTES, label="email"))
         signing_key = _read_signing_key(args.signing_key)
@@ -273,11 +274,10 @@ def _proof(argv: Sequence[str]) -> int:
             issuer=args.issuer,
             signing_key_pem=signing_key,
         )
-        Path(args.out).write_text(dumps_proof(proof), encoding="utf-8")
+        result = write_proof(Path(args.out), proof)
     except (OSError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
-    result = verify_proof(proof)
     kind = "signed DSSE" if result["artifact_type"] == "dsse" else "unsigned statement"
     print(f"created {args.out} ({kind}; sha256:{result['statement_sha256']})")
     return 0

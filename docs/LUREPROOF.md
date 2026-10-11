@@ -43,6 +43,36 @@ as a complete PKI.
 
 ## Security semantics
 
+### Private output publication
+
+In the unreleased source branch, `lurescope proof --out` requires an absent
+destination in an existing directory. Files, directories, and symlinks, including
+dangling symlinks, are refused before input reading or scoring. Choose a new
+filename for each result; an existing output is never silently replaced, even
+when another writer creates it after the initial check. This also prevents using
+the input email as its own output path.
+
+The Python `write_proof(path, proof)` helper validates the serialized artifact,
+including its 2 MiB output limit, before creating a temporary file beside the
+destination. The staged file has owner-only POSIX permissions (mode `0600`,
+subject to a more restrictive umask). After a complete write and fsync, the
+writer publishes it using a hard link and removes the temporary name. Python's
+[`os.link`](https://docs.python.org/3/library/os.html#os.link) provides the hard-link
+operation; filesystems without that support fail rather than falling back to an
+overwriting or partially visible destination write.
+
+Trust all parent directories; the immediate parent may not be a symlink. This
+does not protect against hostile parent-directory replacement, prove issuer
+identity, or guarantee durability after power loss. Windows access controls need
+separate review; POSIX mode checks do not establish a Windows ACL policy.
+
+An error before publication leaves no new destination, and cleanup is attempted
+for temporary files. If cleanup fails after publication, the error explicitly
+says the proof was published: inspect and verify the complete destination before
+retrying. A process crash can leave a private temporary file; review it locally
+before cleanup. These guarantees apply to `write_proof` and the standalone proof
+CLI, not every repository output writer or an HTTP client's download behavior.
+
 ### Original email bytes in the web lab
 
 The unreleased API-backed web lab reads `.eml` files as bytes and submits
@@ -99,6 +129,12 @@ profile makes a weak or predictable message impossible to guess.
 - whether normalization recovered each evasion;
 - optional signed issuer and verifier challenge;
 - explicit limitations and non-conformance framework mappings.
+
+`evidence_codes` lists each observed category once, in first-seen order; it is
+not a histogram of findings. Repeated link or attachment cues remain separate
+in local triage details. The proof retains the unique extracted URL count and
+collected filename count without exposing their values. This projection does
+not change scores or risk routing and does not imply attachments were scanned.
 
 The reference producer deliberately accepts only the two deterministic local
 detectors. It never incurs provider charges or records a nondeterministic LLM run

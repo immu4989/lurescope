@@ -22,6 +22,22 @@ artifact. Review and register a new plan before evaluating the changed deploymen
 
 ## API clients
 
+The standalone `lurescope proof --out` command now refuses an existing output
+instead of overwriting it. Use a new filename, an existing trusted directory,
+and a filesystem supporting hard links. Publication validates the exact serialized
+snapshot, uses private staging, and preserves concurrent destinations. Review
+[output publication and recovery](LUREPROOF.md#private-output-publication) before
+adapting scripts that reused one filename. Historical files are not chmodded,
+deleted, or rewritten by this change.
+
+Proof generation now emits each evidence category once, in first-seen order.
+Emails with repeated link or attachment findings can produce valid proofs and
+processed inbox events instead of failing the unique-code check. Direct triage
+keeps its detailed findings, and scores, risk tiers, and URL/attachment counts
+are unchanged. The schema is unchanged; verifiers still reject duplicate codes
+in supplied artifacts. Existing failed inbox events are not automatically rerun
+or rewritten. See [manifest semantics](INBOX_TO_LUREPROOF.md#what-the-manifest-carries).
+
 Requests now reject unknown fields, coerced thresholds/signature options,
 duplicate JSON keys, nonfinite values, and excessive nesting. Validation failures
 return a fixed redacted `422` response. All HTTP bodies are capped at 8 MiB before

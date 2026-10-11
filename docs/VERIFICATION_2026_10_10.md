@@ -107,3 +107,85 @@ The limits are conservative application policy, not email-format requirements or
 a bound on every parsing operation. Legitimate long-header messages may require
 controlled review. No attachment contents are scored, no original email is
 rewritten to fit a budget, and no provider calls or deployment changes were made.
+
+## Repeated evidence categories follow-up
+
+A message containing two distinct IP-address links reproduced successful triage
+followed by failed proof generation: detailed findings repeated `ip_literal_url`,
+while the proof contract requires unique category codes. The producer now emits
+each category once in first-seen order. Detailed triage findings, extracted URL
+and filename counts, scores, and risk routing remain unchanged. Neither proof
+nor inbox schemas were relaxed; supplied duplicate-code artifacts still fail.
+
+All **33 new regression tests** passed. They cover both local detectors, repeated
+IP/punycode links, executable/archive filenames, mixed categories, more than 32
+individual findings, unchanged unique-code ordering, signed proof verification
+and tampering, both API byte representations, CLI output, inbox routing, all six
+offline export formats, and privacy minimization. Shadow Inbox counts affected
+messages per category without inflating counts from repeated findings.
+
+The full suite passed **1,140 Python tests** with 16 existing warnings, and all
+**101 browser tests** passed. Ruff, whitespace checks, 26 producer artifact pins,
+and 10 independent authority artifacts passed. The wheel matched **164 exact
+source/asset files**; the source archive matched 18 browser reproduction inputs.
+Fresh installed-wheel verification outside the checkout passed data-only scoring,
+proof creation with repeated findings, and MIME/header limits on Python 3.12.13
+with model-framework imports blocked. The installed CI check now includes the
+repeated-link regression; remote CI has not run these local changes.
+
+This repairs operational evidence generation, not detector accuracy or attachment
+inspection. Existing error events and historical proofs are not rewritten. No
+external service received an export, and no paid calls, pushes, or releases were
+made during this follow-up. The local 0.11.0 wheel remains a test artifact only.
+
+## Private proof publication follow-up
+
+Baseline CLI checks reproduced a new proof with mode `0644` under umask `022`
+and silent replacement of an existing output. The standalone proof CLI now
+preflights an absent destination before reading or scoring input. `write_proof`
+serializes within the 2 MiB output bound, validates that serialized snapshot,
+stages privately beside the destination, fsyncs, and publishes through a hard
+link without replacing a destination created concurrently. The CLI prints
+success only after publication and temporary-file cleanup finish.
+
+All **34 new output tests** passed. Coverage includes existing files, directories,
+live/dangling symlinks and FIFOs; invalid immediate parents; input/output aliasing;
+permissive umask; exact serialized size; invalid artifacts; signed round trips;
+concurrent publishers; destination races; short/failed writes, flush, close,
+fsync, unsupported linking, interruption, and cleanup after publication. A
+serialized-snapshot test ensures later caller mutation cannot change saved bytes
+or the verification result returned for them.
+
+The full suite passed **1,174 Python tests** with 16 existing warnings. All
+**101 browser tests**, Ruff, whitespace checks, 26 producer pins, and 10
+independent authority artifacts passed. The rebuilt wheel matched **164 exact
+source/asset files** and the source archive matched 18 browser reproduction
+inputs. Fresh installed-wheel checks on Python 3.12.13 passed normal scoring,
+private proof publication and refusal to overwrite, repeated-category proofs,
+and MIME/header limits with model-framework imports blocked.
+
+These filesystem tests ran locally on macOS, not across every filesystem or
+Windows ACL configuration. Hard-link support and trusted parent directories are
+required. Directory durability after power loss and hostile parent replacement
+are outside this guarantee. A post-publication cleanup failure leaves the
+complete destination intact and explicitly reports that it was published; a
+process crash may leave private staging files for controlled cleanup. Other
+artifact writers and historical files were not changed. Work remains local,
+with no provider calls, pushes, releases, or production file operations.
+
+## Combined installed package audit
+
+The latest local LureScope and LureBench wheels passed checks together outside
+both checkouts on Python 3.12.13. All project module paths were checked against
+the explicit installed roots. A synthetic mutating detector still exported one
+of each of the six evaluation outcomes without altering caller records; those
+counts were accepted by the installed capacity planner with model/provider
+libraries blocked.
+
+For 600 hypothetical messages at assumed prevalence 0.1, three review minutes
+per case, and ten available hours, the planner conserved 600 outcomes and
+returned 400 review cases, 20 required hours, and a ten-hour shortfall. This checks
+producer/consumer arithmetic, not representativeness or actual staffing needs.
+Installed data-only scoring, proof generation, private publication, and parser
+limit checks also passed with this installed producer and model frameworks
+blocked. No source-checkout fallback or external service was used.
