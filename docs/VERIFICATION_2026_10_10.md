@@ -51,3 +51,59 @@ mail-client equivalence, or certify operational readiness.
 Warnings are the existing Starlette/httpx and joblib/NumPy compatibility warnings.
 The local wheel is still named 0.11.0 for testing; it must not replace a published
 release. No paid-provider calls, model downloads, pushes, or deployments were made.
+
+## MIME tree limits follow-up
+
+Local changes based on `2cdb2c8` address a separately reproduced failure: a 36 KB
+message with 1,200 nested embedded messages raised `RecursionError` despite
+passing the 5 MiB byte check. Tree construction now rejects more than 256 nodes
+or 32 levels, including the root and attachment descendants, before scoring or
+proof creation. These fixed application limits do not bound all header/HTML
+parsing work or replace process-level resource controls.
+
+The follow-up suite passed **1,066 Python tests** (16 existing warnings) and
+**97 browser tests**. Twenty-six new tests cover exact boundaries, three line
+ending styles, mixed/digest/embedded messages, delivery-status blocks, attachment
+nesting, allocation and header-read cutoffs, concurrent inputs, both API byte
+representations, and CLI/inbox continuation without a partial decision or proof.
+Ruff, whitespace checks, 26 producer pins, and 10 independent authority artifacts
+also passed.
+
+The rebuilt wheel matched 164 source/asset files; the source archive matched 18
+browser inputs. Installed-wheel checks outside the checkout passed data-only
+scoring, proof generation, and MIME-limit rejection with model frameworks blocked
+on Python 3.12.13. A separate Python 3.13.15 smoke check passed normal parsing and
+both MIME-limit rejections; it did not run proof generation because that separate
+environment lacks Pydantic. The full local suite used Python 3.12.13, not the
+entire CI version matrix. Follow-up changes remained local at verification time.
+
+## Header parsing follow-up
+
+Deeply nested comments in `From` and `Content-Type` headers reproduced a separate
+`RecursionError` with inputs below 3 KB, even after MIME tree limits were enabled.
+Python now checks raw field bytes, total header bytes, field count, and unquoted/
+unescaped parenthesis nesting before structured interpretation. Browser preview
+applies corresponding budgets to the headers it visits. Unsupported bare-CR
+browser header framing is rejected rather than miscounted as one field.
+
+The full suite passed **1,107 Python tests** with 16 existing warnings, and the
+five browser test files passed **101 tests**. Forty-one new Python tests cover
+exact boundaries, raw UTF-8 octet counting, folded fields, quoted/escaped literals,
+attachment descendants, rejection before scoring/proof generation, private API
+errors in both byte representations, concurrent per-input budgets, and inbox
+continuation. One cross-language test checks acceptance on 26 synthetic fixtures.
+Ruff, whitespace checks, and content-bound browser script verification passed.
+
+The rebuilt wheel matched 164 exact source/asset files, and the source archive
+matched 18 browser reproduction inputs. Installed checks outside the checkout
+passed data-only scoring, proof creation, and MIME/header rejections on Python
+3.12.13 with model-framework imports blocked. Python 3.13.15 also passed normal
+email parsing and header-budget rejection with both packages explicitly installed
+and site packages disabled. Installed browser checks passed normal scoring and
+the new field-size, field-count, and nesting rejections. Producer contract pins
+and independent authority verification remained valid.
+
+The limits are conservative application policy, not email-format requirements or
+a bound on every parsing operation. Legitimate long-header messages may require
+controlled review. No attachment contents are scored, no original email is
+rewritten to fit a budget, and no provider calls or deployment changes were made.

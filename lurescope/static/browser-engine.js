@@ -14,6 +14,10 @@
   const THRESHOLD = 0.5;
   const MAX_TEXT = 20_000;
   const MAX_EMAIL_BYTES = 5 * 1024 * 1024;
+  const MAX_HEADER_BYTES = 16 * 1024;
+  const MAX_TOTAL_HEADER_BYTES = 256 * 1024;
+  const MAX_HEADERS = 1024;
+  const MAX_HEADER_NESTING = 32;
   const TOKEN_RE = /[\p{L}\p{N}_]{2,}/gu;
   const URL_RE = /https?:\/\/[^\s<>"']+/gi;
   const DANGEROUS_EXTENSIONS = new Set([
@@ -264,7 +268,48 @@
     };
   }
 
-  function parseHeaders(block) {
+  function checkHeaderNesting(value) {
+    let depth = 0;
+    let quoted = false;
+    let escaped = false;
+    for (const char of value) {
+      if (escaped) escaped = false;
+      else if (char === "\\" && (quoted || depth)) escaped = true;
+      else if (char === '"' && !depth) quoted = !quoted;
+      else if (!quoted) {
+        if (char === "(") {
+          depth += 1;
+          if (depth > MAX_HEADER_NESTING) throw new Error("Email header nesting exceeds 32 levels; controlled review required");
+        } else if (char === ")" && depth) depth -= 1;
+      }
+    }
+  }
+
+  function checkHeaderBudget(block, budget) {
+    if (/\r(?!\n)/.test(block)) throw new Error("Unsupported header line endings; use the full local API");
+    budget.bytes += byteLength(block);
+    if (budget.bytes > MAX_TOTAL_HEADER_BYTES) throw new Error("Email total headers exceed 256 KiB; controlled review required");
+    let size = 0;
+    let value = "";
+    for (const match of block.matchAll(/[^\n]*(?:\n|$)/g)) {
+      const line = match[0];
+      if (!line) continue;
+      if (!/^[ \t]/.test(line)) {
+        checkHeaderNesting(value.slice(value.indexOf(":") + 1));
+        value = "";
+        size = 0;
+        budget.fields += 1;
+        if (budget.fields > MAX_HEADERS) throw new Error("Email header count exceeds 1024; controlled review required");
+      }
+      size += byteLength(line);
+      if (size > MAX_HEADER_BYTES) throw new Error("Email header field exceeds 16 KiB; controlled review required");
+      value += line.replace(/\r?\n$/, "");
+    }
+    checkHeaderNesting(value.slice(value.indexOf(":") + 1));
+  }
+
+  function parseHeaders(block, budget) {
+    checkHeaderBudget(block, budget);
     const unfolded = block.replace(/\r?\n[ \t]+/g, " ");
     const headers = new Map();
     for (const line of unfolded.split(/\r?\n/)) {
@@ -289,13 +334,14 @@
     return headerValues(headers, name)[0] || "";
   }
 
-  function splitMessage(raw) {
+  function splitMessage(raw, budget) {
     if (raw.startsWith("\r\n")) return {headers: new Map(), body: raw.slice(2)};
     if (raw.startsWith("\n")) return {headers: new Map(), body: raw.slice(1)};
     const match = /\r?\n\r?\n/.exec(raw);
-    if (!match) return {headers: parseHeaders(raw), body: ""};
+    if (!match) return {headers: parseHeaders(raw, budget), body: ""};
     return {
-      headers: parseHeaders(raw.slice(0, match.index)),
+      // Include the header's final line ending, but not the blank separator.
+      headers: parseHeaders(raw.slice(0, match.index + (match[0].startsWith("\r") ? 2 : 1)), budget),
       body: raw.slice(match.index + match[0].length),
     };
   }
@@ -403,7 +449,7 @@
     return match ? decodeEncodedWords(match[1] !== undefined ? match[1] : match[2]) : null;
   }
 
-  function parseMimeBody(headers, body) {
+  function parseMimeBody(headers, body, budget) {
     function checkHeaders(partHeaders) {
       for (const name of ["content-type", "content-transfer-encoding", "content-disposition"]) {
         if (headerValues(partHeaders, name).length > 1) {
@@ -464,7 +510,7 @@
         if (previous !== null) {
           parts += 1;
           if (parts > 128) throw new Error("Too many MIME parts for browser preview; use the full local API");
-          const part = splitMessage(body.slice(previous, match.index));
+          const part = splitMessage(body.slice(previous, match.index), budget);
           consume(part.headers, part.body);
         }
         if (match[1]) { closed = true; break; }
@@ -560,8 +606,9 @@
   function triageEmail(raw, detector = "tfidf-logreg", threshold = THRESHOLD) {
     if (typeof raw !== "string" || !raw) throw new Error("Email source is required");
     if (byteLength(raw) > MAX_EMAIL_BYTES) throw new Error("Email exceeds the 5 MB safety limit");
-    const message = splitMessage(raw);
-    const mime = parseMimeBody(message.headers, message.body);
+    const budget = {bytes: 0, fields: 0};
+    const message = splitMessage(raw, budget);
+    const mime = parseMimeBody(message.headers, message.body, budget);
     const subject = decodeEncodedWords(firstHeader(message.headers, "subject")).trim();
     const scoreText = [subject, mime.body].filter(Boolean).join("\n\n").trim();
     if (!scoreText) throw new Error("Email has no subject or readable text body");

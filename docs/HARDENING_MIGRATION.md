@@ -137,12 +137,55 @@ for scoring, link extraction, image cues, or nested attachment-name reporting.
 Ordinary nested multipart bodies remain readable. This prevents attached mail
 from being mistaken for the outer message, but it can reduce the reported text
 and evidence compared with older versions. Inspect attachments separately in a
-controlled workflow. Python's MIME parser still constructs the message tree;
-this extraction boundary is not a parser memory or recursion sandbox.
+controlled workflow.
+
+Python MIME tree construction is now limited to **256 message nodes** and
+**32 levels**, counting the root as one node at level one. Embedded messages,
+attachment subtrees, and delivery-status header blocks count even when their
+contents are excluded from scoring. The parser checks the part budget before
+creating another node and the depth budget before descending into a child,
+using a per-input [message factory](https://docs.python.org/3/library/email.parser.html).
+These are application limits, not email-format requirements.
+
+Header parsing also enforces the following budgets:
+
+| Dimension | Limit | What counts |
+| --- | --- | --- |
+| One header field | 16 KiB | Original name, separator, value, folded lines, and line endings |
+| Total headers | 256 KiB | All parsed header fields across the MIME tree |
+| Header count | 1,024 | Fields, not physical continuation lines; repeated fields count separately |
+| Header nesting | 32 levels | Unquoted/unescaped parentheses in each unfolded header value |
+
+Python applies those budgets to attachment and embedded-message headers as well,
+without decoding their bodies for scoring. The nesting check is conservative,
+including for unstructured fields: exceeding it does not establish invalid email
+syntax or malicious intent. Quoted parentheses and quoted-pairs in strings/comments
+do not increase the counter. These checks precede structured header interpretation
+through Python's [email policy hooks](https://docs.python.org/3/library/email.policy.html).
+Unexpected recursion during structured header fetch also becomes a controlled
+`EmailTooComplex` rejection rather than a partial assessment.
+
+Exceeding a structural or header limit raises `EmailTooComplex` (a `ValueError`)
+without producing a score or proof. The triage and proof APIs return HTTP 400 with their existing
+generic rejection message. Inbox bundles record only the error class and continue
+with later messages; CLI triage reports the failure and returns a nonzero status.
+Send such messages to a separately controlled review workflow rather than
+removing parts to obtain an apparently complete assessment. Legitimate large
+digests may also exceed these limits. No HTTP request can raise the limits.
+
+The byte, tree, and header caps do not bound every header/HTML parsing operation,
+process memory, or wall-clock time. Run untrusted-mail workflows with process isolation,
+external resource limits, and maintained Python dependencies; these checks are
+not a parser sandbox or attachment inspection.
 
 Browser preview also rejects over-limit text (its counter uses JavaScript UTF-16
 code units). Its deliberately limited MIME profile supports direct plain/HTML
 text and one-level mixed/alternative/related multipart with at most 128 parts.
+The same header budgets are shared across the root and the MIME parts the browser
+visits; attachment descendants are not parsed or counted there. LF and CRLF header
+framing are supported; bare CR requires the full local API, which supports it.
+Twenty-six synthetic cases check browser/Python acceptance at supported header
+boundaries, not general mail-client equivalence.
 It rejects nested bodies, unsupported inline types/charsets, duplicate structural
 headers, malformed transfer encodings, and missing closing boundaries. Delimiters
 are recognized at line boundaries rather than inside arbitrary body text, following

@@ -35,6 +35,15 @@ the complete bounded input is capped at 64 MiB in memory. Discovery and size
 checks finish before any message is read. One malformed message becomes a safe
 error event while the rest continue.
 
+The Python parser also caps each MIME tree at 256 nodes and 32 levels, including
+the root and embedded attachment trees. Header budgets are 16 KiB per source
+field, 256 KiB total, 1,024 fields, and 32 levels of unquoted/unescaped parenthesis
+nesting. Folded lines count toward their field's byte budget. An over-limit message
+produces an `EmailTooComplex` error event, no risk decision, and no proof; subsequent messages
+still run. Route these cases for controlled review. The tree limits do not scan
+attachments or replace process-level resource controls; see
+[email parsing limits](HARDENING_MIGRATION.md#email-scoring-coverage).
+
 ## What the manifest carries
 
 Each successful JSONL event contains:

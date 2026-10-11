@@ -55,12 +55,29 @@ def main(argv=None):
     )
     if not proof_module.verify_proof(statement)["valid"]:
         raise ValueError("installed data-only proof failed verification")
+    triage = importlib.import_module("lurescope.triage")
+    nested = (b"Content-Type: message/rfc822\n\n" * 1200
+              + b"Subject: Notes\n\nOrdinary notes")
+    wide = (b"Content-Type: multipart/mixed; boundary=wide\n\n"
+            + b"--wide\nContent-Type: text/plain\n\nNotes\n" * 256
+            + b"--wide--\n")
+    nested_header = (b"From: " + b"(" * 1200 + b"comment" + b")" * 1200
+                     + b" <sender@example.test>\n\nNotes")
+    oversized_header = b"X-Padding: " + b"x" * 16384 + b"\n\nNotes"
+    for raw in (nested, wide, nested_header, oversized_header):
+        try:
+            proof_module.create_email_proof(raw)
+        except triage.EmailTooComplex:
+            pass
+        else:
+            raise ValueError("installed proof creation accepted over-complex email")
     for name, module in list(sys.modules.items()):
         if name == "lurescope" or name.startswith("lurescope."):
             location = getattr(module, "__file__", None)
             if location is None or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("LureScope import escaped the installed root")
-    print("PASS installed data-only scoring and email proof with model frameworks blocked")
+    print("PASS installed data-only scoring, email proof, and MIME/header limits "
+          "with model frameworks blocked")
     return 0
 
 

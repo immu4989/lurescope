@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Email header intake now limits each source field to 16 KiB, total header bytes
+  to 256 KiB, field count to 1,024, and unquoted/unescaped parenthesis nesting to
+  32 levels before structured interpretation. Nested-comment recursion fails as
+  `EmailTooComplex`, before scoring or proof creation. Browser preview applies
+  the same budgets to headers it visits and rejects unsupported bare-CR framing.
+  Quoted literals, escaped parentheses, raw octet counts, and folded fields have
+  regression coverage; these conservative limits are not RFC validity rules.
+
+- Python email parsing bounds MIME tree construction to 256 message nodes and
+  32 levels, including the root and embedded attachment trees. Excessive nesting
+  or breadth raises `EmailTooComplex` before scoring or proof creation; APIs
+  reject the input, and inbox/CLI batches continue with later messages. These
+  structural limits complement the byte cap, not a full parser resource sandbox.
+
 - Email triage exposes unreadable and ambiguous body inspection through minimized
   review cues carried into proofs and inbox routing. Unknown charsets are not
   guessed; undecodable text is omitted with an explicit warning. Subject-only

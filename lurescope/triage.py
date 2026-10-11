@@ -23,6 +23,12 @@ from . import service
 from .local_io import read_regular_file
 
 MAX_EMAIL_BYTES = 5 * 1024 * 1024
+MAX_EMAIL_PARTS = 256
+MAX_EMAIL_DEPTH = 32
+MAX_EMAIL_HEADER_BYTES = 16 * 1024
+MAX_EMAIL_TOTAL_HEADER_BYTES = 256 * 1024
+MAX_EMAIL_HEADERS = 1024
+MAX_EMAIL_HEADER_NESTING = 32
 MAX_SCORE_TEXT = 20_000
 _URL = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 _DANGEROUS_EXTENSIONS = {
@@ -38,6 +44,92 @@ _QR_LANGUAGE = re.compile(
 
 class EmailTooLarge(ValueError):
     """Raised before parsing an email beyond the documented local safety limit."""
+
+
+class EmailTooComplex(ValueError):
+    """Raised when MIME structure or header interpretation exceeds local limits."""
+
+
+def _check_header_nesting(value: str) -> None:
+    """Conservative raw-parenthesis budget, not a replacement RFC parser."""
+    depth = 0
+    quoted = escaped = False
+    for char in value:
+        if escaped:
+            escaped = False
+        elif char == "\\" and (quoted or depth):
+            escaped = True
+        elif char == '"' and not depth:
+            quoted = not quoted
+        elif not quoted:
+            if char == "(":
+                depth += 1
+                if depth > MAX_EMAIL_HEADER_NESTING:
+                    raise EmailTooComplex(
+                        f"email header nesting exceeds {MAX_EMAIL_HEADER_NESTING} levels"
+                    )
+            elif char == ")" and depth:
+                depth -= 1
+
+
+class _BoundedEmailMessage(EmailMessage):
+    """Enforce depth before the parser descends into an attached child."""
+
+    _parse_depth = 1
+
+    def attach(self, payload):
+        depth = self._parse_depth + 1
+        if depth > MAX_EMAIL_DEPTH:
+            raise EmailTooComplex(f"email MIME depth exceeds {MAX_EMAIL_DEPTH} levels")
+        payload._parse_depth = depth
+        super().attach(payload)
+
+
+def _parse_message(raw: bytes) -> EmailMessage:
+    # A fresh factory and policy per input avoid cross-request/shared counters.
+    # Use policy.message_factory: passing _class directly makes the stdlib probe
+    # the factory once before parsing, which would count a nonexistent part.
+    parts = 0
+    header_count = header_bytes = 0
+
+    class BoundedPolicy(policy.EmailPolicy):
+        def header_source_parse(self, sourcelines):
+            nonlocal header_count, header_bytes
+            # BytesParser uses ASCII with surrogateescape: each source character
+            # is one original byte, including non-ASCII octets and line endings.
+            size = sum(len(line) for line in sourcelines)
+            if size > MAX_EMAIL_HEADER_BYTES:
+                raise EmailTooComplex(f"email header field exceeds {MAX_EMAIL_HEADER_BYTES} bytes")
+            header_count += 1
+            header_bytes += size
+            if header_count > MAX_EMAIL_HEADERS:
+                raise EmailTooComplex(f"email header count exceeds {MAX_EMAIL_HEADERS}")
+            if header_bytes > MAX_EMAIL_TOTAL_HEADER_BYTES:
+                raise EmailTooComplex(
+                    f"email total headers exceed {MAX_EMAIL_TOTAL_HEADER_BYTES} bytes"
+                )
+            name, value = super().header_source_parse(sourcelines)
+            # Use the same unfolding as header_fetch_parse before checking:
+            # quoted-pair behavior must not change across folded source lines.
+            _check_header_nesting(value.replace("\r", "").replace("\n", ""))
+            return name, value
+
+        def header_fetch_parse(self, name, value):
+            try:
+                return super().header_fetch_parse(name, value)
+            except RecursionError as exc:
+                raise EmailTooComplex(
+                    "email header interpretation exceeded parser capacity"
+                ) from exc
+
+    def factory(*, policy):
+        nonlocal parts
+        parts += 1
+        if parts > MAX_EMAIL_PARTS:
+            raise EmailTooComplex(f"email MIME part count exceeds {MAX_EMAIL_PARTS}")
+        return _BoundedEmailMessage(policy=policy)
+
+    return BytesParser(policy=BoundedPolicy(message_factory=factory)).parsebytes(raw)
 
 
 class _HTMLText(HTMLParser):
@@ -171,8 +263,8 @@ def _is_body_boundary(part: Message) -> bool:
 def _outer_parts(message: Message) -> Iterator[Message]:
     """Visit outer-message parts, never descendants of attached/embedded mail.
 
-    BytesParser already builds the MIME tree. This only controls subsequent
-    extraction; it is not a bound on the parser's memory or recursion.
+    The parser's factory bounds tree construction, including attachment nodes.
+    This traversal only controls subsequent extraction, not parser resources.
     """
     pending = [message]
     while pending:
@@ -225,7 +317,7 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
     """Parse an email without dereferencing or decoding attachment payloads."""
     if len(raw) > max_bytes:
         raise EmailTooLarge(f"email is {len(raw)} bytes; limit is {max_bytes}")
-    message = BytesParser(policy=policy.default).parsebytes(raw)
+    message = _parse_message(raw)
     from_addresses = _addresses(str(message.get("From", "")))
     reply_addresses = _addresses(str(message.get("Reply-To", "")))
     recipients = _addresses(str(message.get("To", ""))) + _addresses(str(message.get("Cc", "")))

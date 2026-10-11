@@ -10,6 +10,54 @@ engine.setModel(model);
 const phishing = "Dear customer, verify your account within 24 hours or it will be suspended. Confirm now at https://example.test/login.";
 const benign = "Hi team, the design review moved to Thursday at 2 PM. Please add comments to the shared project folder.";
 
+test("browser header limits count UTF-8 bytes, folds, and final line endings", () => {
+  for (const newline of ['\n', '\r\n']) {
+    const prefix = 'X-Padding: ' + 'é'.repeat(1000);
+    const field = prefix + 'x'.repeat(16384 - Buffer.byteLength(prefix + newline)) + newline;
+    assert.equal(engine.triageEmail(field + newline + 'Notes', 'heuristic-v0').risk_tier, 'low');
+    assert.throws(() => engine.triageEmail('X' + field + newline + 'Notes'), /header field exceeds/);
+  }
+  assert.throws(() => engine.triageEmail('X-Padding: ' + 'x'.repeat(9000) + '\n ' +
+    'x'.repeat(9000) + '\n\nNotes'), /header field exceeds/);
+});
+
+test("browser header counts and aggregate bytes share one per-message budget", () => {
+  assert.equal(engine.triageEmail('X-Trace: n\n'.repeat(1024) + '\nNotes', 'heuristic-v0').risk_tier, 'low');
+  assert.throws(() => engine.triageEmail('X-Trace: n\n'.repeat(1025) + '\nNotes'), /header count exceeds/);
+  const field = 'X-Padding: ' + 'x'.repeat(16384 - 12) + '\n';
+  assert.equal(Buffer.byteLength(field), 16384);
+  assert.equal(engine.triageEmail(field.repeat(16) + '\nNotes', 'heuristic-v0').risk_tier, 'low');
+  assert.throws(() => engine.triageEmail(field.repeat(16) + 'X-Trace: n\n\nNotes'), /total headers exceed/);
+  // A previous rejection must not poison the next input's budget.
+  assert.equal(engine.triageEmail('Subject: Notes\n\nNotes', 'heuristic-v0').risk_tier, 'low');
+});
+
+test("browser header nesting preserves quoted literals and quoted pairs", () => {
+  assert.doesNotThrow(() => engine.triageEmail('X-Note: ' + '('.repeat(32) + 'note' +
+    ')'.repeat(32) + '\n\nNotes', 'heuristic-v0'));
+  for (const depth of [33, 1200]) {
+    assert.throws(() => engine.triageEmail('From: ' + '('.repeat(depth) + 'note' +
+      ')'.repeat(depth) + ' <sender@example.test>\n\nNotes'), /header nesting exceeds/);
+  }
+  for (const value of ['"' + '('.repeat(40) + ')'.repeat(40) + '"',
+    '(' + '\\('.repeat(40) + '\\)'.repeat(40) + ')', '(folded\\\r\n (nested))']) {
+    assert.doesNotThrow(() => engine.triageEmail('X-Note: ' + value + '\n\nNotes', 'heuristic-v0'));
+  }
+  assert.throws(() => engine.triageEmail('X-Note: ("' + '('.repeat(33) +
+    ')'.repeat(34) + '\n\nNotes'), /header nesting exceeds/);
+  assert.throws(() => engine.triageEmail('X"Note: ' + '('.repeat(33) +
+    ')'.repeat(33) + '\n\nNotes'), /header nesting exceeds/);
+});
+
+test("browser header budget is shared across visited MIME parts", () => {
+  const raw = 'Content-Type: multipart/mixed; boundary=b\n\n' +
+    '--b\n' + 'X-Trace: n\n'.repeat(600) + '\nNotes\n' +
+    '--b\n' + 'X-Trace: n\n'.repeat(600) + '\nNotes\n--b--';
+  assert.throws(() => engine.triageEmail(raw), /header count exceeds/);
+  assert.throws(() => engine.triageEmail('X-Trace: n\r'.repeat(1025) + '\rNotes'),
+    /Unsupported header line endings/);
+});
+
 test("heuristic Unicode boundaries, decimal digits, and case folding match Python anchors", () => {
   for (const text of ['urgentа', 'аurgent', '中urgent', 'urgent²', '_urgent']) {
     assert.equal(engine.scoreMessage(text, 'heuristic-v0').fraud_probability,
