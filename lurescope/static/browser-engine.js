@@ -268,9 +268,12 @@
     const unfolded = block.replace(/\r?\n[ \t]+/g, " ");
     const headers = new Map();
     for (const line of unfolded.split(/\r?\n/)) {
+      if (!line) continue;
       const separator = line.indexOf(":");
-      if (separator < 1) continue;
-      const name = line.slice(0, separator).trim().toLowerCase();
+      if (separator < 1 || !/^[!-9;-~]+$/.test(line.slice(0, separator))) {
+        throw new Error("Malformed email header; use the full local API");
+      }
+      const name = line.slice(0, separator).toLowerCase();
       const value = line.slice(separator + 1).trim();
       if (!headers.has(name)) headers.set(name, []);
       headers.get(name).push(value);
@@ -471,7 +474,11 @@
     } else consume(headers, body);
 
     const selected = plain.some((item) => item) ? plain : html;
-    return {body: selected.filter(Boolean).join("\n\n").trim(), attachments, hrefs};
+    const bodyText = selected.filter(Boolean).join("\n\n").trim();
+    const htmlText = html.filter(Boolean).join("\n\n").trim();
+    const htmlDiffers = selected === plain && !!htmlText &&
+      bodyText.replace(/\s+/gu, " ").trim() !== htmlText.replace(/\s+/gu, " ").trim();
+    return {body: bodyText, attachments, hrefs, html_differs: htmlDiffers};
   }
 
   function parseAddress(value) {
@@ -499,6 +506,15 @@
 
   function emailEvidence(parsed) {
     const evidence = [];
+    if (!parsed.body) {
+      evidence.push({code:"no_readable_body", severity:"medium", title:"Email inspection is incomplete", detail:"No readable body was extracted; any content score concerns the subject only. Review the original in a controlled workflow; this is not a fraud finding."});
+    }
+    if (parsed.ambiguous_headers) {
+      evidence.push({code:"ambiguous_email_headers", severity:"medium", title:"Email inspection is incomplete", detail:"Repeated singleton headers make the message interpretation ambiguous. Review the original in a controlled workflow; this is not a fraud finding."});
+    }
+    if (parsed.html_differs) {
+      evidence.push({code:"html_body_differs", severity:"medium", title:"Email inspection is incomplete", detail:"Extracted HTML text differs from the plain text selected for scoring. Review the original in a controlled workflow; this is not a fraud finding."});
+    }
     const fromDomain = addressDomain(parsed.from_address);
     const replyDomain = addressDomain(parsed.reply_to);
     if (fromDomain && replyDomain && fromDomain !== replyDomain) {
@@ -558,9 +574,12 @@
       recipients: headerValues(message.headers, "to").concat(headerValues(message.headers, "cc")).map(parseAddress).filter(Boolean),
       message_id: firstHeader(message.headers, "message-id") || null,
       body: mime.body,
+      html_differs: mime.html_differs,
       urls,
       attachments: Array.from(new Set(mime.attachments)),
       authentication_results: headerValues(message.headers, "authentication-results"),
+      ambiguous_headers: ["subject", "from", "reply-to", "to", "cc", "message-id"]
+        .some(name => headerValues(message.headers, name).length > 1),
     };
     const scored = scoreMessage(scoreText, detector, threshold);
     const evidence = emailEvidence(parsed);

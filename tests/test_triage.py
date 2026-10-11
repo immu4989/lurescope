@@ -74,8 +74,8 @@ def test_embedded_message_never_contributes_body_or_nested_filenames(disposition
     original = triage._part_text
     decoded = []
 
-    def checked(part):
-        result = original(part)
+    def checked(part, gaps):
+        result = original(part, gaps)
         decoded.append(result)
         assert "Private attachment" not in result
         return result

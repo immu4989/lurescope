@@ -116,6 +116,42 @@ test("oversized and content-free email inputs fail closed", () => {
   assert.throws(() => engine.scoreMessage("x".repeat(engine.MAX_TEXT + 1)), /character limit/i);
 });
 
+test("subject-only and ambiguous-header previews disclose incomplete inspection", () => {
+  for (const [raw, code] of [
+    ['Subject: Project notes\r\n\r\n', 'no_readable_body'],
+    ['Subject: Project notes\r\nSubject: Other notes\r\n\r\nOrdinary notes.', 'ambiguous_email_headers'],
+  ]) {
+    const result = engine.triageEmail(raw, 'heuristic-v0');
+    assert.equal(result.content_label, 'benign');
+    assert.equal(result.risk_tier, 'review');
+    assert.ok(result.evidence.some(item => item.code === code));
+  }
+});
+
+test("browser header parsing cannot silently discard malformed lines", () => {
+  for (const header of ['missing-colon', ' Subject: orphan continuation', 'Subject : whitespace',
+    'Bad\u0000Name: value', ': empty-name']) {
+    assert.throws(() => engine.triageEmail(header + '\r\nSubject: Notes\r\n\r\nOrdinary notes.'),
+      /Malformed email header/);
+  }
+});
+
+test("different HTML text cannot hide behind a benign plain alternative", () => {
+  for (const [html, differs] of [
+    ['<p>Readable outer notes.</p>', false],
+    ['<p>Readable  outer\nnotes.</p>', false],
+    ['<p>Urgent verify your account within 24 hours.</p>', true],
+  ]) {
+    const raw = 'Subject: Notes\r\nContent-Type: multipart/alternative; boundary=b\r\n\r\n' +
+      '--b\r\nContent-Type: text/plain\r\n\r\nReadable outer notes.\r\n' +
+      '--b\r\nContent-Type: text/html\r\n\r\n' + html + '\r\n--b--\r\n';
+    const result = engine.triageEmail(raw, 'heuristic-v0');
+    assert.equal(result.content_label, 'benign');
+    assert.equal(result.risk_tier, differs ? 'review' : 'low');
+    assert.equal(result.evidence.some(item => item.code === 'html_body_differs'), differs);
+  }
+});
+
 test("filename-bearing parts never contribute text or links regardless of disposition", () => {
   const expected = engine.triageEmail('Subject: Notes\r\n\r\nOuter notes only.', 'heuristic-v0');
   for (const headers of [

@@ -92,6 +92,38 @@ has a byte bound but no filesystem identity guarantee.
 
 ## Email scoring coverage
 
+Python triage now reports incomplete inspection separately from its content label.
+Unsupported inline body formats, embedded bodies, undecodable text, parser
+defects, repeated singleton headers, and subject-only assessments produce medium
+review cues. A benign content label cannot override these cues into a low-risk
+decision. Valid declared legacy charsets remain supported; unknown charsets are
+not guessed, and undecodable parts are omitted instead of replaced with guessed
+characters. A message with neither subject nor readable body still fails without
+a decision.
+
+The codes are `uninspected_body_part`, `body_decoding_uncertain`,
+`mime_parse_defect`, `ambiguous_email_headers`, `no_readable_body`, and
+`html_body_differs`. The last cue reports extracted HTML text that differs from
+the plain text selected for scoring after whitespace is collapsed. It does not
+assert malicious intent or visual equivalence; ordinary alternative renderings
+can legitimately differ. Neither a second model call nor a second content score
+is added. Existing
+triage evidence fields and minimized proof evidence-code lists carry them, so
+API and inbox consumers should route by `risk_tier`, not the content label alone.
+The score still concerns only extracted subject/body text, not opaque content.
+These conservative cues may increase review volume for ordinary encrypted,
+signed, malformed, or subject-only mail; they are not fraud findings. Inventory
+their frequency in a controlled pilot before changing operational routing.
+
+Python's default [text content handler](https://docs.python.org/3/library/email.contentmanager.html#email.contentmanager.get_content)
+replaces decoding errors unless strict decoding is requested. The
+[parser defect mechanism](https://docs.python.org/3/library/email.errors.html)
+also records recoverable MIME problems rather than necessarily raising them.
+LureScope surfaces these uncertainties but does not audit attachment descendants
+or implement a complete mail-client renderer. The browser rejects unsupported
+structures, rejects malformed header lines, and adds review cues for subject-only
+or repeated-singleton-header input. Historical proofs are not re-scored.
+
 New Python triage and LureProof generation reject subject-plus-readable-body text
 over 20,000 characters **before any detector call**. Earlier versions scored only
 the prefix; historical proofs with a disclosed `truncated` flag remain readable,

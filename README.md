@@ -33,7 +33,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 **[Open private browser lab →](https://immu4989.github.io/lurescope/)** ·
 **[Run full local API →](#quickstart)** ·
 **[Review unreleased hardening and migration →](docs/HARDENING_MIGRATION.md)** ·
-[Local verification on 2 October 2026](docs/VERIFICATION_2026_10_02.md) ·
+[Local verification on 10 October 2026](docs/VERIFICATION_2026_10_10.md) ·
 **[Run one-command operational pilot →](docs/OPERATIONAL_PILOT.md)** ·
 **[Pilot an exported inbox →](#shadow-inbox-measure-before-enforcement)** ·
 **[Compare Defender offline →](docs/MICROSOFT_DEFENDER_OFFLINE.md)** ·

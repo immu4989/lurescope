@@ -100,6 +100,7 @@ class ParsedEmail:
     authentication_results: List[str]
     inline_image_count: int
     html_visible_text_length: int
+    inspection_gaps: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -139,12 +140,23 @@ def _domain(address: Optional[str]) -> Optional[str]:
     return address.rsplit("@", 1)[1].rstrip(">").casefold()
 
 
-def _part_text(part: Message) -> str:
+def _part_text(part: Message, gaps: set[str]) -> str:
+    encoding = str(part.get("Content-Transfer-Encoding", "")).strip().casefold()
+    if encoding not in {"", "7bit", "8bit", "binary", "base64", "quoted-printable"}:
+        gaps.add("body_decoding_uncertain")
+        return ""
+    if encoding == "quoted-printable":
+        payload = part.get_payload()
+        if isinstance(payload, str) and re.search(r"=(?![0-9a-fA-F]{2}|\r?\n)", payload):
+            gaps.add("body_decoding_uncertain")
+            return ""
     try:
-        content = part.get_content()
+        content = part.get_content(errors="strict")
     except (LookupError, UnicodeError):
-        payload = part.get_payload(decode=True) or b""
-        content = payload.decode("utf-8", errors="replace")
+        # Do not guess a charset or insert replacement text into the assessment.
+        # Other readable body parts can still be assessed, with a review cue.
+        gaps.add("body_decoding_uncertain")
+        return ""
     return content if isinstance(content, str) else ""
 
 
@@ -170,27 +182,42 @@ def _outer_parts(message: Message) -> Iterator[Message]:
             pending.extend(reversed(part.get_payload()))
 
 
-def _extract_body(message: EmailMessage) -> tuple[str, List[str], int, int]:
+def _extract_body(message: EmailMessage, gaps: set[str]) -> tuple[str, List[str], int, int]:
     plain: List[str] = []
     html: List[str] = []
     html_urls: List[str] = []
     inline_images = 0
     html_visible_text_length = 0
     for part in _outer_parts(message):
-        if part.is_multipart() or _is_body_boundary(part):
+        if _is_body_boundary(part):
+            if (part.get_content_maintype() == "message" and part.get_filename() is None
+                    and part.get_content_disposition() != "attachment"):
+                gaps.add("uninspected_body_part")
             continue
         content_type = part.get_content_type()
+        if part.is_multipart():
+            if content_type not in {
+                "multipart/mixed", "multipart/alternative", "multipart/related",
+            }:
+                gaps.add("uninspected_body_part")
+            continue
         if content_type == "text/plain":
-            plain.append(_part_text(part))
+            plain.append(_part_text(part, gaps))
         elif content_type == "text/html":
             parser = _HTMLText()
-            parser.feed(_part_text(part))
+            parser.feed(_part_text(part, gaps))
             html.append(parser.text())
             html_urls.extend(parser.urls)
             inline_images += parser.inline_images
             html_visible_text_length += parser.visible_text_length
+        else:
+            gaps.add("uninspected_body_part")
     chosen = plain if any(item.strip() for item in plain) else html
     body = "\n\n".join(item.strip() for item in chosen if item.strip()).strip()
+    if chosen is plain and any(item.strip() for item in html):
+        html_body = "\n\n".join(item.strip() for item in html if item.strip())
+        if " ".join(body.split()) != " ".join(html_body.split()):
+            gaps.add("html_body_differs")
     return body, html_urls, inline_images, html_visible_text_length
 
 
@@ -207,7 +234,27 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
         filename = part.get_filename()
         if filename:
             attachments.append(str(filename))
-    body, html_urls, inline_images, html_visible_text_length = _extract_body(message)
+    gaps: set[str] = set()
+    body, html_urls, inline_images, html_visible_text_length = _extract_body(message, gaps)
+    # Decoding can add defects, so inspect after body extraction. Descendants of
+    # attachments remain outside this boundary; their contents are not audited.
+    for part in _outer_parts(message):
+        if part.defects:
+            gaps.add("mime_parse_defect")
+        for name in ("Content-Type", "Content-Transfer-Encoding", "Content-Disposition"):
+            values = part.get_all(name, [])
+            if len(values) > 1:
+                gaps.add("ambiguous_email_headers")
+            if any(getattr(value, "defects", ()) for value in values):
+                gaps.add("mime_parse_defect")
+    for name in ("Subject", "From", "Reply-To", "To", "Cc", "Message-ID"):
+        values = message.get_all(name, [])
+        if len(values) > 1:
+            gaps.add("ambiguous_email_headers")
+        if any(getattr(value, "defects", ()) for value in values):
+            gaps.add("mime_parse_defect")
+    if not body:
+        gaps.add("no_readable_body")
     urls = sorted({
         item.rstrip(".,);]") for item in [*_URL.findall(body), *html_urls]
     })
@@ -225,11 +272,36 @@ def parse_email(raw: bytes, max_bytes: int = MAX_EMAIL_BYTES) -> ParsedEmail:
         ],
         inline_image_count=inline_images,
         html_visible_text_length=html_visible_text_length,
+        inspection_gaps=sorted(gaps),
     )
 
 
 def _context_evidence(email: ParsedEmail) -> List[Evidence]:
     evidence: List[Evidence] = []
+    gap_details = {
+        "uninspected_body_part": "An inline body format or embedded message was not inspected.",
+        "body_decoding_uncertain": (
+            "Body decoding was unsupported or malformed; unreadable parts were omitted."
+        ),
+        "mime_parse_defect": (
+            "The email parser reported a defect; interpretation may differ between clients."
+        ),
+        "ambiguous_email_headers": (
+            "Repeated singleton headers make the message interpretation ambiguous."
+        ),
+        "no_readable_body": (
+            "No readable body was extracted; any content score concerns the subject only."
+        ),
+        "html_body_differs": (
+            "Extracted HTML text differs from the plain text selected for scoring."
+        ),
+    }
+    for code in email.inspection_gaps:
+        evidence.append(Evidence(
+            code, "medium", "Email inspection is incomplete",
+            gap_details[code] + " Review the original in a controlled workflow; "
+            "this is not a fraud finding.",
+        ))
     from_domain, reply_domain = _domain(email.from_address), _domain(email.reply_to)
     if from_domain and reply_domain and from_domain != reply_domain:
         evidence.append(Evidence(

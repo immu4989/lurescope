@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Email triage exposes unreadable and ambiguous body inspection through minimized
+  review cues carried into proofs and inbox routing. Unknown charsets are not
+  guessed; undecodable text is omitted with an explicit warning. Subject-only
+  assessments cannot silently receive a low-risk tier. Browser previews reject
+  malformed headers and flag repeated singleton headers. These cues describe
+  inspection limitations, not fraud, and may increase legitimate review volume.
+  Differing extracted HTML and scored plain text also trigger review in both
+  parsers; benign plain alternatives cannot silently mask unscored HTML text.
+
 - Wheel source checks now include nested Python modules as well as root modules,
   schemas, authority evidence, and browser assets.
 
