@@ -13,8 +13,9 @@ from __future__ import annotations
 import math
 import os
 import re
+import threading
+from contextlib import ExitStack
 from dataclasses import dataclass
-from functools import lru_cache
 from numbers import Real
 from typing import List, Optional
 
@@ -49,6 +50,13 @@ ALWAYS_ON = ("tfidf-logreg", "heuristic-v0")
 # Llama Guard scoring 0% true-positive on romance-baiting lures — lives in
 # LureBench; LureScope lets you probe these detectors on a single message.
 EXTENDED = ("llm-judge", "openai-moderation", "llama-guard-3", "binoculars")
+
+# Fixed cardinality: request-supplied engine/model strings never become keys.
+# Separate locks keep cold optional weights from blocking the default detector.
+_LOCAL_DETECTOR_LOCKS = {
+    name: threading.Lock() for name in (*ALWAYS_ON, "llama-guard-3")
+}
+_LOCAL_DETECTORS = {}
 
 # name -> (one-line kind, requirement string or None for always-on).
 DETECTOR_INFO = {
@@ -101,13 +109,33 @@ def _as_lure(text: str) -> Lure:
     return Lure(id="scope-0", text=text, label=0, source="human", typology="benign")
 
 
-@lru_cache(maxsize=None)
 def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = None):
+    if name not in DETECTOR_INFO:
+        raise KeyError("detector is not served by LureScope")
     if name == "binoculars":
         # Do not load upstream models or relabel P(ai)-like scores as fraud risk.
         raise DetectorUnavailable(_needs(name))
-    if name == "tfidf-logreg":
-        return PortableTfidfDetector(_DEFAULT_TFIDF, expected_sha256=_DEFAULT_TFIDF_SHA256)
+    if name in _LOCAL_DETECTOR_LOCKS:
+        # A thread-safe cache alone does not prevent duplicate construction on
+        # concurrent misses. Hold this name's lock through successful publication.
+        with _LOCAL_DETECTOR_LOCKS[name]:
+            if name not in _LOCAL_DETECTORS:
+                if name == "tfidf-logreg":
+                    detector = PortableTfidfDetector(
+                        _DEFAULT_TFIDF, expected_sha256=_DEFAULT_TFIDF_SHA256,
+                    )
+                elif name == "llama-guard-3":
+                    try:
+                        detector = get_detector(name)
+                    except Exception as exc:  # noqa: BLE001
+                        raise DetectorUnavailable(_needs(name)) from exc
+                else:
+                    detector = get_detector(name)
+                _LOCAL_DETECTORS[name] = detector
+            return _LOCAL_DETECTORS[name]
+    # Provider constructors capture credentials and configuration. Do not retain
+    # them across service operations or put secrets/fingerprints into cache keys.
+    # One attack operation still reuses its own detector for all scoring steps.
     if name == "llm-judge":
         engine = engine or os.environ.get("LURESCOPE_LLM_ENGINE")
         if not engine:
@@ -123,7 +151,24 @@ def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = No
             return get_detector(name)
         except Exception as exc:  # noqa: BLE001 - missing key/dep -> clean 400
             raise DetectorUnavailable(_needs(name)) from exc
-    return get_detector(name)
+    raise KeyError("detector is not served by LureScope")
+
+
+def _clear_detector_cache():
+    """Drop local cache references after any in-progress constructors finish.
+
+    Existing scoring operations keep their references. This is not a model
+    cancellation, GPU-memory reclamation, or live configuration reload API.
+    """
+    with ExitStack() as stack:
+        for lock in _LOCAL_DETECTOR_LOCKS.values():
+            stack.enter_context(lock)
+        _LOCAL_DETECTORS.clear()
+
+
+# Preserve the existing private test/operator reset hook, without an unbounded
+# decorator around raw request controls. There is no HTTP cache-reset endpoint.
+_detector.cache_clear = _clear_detector_cache
 
 
 def _needs(name: str) -> str:

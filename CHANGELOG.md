@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Moderation failure-route regressions verify redacted 502 responses without
+  fraud decisions, evasion claims, or triage results after an upstream runtime
+  failure. Proof creation rejects moderation before construction. Complete
+  category validation lives in the companion source-branch LureBench adapter;
+  upgrading only LureScope does not patch an older installed parser.
+
+- Detector reuse has a fixed three-entry local cache keyed only by detector
+  name, with per-name locking to prevent duplicate successful cold loads.
+  Ignored engine/model options cannot multiply local weights. Provider-backed
+  detectors are constructed per service operation, so subsequent operations do
+  not reuse captured credentials, provider defaults, or SDK clients. One attack
+  still reuses its detector for clean, attacked, and defended scoring. Direct
+  Python service calls reject detector names outside the serving catalog.
+
 - Fraud endpoints reject the provenance-only Binoculars detector before loading
   it, instead of treating its ranking proxy as fraud probability. The catalog
   and README explain the restriction; offline reviewed provenance evaluation

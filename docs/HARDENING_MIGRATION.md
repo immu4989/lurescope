@@ -22,6 +22,15 @@ artifact. Review and register a new plan before evaluating the changed deploymen
 
 ## API clients
 
+Detector reuse is now limited to one instance of each of the three local
+detectors per worker; irrelevant engine/model options no longer allocate extra
+local instances. Provider detectors are constructed for each service operation,
+so later operations use newly visible credentials and defaults. Expect provider
+constructor overhead and loss of cross-operation SDK connection reuse. This is
+not atomic live reconfiguration: restart workers for deployment configuration or
+local-model updates, and allow already-running requests to finish under their
+existing configuration. See [detector lifecycle](PUBLIC_DEPLOYMENT.md#source-branch-detector-lifecycle).
+
 Binoculars is now rejected before construction on fraud endpoints. A provenance
 ranking score cannot be represented as fraud probability, evasion evidence, or a
 fraud proof. The catalog explains the boundary; move intentional provenance

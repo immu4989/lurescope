@@ -27,6 +27,44 @@ capability catalog retains the name with this explicit limitation. Reviewed
 offline provenance experiments belong in LureBench; the HTTP API provides no
 opt-in for upstream remote-code loading.
 
+When paired with the source-branch LureBench moderation adapter, incomplete or
+invalid moderation category responses raise instead of falling back to a boolean
+flag. `/score`, `/attack`, and `/triage/email` return a redacted `502`, without a
+decision or evasion claim; proof creation already refuses provider-backed
+moderation. This parser fix requires the companion adapter update, not merely a
+LureScope upgrade with the older published LureBench dependency. Test and deploy
+compatible builds together. A valid moderation maximum remains a content-safety
+proxy, not calibrated fraud probability.
+
+### Source-branch detector lifecycle
+
+Only `tfidf-logreg`, `heuristic-v0`, and `llama-guard-3` are cached across service
+operations. The cache holds at most one instance of each name per process.
+Engine/model fields do not change these local detectors and no longer create
+extra cache entries. They remain meaningful for `llm-judge` and semantic attack
+generation. Per-name construction locks prevent duplicate successful cold loads;
+loading optional Llama Guard weights does not hold the default detector's lock.
+Failed constructors are not cached and a subsequent request can retry.
+
+`llm-judge` and `openai-moderation` are request-scoped rather than cached globally.
+Each service operation constructs a new detector using the configuration visible
+at construction. Provider credentials and SDK clients are not retained in the
+service cache. This removes cross-operation connection reuse and adds constructor
+overhead. A single attack operation still shares its detector across clean,
+attacked, and defended scoring, without additional constructor calls per score.
+
+These limits bound retained detector instances, not model size, concurrent
+inference, request duration, SDK cleanup, or total process memory. Waiting for a
+local constructor has no application-level timeout; retain gateway deadlines
+and worker limits. Cached local models are not automatically reloaded when model
+files or environment variables change. Restart workers to deploy new weights or
+configuration. Provider rotation affects later constructors, not already-running
+operations; mutating process environment while requests run is not an atomic
+policy/configuration update. Use a controlled worker rollout for such changes.
+The private cache-clear hook waits for constructors and drops cache references;
+it does not cancel active scoring or guarantee immediate GPU-memory reclamation.
+There is no HTTP cache-management endpoint.
+
 ### Source-branch HTTP input boundary
 
 All HTTP routes now enforce an **8 MiB total body-byte limit before routing and

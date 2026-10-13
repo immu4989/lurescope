@@ -48,6 +48,27 @@ def main(argv=None):
     detector = service._detector("tfidf-logreg")
     if not isinstance(detector, portable.PortableTfidfDetector):
         raise ValueError("default serving did not select the data-only model")
+    for index in range(32):
+        if service._detector("tfidf-logreg", f"unused-{index}", f"unused-{index}") is not detector:
+            raise ValueError("ignored provider options multiplied installed local models")
+    if len(service._LOCAL_DETECTORS) != 1:
+        raise ValueError("installed detector cache retained unexpected entries")
+    original_constructor = service.get_detector
+    try:
+        service.get_detector = lambda *args, **kwargs: object()
+        for name in ("llm-judge", "openai-moderation"):
+            first = service._detector(name, "synthetic")
+            if service._detector(name, "synthetic") is first:
+                raise ValueError("installed service retained a provider detector")
+        for name in ("unknown", "llm-judge-provenance"):
+            try:
+                service._detector(name)
+            except KeyError:
+                pass
+            else:
+                raise ValueError("installed service constructed an unserved detector")
+    finally:
+        service.get_detector = original_constructor
     # Fixed historical-model anchor plus threshold and signal smoke checks.
     result = service.score("Please verify your bank account", threshold=.5)
     if (

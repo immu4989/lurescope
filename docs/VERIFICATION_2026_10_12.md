@@ -100,3 +100,43 @@ the model check now explicitly rejects provenance-only fraud scoring.
 Ruff and whitespace checks passed. The restriction requires no actual optional
 model or provider call and does not rewrite historical evidence. Changes remain
 local, uncommitted, and unpushed at verification time; no release was created.
+
+## Subsequent local detector lifecycle milestone
+
+The service now caches only its three fixed local detector names. Request engine
+and model options cannot multiply these instances, and per-name locks prevent
+duplicate successful construction on concurrent cold requests. Provider detectors
+are created for each service operation instead of retaining captured provider
+configuration and credentials across operations. Direct Python service calls
+also reject names outside the serving catalog before registry construction.
+
+Before the fix, 11 of the initial 14 regression cases failed. They reproduced
+local-instance multiplication, stale default engines and credentials, concurrent
+duplicate construction, and construction of unserved names. The final expanded
+suite has **21 passing lifecycle tests**, including a real LureBench judge
+constructor with synthetic credentials and changed provider presets, an ASGI
+allowlist/dispatch check after changing the default engine, synchronized cold
+loads and clearing, independent local-model locks, weak-reference release, and
+reuse of one provider detector across the three scores in an attack operation.
+No real provider calls, credentials, or downloaded weights are used.
+
+Full verification passed **1,255 Scope tests**, **1,819 Bench tests** (39 skips),
+and **107 browser tests**. The existing 16 Scope warnings, nine Bench warnings,
+and temporary Bench urllib3 overlay are unchanged. Ruff, whitespace checks,
+static asset URL checks, **26 producer pins**, and **10 independent authority
+artifacts** passed. LureBench source was unchanged in this milestone.
+
+The rebuilt Scope wheel matched **164 exact files**. Its source archive retained
+**19 browser inputs** and byte-exact lifecycle tests and installed smoke script.
+The previously built Bench wheel still matched **156 exact files** and was
+installed beside the new Scope wheel into a fresh temporary directory.
+Installed model/proof, authentication, and browser checks passed outside both
+checkouts on Python **3.12.13**. The existing installed-model CI check now covers
+local cache reuse, uncached provider constructors, and rejection of unserved names.
+
+This bounds retained local instances, not total memory, inference concurrency,
+constructor wait time, or SDK cleanup. Provider connection reuse changes, and
+live environment mutation is not atomic reconfiguration. See
+[deployment lifecycle limits](PUBLIC_DEPLOYMENT.md#source-branch-detector-lifecycle).
+This milestone remains local and unpushed. The local 0.11.0 build artifacts are
+verification outputs, not replacement public releases or a deployment.
