@@ -68,8 +68,8 @@ DETECTOR_INFO = {
         "torch/transformers and gated access to meta-llama/Llama-Guard-3-8B",
     ),
     "binoculars": (
-        "perplexity-based AI-generated-text detector",
-        "torch/transformers and the reference model weights",
+        "provenance-only AI-generated-text ranking proxy, not a fraud detector",
+        "offline provenance evaluation in LureBench; disabled on LureScope fraud endpoints",
     ),
 }
 
@@ -103,6 +103,9 @@ def _as_lure(text: str) -> Lure:
 
 @lru_cache(maxsize=None)
 def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = None):
+    if name == "binoculars":
+        # Do not load upstream models or relabel P(ai)-like scores as fraud risk.
+        raise DetectorUnavailable(_needs(name))
     if name == "tfidf-logreg":
         return PortableTfidfDetector(_DEFAULT_TFIDF, expected_sha256=_DEFAULT_TFIDF_SHA256)
     if name == "llm-judge":

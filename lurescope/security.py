@@ -32,6 +32,11 @@ _SCRYPT_N = 1 << 14
 _SCRYPT_R = 8
 _SCRYPT_P = 1
 _SCRYPT_MAXMEM = 32 * 1024 * 1024
+MAX_CLIENT_KEY_CHARS = 512
+MAX_API_KEY_VERIFIERS = 8
+MAX_VERIFIER_CHARS = 256
+MAX_CONCURRENT_KEY_CHECKS = 2
+_KEY_CHECK_SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT_KEY_CHECKS)
 _BEARER = HTTPBearer(
     auto_error=False,
     description="Client API key required by protected deployments.",
@@ -77,6 +82,8 @@ class ApiKeyVerifier:
 
     @classmethod
     def parse(cls, value: str) -> "ApiKeyVerifier":
+        if not isinstance(value, str) or not 1 <= len(value) <= MAX_VERIFIER_CHARS:
+            raise ValueError("LURESCOPE_API_KEY_SCRYPT contains an invalid verifier")
         try:
             algorithm, n_text, r_text, p_text, salt_hex, digest_hex = value.split("$")
             n, r, p = int(n_text), int(r_text), int(p_text)
@@ -87,7 +94,7 @@ class ApiKeyVerifier:
             raise ValueError("LURESCOPE_API_KEY_SCRYPT supports only scrypt verifiers")
         if (n, r, p) != (_SCRYPT_N, _SCRYPT_R, _SCRYPT_P):
             raise ValueError("unsupported scrypt work factors")
-        if len(salt) < 16 or len(digest) != 32:
+        if len(salt) != 16 or len(digest) != 32:
             raise ValueError("scrypt verifiers require a 16-byte salt and 32-byte digest")
         return cls(n=n, r=r, p=p, salt=salt, digest=digest)
 
@@ -108,18 +115,31 @@ def _derive_api_key(token: str, verifier: ApiKeyVerifier) -> bytes:
 
 
 def _key_verifiers(public_mode: bool) -> Tuple[ApiKeyVerifier, ...]:
-    verifiers = tuple(
-        ApiKeyVerifier.parse(value) for value in _csv("LURESCOPE_API_KEY_SCRYPT")
-    )
+    raw = os.environ.get("LURESCOPE_API_KEY_SCRYPT", "")
+    if len(raw) > MAX_API_KEY_VERIFIERS * (MAX_VERIFIER_CHARS + 1):
+        raise ValueError("LURESCOPE_API_KEY_SCRYPT exceeds the bounded verifier configuration")
+    entries = [value.strip() for value in raw.split(",")] if raw.strip() else []
+    if len(entries) > MAX_API_KEY_VERIFIERS or len(set(entries)) != len(entries):
+        raise ValueError("LURESCOPE_API_KEY_SCRYPT requires at most eight distinct verifiers")
+    verifiers = tuple(ApiKeyVerifier.parse(value) for value in entries)
     if public_mode and not verifiers:
         raise ValueError("LURESCOPE_PUBLIC_MODE requires LURESCOPE_API_KEY_SCRYPT")
     return verifiers
 
 
+def _valid_client_key(token) -> bool:
+    # Reject control/whitespace and comma-folded credentials before a KDF call.
+    # Generated URL-safe keys satisfy this; no normalization changes key bytes.
+    return (isinstance(token, str) and 32 <= len(token) <= MAX_CLIENT_KEY_CHARS
+            and all(33 <= ord(c) <= 126 and c != "," for c in token))
+
+
 def create_api_key_verifier(client_key: str, salt: Optional[bytes] = None) -> str:
     """Create a salted, memory-hard verifier for a high-entropy client key."""
-    if len(client_key) < 32:
-        raise ValueError("client API key must contain at least 32 characters")
+    if not _valid_client_key(client_key):
+        raise ValueError(
+            "client API key must contain 32–512 visible ASCII characters without commas"
+        )
     verifier = ApiKeyVerifier(
         n=_SCRYPT_N,
         r=_SCRYPT_R,
@@ -127,7 +147,7 @@ def create_api_key_verifier(client_key: str, salt: Optional[bytes] = None) -> st
         salt=secrets.token_bytes(16) if salt is None else salt,
         digest=b"\x00" * 32,
     )
-    if len(verifier.salt) != 16:
+    if not isinstance(verifier.salt, bytes) or len(verifier.salt) != 16:
         raise ValueError("API-key salt must contain exactly 16 bytes")
     derived = _derive_api_key(client_key, verifier)
     return ApiKeyVerifier(
@@ -265,16 +285,31 @@ def _settings_or_503() -> SecuritySettings:
 
 
 def _presented_key(request: Request) -> Optional[str]:
-    authorization = request.headers.get("authorization", "")
+    credentials = {}
+    # Inspect the ASGI list, not a first-value dictionary projection. Identical
+    # repeated headers are also ambiguous across gateways and are rejected.
+    for name, value in request.scope.get("headers", []):
+        key = name.lower()
+        if key not in (b"authorization", b"x-api-key"):
+            continue
+        maximum = MAX_CLIENT_KEY_CHARS + (16 if key == b"authorization" else 0)
+        if key in credentials or len(value) > maximum:
+            return None
+        if any(c < 32 or c > 126 for c in value):
+            return None
+        credentials[key] = value.decode("ascii")
+    authorization = credentials.get(b"authorization")
     bearer: Optional[str] = None
-    if authorization:
+    if authorization is not None:
         scheme, separator, value = authorization.partition(" ")
-        if separator and scheme.casefold() == "bearer" and value.strip():
-            bearer = value.strip()
+        if separator and scheme.casefold() == "bearer" and _valid_client_key(value):
+            bearer = value
         else:
             return None
-    header_key = request.headers.get("x-api-key")
-    if bearer and header_key and bearer != header_key:
+    header_key = credentials.get(b"x-api-key")
+    if header_key is not None and not _valid_client_key(header_key):
+        return None
+    if bearer is not None and header_key is not None and bearer != header_key:
         return None
     return bearer or header_key
 
@@ -283,12 +318,20 @@ def _credential_identity(
     token: str,
     expected: Tuple[ApiKeyVerifier, ...],
 ) -> Optional[str]:
-    identity = None
-    for candidate in expected:
-        derived = _derive_api_key(token, candidate)
-        if secrets.compare_digest(derived, candidate.digest):
-            identity = candidate.digest.hex()
-    return identity
+    if not _valid_client_key(token):
+        return None
+    if not _KEY_CHECK_SLOTS.acquire(blocking=False):
+        raise HTTPException(503, "authentication capacity temporarily unavailable",
+                            headers={"Retry-After": "1"})
+    try:
+        identity = None
+        for candidate in expected:
+            derived = _derive_api_key(token, candidate)
+            if secrets.compare_digest(derived, candidate.digest):
+                identity = candidate.digest.hex()
+        return identity
+    finally:
+        _KEY_CHECK_SLOTS.release()
 
 
 def require_api_access(
@@ -304,11 +347,11 @@ def require_api_access(
         return "local-unrestricted"
 
     token = _presented_key(request)
-    identity = (
-        _credential_identity(token, settings.api_key_verifiers)
-        if token
-        else None
-    )
+    try:
+        identity = _credential_identity(token, settings.api_key_verifiers) if token else None
+    except (ValueError, MemoryError, OSError) as exc:
+        raise HTTPException(503, "authentication temporarily unavailable",
+                            headers={"Retry-After": "1"}) from exc
     if identity is None:
         raise HTTPException(
             401,
@@ -422,6 +465,9 @@ def security_status() -> dict:
         "Rate and provider budgets are process-local; use a shared gateway for multiple replicas.",
         "The provider budget counts attempted calls and is not a monetary billing guarantee.",
         "Bodies are capped at 8 MiB; enforce transport/header limits and TLS at the gateway.",
+        "Key verification admits at most two concurrent checks per process; "
+        "saturation returns 503. "
+        "This is not an unauthenticated request-rate or distributed denial-of-service limit.",
     ]
     if not settings.public_mode:
         limitations.insert(0, "Local mode does not require authentication unless API keys are set.")

@@ -857,7 +857,7 @@ The headline comparison above is toy-vs-toy on purpose (it runs with zero keys, 
 | `llm-judge` | LLM-as-classifier — reads meaning, not tokens | set `LURESCOPE_LLM_ENGINE` + a provider key |
 | `openai-moderation` | Content-safety moderation API, used as a fraud proxy | `OPENAI_API_KEY` |
 | `llama-guard-3` | Meta Llama Guard 3 content-safety model | `torch`/`transformers` + gated weights |
-| `binoculars` | Perplexity-based AI-generated-text detector | `torch`/`transformers` + weights |
+| `binoculars` | Provenance-only ranking proxy, not fraud detection | Disabled on fraud endpoints; use reviewed offline LureBench evaluation |
 
 The gated detectors are advertised in `/capabilities` with their requirement spelled out; request one without its key or weights and you get a clean `400` telling you what's missing, never a `500`.
 

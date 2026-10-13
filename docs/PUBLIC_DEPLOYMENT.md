@@ -19,6 +19,14 @@ paths. This covers these scoring routes, not arbitrary reverse-proxy logs or
 third-party instrumentation. Do not turn API failures into benign classifications
 in downstream integrations; retry or route to review under your own policy.
 
+Binoculars is unavailable on the fraud-scoring, attack, triage, and proof routes.
+Its provenance score answers a different question and must not be emitted as
+`fraud_probability` or used to create fraud evidence. The service rejects it
+before detector construction, even if the optional package is installed. The
+capability catalog retains the name with this explicit limitation. Reviewed
+offline provenance experiments belong in LureBench; the HTTP API provides no
+opt-in for upstream remote-code loading.
+
 ### Source-branch HTTP input boundary
 
 All HTTP routes now enforce an **8 MiB total body-byte limit before routing and
@@ -76,6 +84,46 @@ and the static lab remain readable without a key.
 a load balancer from routing traffic to an accidentally unprotected replica.
 
 ## Create a client key
+
+### Source-branch authentication work limits
+
+The unreleased service rejects repeated `Authorization` or `X-API-Key` headers,
+including identical duplicates, before key derivation. If both header types are
+present, each must be valid and they must carry the same key. An empty or malformed
+authorization header cannot fall back to another credential. Use the canonical
+`Authorization: Bearer <key>` form with one separator space and no padding.
+
+Keys must contain 32–512 visible ASCII characters, without spaces, controls, or
+commas. Generated keys already satisfy this. The verifier-creation API enforces
+the same contract, and unsupported custom keys must be rotated. Invalid syntax
+returns the same fixed `401` response as a nonmatching key, without running scrypt.
+This checks credential fields after the ASGI server has received them; it is not
+a general header-size or pre-upload authentication limit.
+
+At most two protected requests per process can perform scrypt verification at
+once. Admission is nonblocking: saturation returns a fixed `503` response with
+`Retry-After: 1`, without queuing another derivation. Slots are released after
+success, mismatch, and exceptions. Supported scrypt work factors and memory
+parameters are unchanged; every configured candidate is checked even after a
+match. Known KDF resource failures also return a redacted retryable `503`.
+
+Configure at most eight distinct verifier entries for key rotation. Each entry
+is limited to 256 characters, with exactly a 16-byte salt and 32-byte digest;
+the entire environment value is limited to 2,056 characters. Duplicate, empty,
+oversized, or malformed entries fail deployment configuration closed. Generated
+verifiers are compatible. Empty/unset configuration remains allowed only when
+public mode is disabled. There is no positive authentication cache that could
+keep a removed verifier usable on subsequent requests; in-flight checks still
+use the settings snapshot they already obtained.
+
+This ordering follows [OWASP's guidance on cheap checks before expensive validation](https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html#software-design-concepts).
+The two-slot guard is a concurrent KDF-work limit, not a request-rate, elapsed-time,
+total process-memory, or CPU-utilization guarantee. Invalid but well-formed keys
+can still consume available slots, and valid clients can receive `503` during
+contention. Unauthenticated rate limits, fair admission, total connection limits,
+and multi-replica protection belong at the gateway. Public health/static routes
+do not need a key-check slot. The existing post-authentication per-key rate and
+provider-call budgets remain separate controls.
 
 Generate a high-entropy client key and a random-salted, memory-hard scrypt
 verifier in a new mode-0600 file:
@@ -190,7 +238,7 @@ it. Enforce the real monetary ceiling at the provider account and gateway too.
 | Variable | Local default | Public default | Purpose |
 |---|---:|---:|---|
 | `LURESCOPE_PUBLIC_MODE` | `false` | — | Enable fail-closed deployment behavior. |
-| `LURESCOPE_API_KEY_SCRYPT` | empty | required | Comma-separated random-salted scrypt client-key verifiers. |
+| `LURESCOPE_API_KEY_SCRYPT` | empty | required | Up to eight distinct comma-separated random-salted scrypt verifiers. |
 | `LURESCOPE_RATE_LIMIT_PER_MINUTE` | `0` | `60` | Per-key, process-local sliding-window limit. |
 | `LURESCOPE_PROVIDER_DAILY_LIMIT` | unlimited | `0` | Process-local attempted-provider-call circuit breaker. |
 | `LURESCOPE_ALLOWED_DETECTORS` | unrestricted | local defaults | Comma-separated detector allowlist. |

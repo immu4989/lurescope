@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Fraud endpoints reject the provenance-only Binoculars detector before loading
+  it, instead of treating its ranking proxy as fraud probability. The catalog
+  and README explain the restriction; offline reviewed provenance evaluation
+  remains a LureBench workflow. Installed serving checks cover the boundary.
+
+- Protected API authentication rejects duplicate/ambiguous and oversized
+  credentials before scrypt, bounds verifier configuration, and admits at most
+  two concurrent key checks per process. Saturation returns a redacted retryable
+  `503` without queuing KDF work; all exit paths release capacity. Scrypt strength
+  and per-credential/provider budgets are unchanged. Generated keys remain
+  compatible; custom keys and verifier rings have documented migration limits.
+  Installed-wheel CI checks header rejection, saturation recovery, and rotation.
+
 - Evidence Explorer displays LureBench whole-lineage uncertainty with family
   counts, coverage, unavailable metrics, and conditional-draw warnings. It checks
   displayed arithmetic and statuses but does not rerun bootstrap inference or

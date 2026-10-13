@@ -89,6 +89,9 @@ jobs:
           "$GITHUB_WORKSPACE/.venv/bin/python" \
             "$GITHUB_WORKSPACE/scripts/check_installed_model.py" \
             --installed-root "$mandate_smoke_root/installed"
+          "$GITHUB_WORKSPACE/.venv/bin/python" \
+            "$GITHUB_WORKSPACE/scripts/check_installed_auth.py" \
+            --installed-root "$mandate_smoke_root/installed"
           node "$GITHUB_WORKSPACE/scripts/check_installed_browser.cjs" \
             "$mandate_smoke_root/installed"
 

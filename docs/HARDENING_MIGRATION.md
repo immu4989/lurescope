@@ -22,6 +22,21 @@ artifact. Review and register a new plan before evaluating the changed deploymen
 
 ## API clients
 
+Binoculars is now rejected before construction on fraud endpoints. A provenance
+ranking score cannot be represented as fraud probability, evasion evidence, or a
+fraud proof. The catalog explains the boundary; move intentional provenance
+research to LureBench's reviewed-backend workflow. Existing fraud baselines are
+unchanged, and old artifacts are not retroactively reclassified.
+
+Protected deployments now reject repeated credential headers and require
+32–512 visible ASCII key characters without commas or whitespace. Generated keys
+remain valid. Review custom keys and verifier rings before upgrading: at most
+eight entries and exactly 16-byte salts are supported. Concurrent scrypt checks
+are limited to two per process; retryable `503` means no authentication decision
+or protected operation was completed for that request. Apply bounded backoff
+under your own retry policy, and retain unauthenticated gateway limits. See
+[authentication work limits](PUBLIC_DEPLOYMENT.md#source-branch-authentication-work-limits).
+
 The standalone `lurescope proof --out` command now refuses an existing output
 instead of overwriting it. Use a new filename, an existing trusted directory,
 and a filesystem supporting hard links. Publication validates the exact serialized

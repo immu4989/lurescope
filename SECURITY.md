@@ -111,6 +111,12 @@ start protected requests without a salted, memory-hard API-key verifier and expo
 non-secret posture at `GET /security`. See
 [public deployment guardrails](docs/PUBLIC_DEPLOYMENT.md).
 
+The source branch rejects ambiguous credential headers, bounds key/verifier
+inputs, and limits concurrent scrypt checks to two per process. Saturated checks
+return retryable `503`, not an authentication result. This guard does not provide
+an unauthenticated rate limit or guarantee availability under attack; apply
+gateway admission controls before routing traffic to the application.
+
 These controls do not replace an HTTPS gateway, a shared limiter for multiple
 workers, an identity provider, a pre-parse request-byte limit, or provider-side
 billing caps. Treat every scored message as sensitive: `/score` and `/attack`

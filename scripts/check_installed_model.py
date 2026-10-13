@@ -39,6 +39,12 @@ def main(argv=None):
     sys.meta_path.insert(0, ForbidModelFrameworks())
     service = importlib.import_module("lurescope.service")
     portable = importlib.import_module("lurescope.portable_tfidf")
+    try:
+        service.score("Synthetic input", detector_name="binoculars")
+    except service.DetectorUnavailable:
+        pass
+    else:
+        raise ValueError("installed fraud service accepted a provenance-only detector")
     detector = service._detector("tfidf-logreg")
     if not isinstance(detector, portable.PortableTfidfDetector):
         raise ValueError("default serving did not select the data-only model")
