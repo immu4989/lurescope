@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Evidence Explorer displays LureBench whole-lineage uncertainty with family
+  counts, coverage, unavailable metrics, and conditional-draw warnings. It checks
+  displayed arithmetic and statuses but does not rerun bootstrap inference or
+  authenticate reports. Raw messages/caches are not uploaded. Source packages
+  include the synthetic producer fixture used by browser regression tests.
+
 - The standalone proof CLI refuses existing output paths before reading or
   scoring input. Its new `write_proof` helper validates bounded serialized bytes,
   stages with owner-only POSIX permissions, fsyncs, and publishes without replacing

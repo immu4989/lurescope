@@ -21,4 +21,15 @@ assert.ok(Number.isFinite(engine.scoreMessage("__proto__ constructor").fraud_pro
 for (const filename of ["index.html", "evidence-explorer.js", "capacity-planner.js", "capacity-ui.js"]) {
   assert.ok(fs.statSync(path.join(assets, filename)).size > 0, `Missing browser asset: ${filename}`);
 }
-console.log("PASS installed browser model, safe dictionary scoring, and workbench assets");
+const evidence = require(path.join(assets, "evidence-explorer.js"));
+const fixture = fs.readFileSync(path.join(__dirname, "../tests/fixtures/cluster-uncertainty.json"), "utf8");
+const uncertainty = evidence.parseArtifact(fixture);
+assert.equal(uncertainty.kind, "LureBench detector uncertainty");
+assert.equal(uncertainty.status, "Uncertainty only");
+assert.equal(uncertainty.signature.authenticated, false);
+assert.ok(uncertainty.metrics.some(m => m.label === "Records / resampling units" && m.value === "6 / 3"));
+assert.ok(uncertainty.warnings.some(w => w.includes("verify-uncertainty")));
+const altered = JSON.parse(fixture);
+altered.metrics.recall.lower = -1;
+assert.throws(() => evidence.summarizeArtifact(altered), /Invalid detector uncertainty report/);
+console.log("PASS installed browser model, dictionary scoring, assets, and grouped uncertainty view");

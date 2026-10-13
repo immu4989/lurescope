@@ -5,6 +5,114 @@ const explorer = require("../lurescope/static/evidence-explorer.js");
 
 const sha = character => character.repeat(64);
 
+const uncertaintyFixture = () => structuredClone(require('./fixtures/cluster-uncertainty.json'));
+
+test('producer uncertainty shows grouped and conditional intervals without a pass claim', () => {
+  const report = uncertaintyFixture();
+  const summary = explorer.parseArtifact(JSON.stringify(report));
+  assert.equal(summary.kind, 'LureBench detector uncertainty');
+  assert.equal(summary.status, 'Uncertainty only');
+  assert.equal(summary.tone, 'neutral');
+  assert.equal(summary.signature.authenticated, false);
+  assert.ok(summary.metrics.some(m => m.label === 'Records / resampling units' && m.value === '6 / 3'));
+  assert.ok(summary.metrics.some(m => m.label === 'answer coverage' && m.value.startsWith('0.6667')));
+  assert.ok(summary.metrics.some(m => m.note?.includes('conditional on defined draws')));
+  assert.ok(summary.warnings.some(w => w.includes('verify-uncertainty')));
+  assert.ok(summary.warnings.some(w => w.includes('do not prove independence')));
+  assert.equal(summary.bindings.length, 1);
+  assert.ok(!JSON.stringify(summary).includes('"first"'));
+  report.source = {task: 'fraud', grouping: 'lineage', dataset_sha256: sha('a')};
+  assert.equal(explorer.summarizeArtifact(report).bindings.length, 2);
+});
+
+test('single-group uncertainty keeps point estimates but labels intervals unavailable', () => {
+  const report = uncertaintyFixture();
+  Object.assign(report.sample, {resampling_units: 1, smallest_unit_records: 6,
+    largest_unit_records: 6, largest_unit_fraction: 1, units_with_positive_records: 1,
+    units_with_negative_records: 1, units_with_answered_records: 1});
+  report.executed_replicates = 0;
+  report.replicate_records = {minimum: null, maximum: null};
+  for (const interval of Object.values(report.metrics)) Object.assign(interval, {
+    lower: null, upper: null, status: 'insufficient_resampling_units', defined_replicates: 0,
+    undefined_replicates: 0, conditional_on_defined: false,
+  });
+  const summary = explorer.summarizeArtifact(report);
+  assert.ok(summary.warnings.some(w => w.includes('Only one resampling unit')));
+  assert.ok(summary.metrics.filter(m => m.value.includes('interval unavailable')).length === 8);
+});
+
+test('wholly abstaining uncertainty retains zero coverage and undefined performance', () => {
+  const report = uncertaintyFixture();
+  report.sample.decision_counts = {tp: 0, fp: 0, tn: 0, fn: 0, abstained_positive: 3, abstained_negative: 3};
+  report.sample.units_with_answered_records = 0;
+  for (const [name, interval] of Object.entries(report.metrics)) {
+    const coverage = name.includes('coverage');
+    Object.assign(interval, {estimate: coverage ? 0 : null, lower: coverage ? 0 : null,
+      upper: coverage ? 0 : null, status: coverage ? 'available' : 'undefined_estimate',
+      defined_replicates: coverage ? 97 : 0, undefined_replicates: coverage ? 0 : 97,
+      conditional_on_defined: !coverage});
+  }
+  const summary = explorer.summarizeArtifact(report);
+  assert.ok(summary.metrics.some(m => m.label === 'auc' && m.value === 'Undefined · interval unavailable'));
+  assert.ok(summary.metrics.some(m => m.label === 'answer coverage' && m.value === '0.0000 [0.0000, 0.0000]'));
+});
+
+test('uncertainty rejects inconsistent arithmetic, metric status, bounds, and coercions', () => {
+  for (const mutate of [
+    r => r.schema_version = true,
+    r => r.method = 'another_method',
+    r => r.confidence = 1,
+    r => r.threshold = NaN,
+    r => r.seed = Number.MAX_SAFE_INTEGER + 1,
+    r => r.sample.records = '6',
+    r => r.sample.records = 5,
+    r => r.sample.resampling_units = 7,
+    r => r.sample.largest_unit_fraction = .9,
+    r => r.sample.smallest_unit_records = 4,
+    r => r.sample.largest_unit_records = 1,
+    r => r.sample.units_with_positive_records = 0,
+    r => r.sample.units_with_negative_records = 4,
+    r => r.sample.units_with_answered_records = 0,
+    r => r.sample.decision_counts.tp = true,
+    r => r.sample.decision_counts.extra = 0,
+    r => r.executed_replicates = 0,
+    r => r.requested_replicates = 0,
+    r => r.requested_replicates = 10001,
+    r => r.replicate_records.minimum = null,
+    r => r.replicate_records.maximum = 100,
+    r => r.resampling_unit = 'record',
+    r => r.metrics.accuracy.estimate = 0,
+    r => r.metrics.accuracy.status = 'passed',
+    r => r.metrics.accuracy.lower = null,
+    r => r.metrics.auc.estimate = null,
+    r => r.metrics.auc.upper = 2,
+    r => r.metrics.recall.lower = -1,
+    r => r.metrics.recall.defined_replicates = 98,
+    r => r.metrics.recall.undefined_replicates = 98,
+    r => r.metrics.recall.conditional_on_defined = !r.metrics.recall.conditional_on_defined,
+    r => r.metrics.mcc.lower = .8,
+    r => delete r.metrics.mcc,
+    r => r.metrics.extra = {...r.metrics.accuracy},
+    r => r.input_fingerprint.sha256 = 'invalid',
+    r => r.input_fingerprint.profile = 'invalid',
+    r => r.source = {task: 'fraud', grouping: 'record', dataset_sha256: sha('a')},
+  ]) {
+    const report = uncertaintyFixture();
+    mutate(report);
+    assert.throws(() => explorer.summarizeArtifact(report), /Invalid detector uncertainty report/);
+  }
+});
+
+test('browser-global path accepts the same producer fixture as Node', () => {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  const context = {TextEncoder, TextDecoder, atob, btoa};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../lurescope/static/evidence-explorer.js'), 'utf8'), context);
+  const fixture = JSON.stringify(uncertaintyFixture());
+  assert.deepEqual(JSON.parse(JSON.stringify(context.LureScopeEvidence.parseArtifact(fixture))),
+    explorer.parseArtifact(fixture));
+});
+
 test('strict JSON rejects ambiguous keys, resource excess, invalid Unicode and numbers', () => {
   for (const text of [
     '{"a":1,"a":2}', '{"a":1,"\\u0061":2}', '{"x":{"k":0,"k":1}}',

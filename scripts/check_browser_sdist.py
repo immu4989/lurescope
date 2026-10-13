@@ -21,6 +21,7 @@ REQUIRED = (
     "lurescope/static/capacity-ui.js", "tests/browser_engine.test.cjs",
     "tests/evidence_explorer.test.cjs", "tests/workbench_ui.test.cjs",
     "tests/capacity_planner.test.cjs", "tests/capacity_ui.test.cjs",
+    "tests/fixtures/cluster-uncertainty.json",
 )
 
 

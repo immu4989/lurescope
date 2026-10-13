@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "analysis": "detector_cluster_uncertainty",
+  "method": "whole_group_percentile_v1",
+  "resampling_unit": "declared_group",
+  "threshold": 0.5,
+  "confidence": 0.95,
+  "seed": 41,
+  "requested_replicates": 97,
+  "executed_replicates": 97,
+  "input_fingerprint": {
+    "profile": "lurebench-uncertainty-effective-inputs-v1",
+    "sha256": "a3f4c9f6c0b2a2642912e504cf2067755ff3c7df7c1a246a3bd2b65f9f41b745"
+  },
+  "sample": {
+    "records": 6,
+    "resampling_units": 3,
+    "smallest_unit_records": 1,
+    "largest_unit_records": 3,
+    "largest_unit_fraction": 0.5,
+    "units_with_positive_records": 2,
+    "units_with_negative_records": 3,
+    "units_with_answered_records": 3,
+    "decision_counts": {
+      "tp": 1,
+      "fp": 1,
+      "tn": 1,
+      "fn": 1,
+      "abstained_positive": 1,
+      "abstained_negative": 1
+    }
+  },
+  "replicate_records": {
+    "minimum": 3,
+    "maximum": 9
+  },
+  "metrics": {
+    "accuracy": {
+      "estimate": 0.5,
+      "lower": 0.0,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 97,
+      "undefined_replicates": 0,
+      "conditional_on_defined": false
+    },
+    "mcc": {
+      "estimate": 0.0,
+      "lower": -0.5773502691896258,
+      "upper": 0.5773502691896258,
+      "status": "available",
+      "defined_replicates": 64,
+      "undefined_replicates": 33,
+      "conditional_on_defined": true
+    },
+    "recall": {
+      "estimate": 0.5,
+      "lower": 0.0,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 94,
+      "undefined_replicates": 3,
+      "conditional_on_defined": true
+    },
+    "fpr": {
+      "estimate": 0.5,
+      "lower": 0.0,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 93,
+      "undefined_replicates": 4,
+      "conditional_on_defined": true
+    },
+    "auc": {
+      "estimate": 0.625,
+      "lower": 0.16666666666666666,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 90,
+      "undefined_replicates": 7,
+      "conditional_on_defined": true
+    },
+    "answer_coverage": {
+      "estimate": 0.6666666666666666,
+      "lower": 0.5,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 97,
+      "undefined_replicates": 0,
+      "conditional_on_defined": false
+    },
+    "positive_answer_coverage": {
+      "estimate": 0.6666666666666666,
+      "lower": 0.5,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 94,
+      "undefined_replicates": 3,
+      "conditional_on_defined": true
+    },
+    "negative_answer_coverage": {
+      "estimate": 0.6666666666666666,
+      "lower": 0.0,
+      "upper": 1.0,
+      "status": "available",
+      "defined_replicates": 97,
+      "undefined_replicates": 0,
+      "conditional_on_defined": false
+    }
+  },
+  "limitations": [
+    "requires_independent_representative_resampling_units_not_proven_by_annotations",
+    "record_weighted_metrics_not_equal_group_weighted_metrics",
+    "performance_is_conditional_on_answered_records_not_missing_outcome_imputation",
+    "percentile_intervals_are_nominal_not_finite_sample_coverage_guarantees",
+    "few_or_dominant_groups_and_boundary_estimates_can_give_misleading_intervals",
+    "undefined_replicates_are_excluded_and_reported_not_replaced_with_zero",
+    "not_simultaneous_intervals_or_adjusted_for_selection_and_repeated_inspection",
+    "no_refitting_threshold_selection_distribution_shift_or_label_error_correction",
+    "fingerprints_are_not_anonymization_or_input_authentication"
+  ]
+}

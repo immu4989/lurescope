@@ -16,6 +16,7 @@ include scripts/check_installed_browser.cjs
 include scripts/check_browser_sdist.py
 include space/model.json
 recursive-include tests *.cjs
+include tests/fixtures/cluster-uncertainty.json
 include tests/producer-contract.json
 include tests/PRODUCER_CONTRACT.md
 recursive-include docs *.md

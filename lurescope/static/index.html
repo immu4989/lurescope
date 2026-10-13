@@ -294,7 +294,7 @@
       <div><span class="step">04 / Evidence Explorer</span><h2>Open the proof, not the message</h2>
         <p class="evidence-copy">Review aggregate model comparisons, operational evaluations, and control evidence. See coverage, uncertainty, declared byte bindings, and limits without uploading the file. This view does not authenticate signatures or authorize deployment.</p>
         <details class="evidence-copy"><summary>Supported evidence formats</summary>
-          <p>LureBench comparison panels; LureEval receipts and Pilot Gates; Defender and Shadow reports; LureProof and SCuBA; LureWatch; boundary, range, runtime, invariant, coverage, delegation, incident-response, portfolio, and witness evidence; revocation, identity, artifact, recall, attestation, BOM, channel, and transaction-authority reports, including their supported conformance and registry artifacts.</p>
+          <p>LureBench comparison panels and lineage-aware uncertainty; LureEval receipts and Pilot Gates; Defender and Shadow reports; LureProof and SCuBA; LureWatch; boundary, range, runtime, invariant, coverage, delegation, incident-response, portfolio, and witness evidence; revocation, identity, artifact, recall, attestation, BOM, channel, and transaction-authority reports, including their supported conformance and registry artifacts.</p>
         </details>
       </div>
       <div><input id="evidenceFile" type="file" accept=".json,application/json" hidden><label class="file-button" for="evidenceFile">Choose evidence JSON</label></div>
@@ -357,7 +357,7 @@
   <footer><span>LureScope is the deployment companion to <a href="https://github.com/immu4989/lurebench">LureBench</a>.</span><span>Defensive research · Apache-2.0 · <a id="docsLink" href="/docs">API docs</a></span></footer>
 </main>
 <script src="static/browser-engine.js?sha256=72f6c6fad56bee4ca18b3aeced381cfa222d234350fd8c0b44e76d70c080f54c"></script>
-<script src="static/evidence-explorer.js?sha256=672decb259b48fef7dcd49f2c9b2a0ecbf7da91c20a4d18ea944aff7f936ec3c"></script>
+<script src="static/evidence-explorer.js?sha256=78f17a6c56f9dc1524240b39bc08b5b5113fa13f7a4184b8f98f1001d39e18e7"></script>
 <script src="static/capacity-planner.js?sha256=63c3bed02eea4ae40c2c40e4cb033566577ac579a20ce03c08002bef110cc5a7"></script>
 <script src="static/capacity-ui.js?sha256=4e4530037723bce568bc3137ef69d065643d7a856c609e318b6880b68f0334a4"></script>
 <script>
@@ -553,6 +553,8 @@ async function exploreEvidence(file) {
     $("artifactWarnings").innerHTML = `<b>Interpret carefully.</b> ${safe(summary.warnings.slice(0, 4).map(item => String(item).replaceAll("_", " ")).join(" · ") || "No machine-readable limitations were found.")}`;
     $("artifactSignature").textContent = `${summary.signature.label}. ` + (summary.kind === "LureBench comparison panel"
       ? "Reproduce with LureBench compare-panel and the reviewed dataset, plan, and caches. This browser does not recompute statistical inference or authenticate the report."
+      : summary.kind === "LureBench detector uncertainty"
+      ? "Reproduce with lurebench verify-uncertainty and the reviewed dataset, cache, and analysis controls. This browser does not rerun bootstrap draws or authenticate the report."
       : "Shape inspection is not strict semantic or cryptographic verification; use the artifact's LureScope CLI verifier with a trusted public key for that.");
     $("evidenceResult").style.display = "block";
   } catch (error) { if (version === requestVersion.evidence) $("evidenceErr").textContent = error.message; }

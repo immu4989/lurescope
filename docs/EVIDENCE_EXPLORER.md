@@ -1,5 +1,19 @@
 # Browser Evidence Explorer
 
+Unreleased detector-uncertainty support displays LureBench's whole-lineage
+percentile intervals, original decision counts through recomputed point metrics,
+answer coverage, group sizes, and defined-draw accounting. A single group shows
+no interval; undefined metrics stay unavailable, and conditional intervals carry
+an explicit warning. It never labels an interval a deployment pass.
+The view checks displayed arithmetic, ranges, and status consistency but does
+not regenerate bootstrap draws, independently calculate AUC, or authenticate
+fingerprints. Reproduce all fields with `lurebench verify-uncertainty` and the
+reviewed dataset, cache, and explicit analysis controls. See the
+[producer method and limits](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/CLUSTER_UNCERTAINTY.md).
+The browser's strict JSON boundary requires safe JavaScript integers; reports
+with seeds above `9007199254740991` must be inspected/reproduced with the CLI.
+Reports and message data are not uploaded by this local view.
+
 Unreleased comparison-panel support shows LureBench's planned baseline comparisons,
 co-answered coverage, raw and Holm-adjusted p-values, logical completion bounds,
 and the all-model common cohort. It never declares a winner or deployment pass.

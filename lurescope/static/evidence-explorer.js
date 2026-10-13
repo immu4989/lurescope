@@ -2499,11 +2499,116 @@
     return summary;
   }
 
+  function uncertaintySummary(value, meta) {
+    const fail = () => { throw new Error("Invalid detector uncertainty report"); };
+    const integer = (n, maximum = 50_000) => Number.isSafeInteger(n) && n >= 0 && n <= maximum;
+    const close = (a, b) => b === null ? a === null : typeof a === "number" && Math.abs(a - b) < 1e-12;
+    const sample = object(value.sample, "uncertainty sample");
+    const counts = object(sample.decision_counts, "uncertainty counts");
+    const names = ["accuracy", "mcc", "recall", "fpr", "auc", "answer_coverage", "positive_answer_coverage", "negative_answer_coverage"];
+    const metrics = object(value.metrics, "uncertainty metrics");
+    const countNames = ["tp", "fp", "tn", "fn", "abstained_positive", "abstained_negative"];
+    if (value.schema_version !== 1 || value.method !== "whole_group_percentile_v1" ||
+        !["record", "declared_group"].includes(value.resampling_unit) ||
+        typeof value.confidence !== "number" || !(value.confidence > 0 && value.confidence < 1) ||
+        typeof value.threshold !== "number" || !(value.threshold >= 0 && value.threshold <= 1) ||
+        !integer(value.seed, Number.MAX_SAFE_INTEGER) ||
+        !integer(value.requested_replicates, 10_000) || !value.requested_replicates ||
+        !integer(sample.records) || !sample.records || sample.records * value.requested_replicates > 50_000_000 ||
+        !integer(sample.resampling_units, sample.records) || !sample.resampling_units ||
+        JSON.stringify(Object.keys(metrics).sort()) !== JSON.stringify([...names].sort()) ||
+        JSON.stringify(Object.keys(counts).sort()) !== JSON.stringify([...countNames].sort()) ||
+        countNames.some(name => !integer(counts[name])) ||
+        countNames.reduce((total, name) => total + counts[name], 0) !== sample.records) fail();
+    const k = sample.resampling_units;
+    if (!integer(sample.smallest_unit_records, sample.records) || !sample.smallest_unit_records ||
+        !integer(sample.largest_unit_records, sample.records) || sample.largest_unit_records < sample.smallest_unit_records ||
+        k * sample.smallest_unit_records > sample.records || k * sample.largest_unit_records < sample.records ||
+        !close(sample.largest_unit_fraction, sample.largest_unit_records / sample.records) ||
+        (k === 1 && (sample.smallest_unit_records !== sample.records || sample.largest_unit_records !== sample.records)) ||
+        (value.resampling_unit === "record" && (k !== sample.records || sample.smallest_unit_records !== 1 || sample.largest_unit_records !== 1)) ||
+        value.executed_replicates !== (k === 1 ? 0 : value.requested_replicates)) fail();
+    const {tp, fp, tn, fn, abstained_positive: ap, abstained_negative: an} = counts;
+    const positive = tp + fn, negative = tn + fp, answered = positive + negative;
+    for (const [field, n] of [["units_with_positive_records", positive + ap], ["units_with_negative_records", negative + an], ["units_with_answered_records", answered]]) {
+      if (!integer(sample[field], Math.min(k, n)) || (sample[field] === 0) !== (n === 0)) fail();
+    }
+    if (sample.units_with_positive_records + sample.units_with_negative_records < k) fail();
+    const denominator = (tp + fp) * positive * negative * (tn + fn);
+    const expected = {
+      accuracy: answered ? (tp + tn) / answered : null,
+      mcc: denominator ? (tp * tn - fp * fn) / Math.sqrt(denominator) : null,
+      recall: positive ? tp / positive : null, fpr: negative ? fp / negative : null,
+      answer_coverage: answered / sample.records,
+      positive_answer_coverage: positive + ap ? positive / (positive + ap) : null,
+      negative_answer_coverage: negative + an ? negative / (negative + an) : null,
+    };
+    const replicated = object(value.replicate_records, "uncertainty replicate sizes");
+    if (k === 1) {
+      if (replicated.minimum !== null || replicated.maximum !== null) fail();
+    } else if (!integer(replicated.minimum, k * sample.largest_unit_records) ||
+               !integer(replicated.maximum, k * sample.largest_unit_records) ||
+               replicated.minimum < k * sample.smallest_unit_records || replicated.maximum < replicated.minimum) fail();
+    const fingerprint = object(value.input_fingerprint, "uncertainty fingerprint");
+    if (fingerprint.profile !== "lurebench-uncertainty-effective-inputs-v1" || !digest(fingerprint.sha256)) fail();
+    const summary = base("LureBench detector uncertainty", "Detector uncertainty by sampling unit",
+      "Nominal whole-group percentile intervals from cached scores. Descriptive evidence, not an approval or deployment decision.", meta);
+    summary.status = "Uncertainty only";
+    summary.metrics = [
+      {label: "Records / resampling units", value: `${count(sample.records)} / ${count(k)}`, note: value.resampling_unit.replaceAll("_", " ")},
+      {label: "Largest unit", value: `${count(sample.largest_unit_records)} records (${ratio(sample.largest_unit_fraction)})`},
+      {label: "Answered records", value: `${count(answered)} / ${count(sample.records)}`, note: "Performance metrics exclude abstentions"},
+      {label: "Nominal confidence", value: ratio(value.confidence), note: "Not simultaneous or guaranteed coverage"},
+      {label: "Executed / requested replicates", value: `${count(value.executed_replicates)} / ${count(value.requested_replicates)}`},
+    ];
+    let conditional = false;
+    for (const name of names) {
+      const interval = object(metrics[name], "uncertainty interval");
+      const validNumber = n => typeof n === "number" && Number.isFinite(n) && n >= (name === "mcc" ? -1 : 0) && n <= 1;
+      if ((interval.estimate !== null && !validNumber(interval.estimate)) ||
+          !integer(interval.defined_replicates, value.executed_replicates) ||
+          !integer(interval.undefined_replicates, value.executed_replicates) ||
+          interval.defined_replicates + interval.undefined_replicates !== value.executed_replicates ||
+          (interval.estimate === null && interval.defined_replicates !== 0) ||
+          interval.conditional_on_defined !== (interval.undefined_replicates > 0)) fail();
+      if (name === "auc") {
+        if ((interval.estimate === null) !== !(positive && negative)) fail();
+      } else if (!close(interval.estimate, expected[name])) fail();
+      const status = interval.estimate === null ? "undefined_estimate" : k === 1 ? "insufficient_resampling_units" :
+        !interval.defined_replicates ? "no_defined_replicates" : "available";
+      if (interval.status !== status || (status === "available"
+          ? !validNumber(interval.lower) || !validNumber(interval.upper) || interval.lower > interval.upper
+          : interval.lower !== null || interval.upper !== null)) fail();
+      const format = n => n === null ? "Undefined" : n.toFixed(4);
+      summary.metrics.push({label: name.replaceAll("_", " "),
+        value: status === "available" ? `${format(interval.estimate)} [${format(interval.lower)}, ${format(interval.upper)}]` : `${format(interval.estimate)} · interval unavailable`,
+        note: `${status.replaceAll("_", " ")}; defined ${interval.defined_replicates}/${value.executed_replicates}${interval.conditional_on_defined ? "; conditional on defined draws" : ""}`});
+      conditional ||= interval.conditional_on_defined;
+    }
+    summary.bindings.push(binding("Effective input fingerprint", fingerprint.sha256));
+    if (value.source !== undefined) {
+      const source = object(value.source, "uncertainty source");
+      if (!digest(source.dataset_sha256) || !["fraud", "provenance"].includes(source.task) ||
+          source.grouping !== (value.resampling_unit === "record" ? "record" : "lineage")) fail();
+      summary.bindings.push(binding("Declared dataset bytes", source.dataset_sha256));
+    }
+    summary.privacy = ["This view does not upload the report, messages, or caches. Fingerprints are not anonymization."];
+    summary.warnings = [
+      "Browser checks displayed counts, ranges, and consistency; it does not rerun bootstrap draws, recompute AUC or fingerprints, or authenticate the report. Use lurebench verify-uncertainty with the reviewed inputs and controls.",
+      "Declared groups do not prove independence or representative sampling. Few or dominant groups, missing ancestry, and perfect boundary scores can make nominal intervals misleading.",
+      "Performance concerns answered records only. These intervals are not adjusted for simultaneous comparisons, model selection, or repeated inspection, and are not deployment-safety guarantees.",
+    ];
+    if (k === 1) summary.warnings.unshift("Only one resampling unit: no uncertainty interval was estimated.");
+    if (conditional) summary.warnings.unshift("Some metric draws were undefined. Displayed intervals exclude them and are conditional on defined draws.");
+    return summary;
+  }
+
   function summarizeArtifact(value) {
     const meta = unwrap(value);
     const statement = meta.statement;
     let summary;
     if (statement.analysis === "planned_baseline_detector_comparisons") summary = panelSummary(statement, meta);
+    else if (statement.analysis === "detector_cluster_uncertainty") summary = uncertaintySummary(statement, meta);
     else if (statement.predicateType) summary = statementSummary(statement, meta);
     else if (statement.schema === PILOT_GATE) summary = pilotGateSummary(statement, meta);
     else if (statement.schema === DEFENDER_REPORT) summary = defenderSummary(statement, meta);

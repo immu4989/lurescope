@@ -12,7 +12,7 @@ function deferred() {
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-function mount() {
+function mount(evidence = {parseArtifact: raw => JSON.parse(raw)}) {
   const html = fs.readFileSync(path.join(__dirname, '../lurescope/static/index.html'), 'utf8');
   const nodes = new Map();
   for (const match of html.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], {
@@ -25,7 +25,7 @@ function mount() {
   const context = vm.createContext({URLSearchParams, Blob, TextDecoder, btoa,
     URL: {createObjectURL: () => 'blob:synthetic', revokeObjectURL() {}},
     window: {location: {search: '', hostname: 'localhost', protocol: 'http:'},
-      LureScopeEvidence: {parseArtifact: raw => JSON.parse(raw)}},
+      LureScopeEvidence: evidence},
     document: {
       getElementById(id) { assert.ok(nodes.has(id), `unknown DOM ID: ${id}`); return nodes.get(id); },
       querySelectorAll() { return []; },
@@ -49,6 +49,21 @@ const score = probability => ({fraud_probability: probability, threshold: .5,
   label: probability >= .5 ? 'fraud' : 'benign', detector: 'heuristic-v0', signals: []});
 const triage = subject => ({risk_tier: 'low', subject, from_address: 'synthetic@example.test',
   content_probability: .1, threshold: .5, evidence: [], recommended_action: 'Normal controls'});
+
+test('real uncertainty intake renders grouped intervals and the correct replay guidance without requests', async () => {
+  const ui = mount(require('../lurescope/static/evidence-explorer.js'));
+  const payload = fs.readFileSync(path.join(__dirname, 'fixtures/cluster-uncertainty.json'));
+  ui.context.file = {name: 'private-report.json', size: payload.length, arrayBuffer: async () => payload};
+  await ui.run('exploreEvidence(file)');
+  assert.equal(ui.nodes.get('evidenceErr').textContent, '');
+  assert.equal(ui.nodes.get('evidenceResult').style.display, 'block');
+  assert.match(ui.nodes.get('artifactMetrics').innerHTML, /Records \/ resampling units/);
+  assert.match(ui.nodes.get('artifactMetrics').innerHTML, /conditional on defined draws/);
+  assert.match(ui.nodes.get('artifactSignature').textContent, /lurebench verify-uncertainty/);
+  assert.doesNotMatch(ui.nodes.get('artifactSignature').textContent, /LureScope CLI verifier/);
+  assert.match(ui.nodes.get('artifactWarnings').innerHTML, /does not rerun bootstrap/);
+  assert.equal(ui.requests.length, 0);
+});
 
 test('editing message invalidates in-flight scoring and hides old results', async () => {
   const ui = mount();
