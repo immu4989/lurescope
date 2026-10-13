@@ -1041,16 +1041,24 @@ def _policy(argv: Sequence[str]) -> int:
         nargs="?",
         help="policy JSON path; omit to inspect LURESCOPE_POLICY_PATH",
     )
+    parser.add_argument("--check-deployment", action="store_true",
+                        help="compare a bound policy to this installation's portable detector")
     args = parser.parse_args(argv)
     try:
         from .policy import configured_policy, load_policy, policy_status
 
-        policy = load_policy(str(Path(args.path).resolve())) if args.path else configured_policy()
+        policy = load_policy(str(Path(args.path))) if args.path else configured_policy()
         status = policy_status(policy)
+        if args.check_deployment:
+            from .service import policy_status_for_deployment
+
+            status = policy_status_for_deployment(policy)
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
         print(f"! invalid policy: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(status, indent=2, sort_keys=True))
+    if args.check_deployment and not status["detector_configuration_verified"]:
+        return 1
     return 0 if status["configured"] else 1
 
 
@@ -4093,6 +4101,10 @@ def _capacity(argv: Sequence[str]) -> int:
 
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "calibrate":
+        from .calibrate import main as calibrate_main
+
+        return calibrate_main(args[1:])
     if args and args[0] == "capacity-plan":
         return _capacity(args[1:])
     if args and args[0] == "checkpoint-verify":

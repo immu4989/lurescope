@@ -816,6 +816,12 @@ Three findings. First, the strong LLM judges are **essentially immune to charact
 
 ### Serve a risk-controlled decision policy
 
+**Source-branch deployment binding:** use `lurescope calibrate` to validate the
+actual bundled portable detector, then `lurescope policy POLICY --check-deployment`
+to check its model, implementation, and runtime profile. A v3 mismatch stops
+policy-backed scoring and proof creation. This is not in PyPI 0.11.0; deploy
+compatible companion builds together. See the [bound workflow and limits](docs/BOUND_POLICY.md).
+
 LureBench can now require finite-sample evidence—not merely an observed
 validation FPR—before exporting a threshold:
 
@@ -856,7 +862,7 @@ The headline comparison above is toy-vs-toy on purpose (it runs with zero keys, 
 | `heuristic-v0` | Dependency-free keyword rules | always |
 | `llm-judge` | LLM-as-classifier — reads meaning, not tokens | set `LURESCOPE_LLM_ENGINE` + a provider key |
 | `openai-moderation` | Content-safety moderation API, used as a fraud proxy | `OPENAI_API_KEY` |
-| `llama-guard-3` | Meta Llama Guard 3 content-safety model | `torch`/`transformers` + gated weights |
+| `llama-guard-3` | Meta Llama Guard 3 content-safety model | Operator loading opt-in + reviewed immutable revision + compatible optional stack; see [deployment controls](docs/PUBLIC_DEPLOYMENT.md#source-branch-detector-lifecycle) |
 | `binoculars` | Provenance-only ranking proxy, not fraud detection | Disabled on fraud endpoints; use reviewed offline LureBench evaluation |
 
 The gated detectors are advertised in `/capabilities` with their requirement spelled out; request one without its key or weights and you get a clean `400` telling you what's missing, never a `500`.

@@ -9,6 +9,7 @@ from zipfile import BadZipFile, ZipFile
 
 def verify(wheel: Path, root: Path, package: str) -> int:
     sources = list((root / package).rglob("*.py"))
+    sources.append(root / "spec/decision-policy-v3.schema.json")
     if package == "lurescope":
         sources.extend(
             path for path in (root / package / "static").glob("*")

@@ -7,10 +7,16 @@ imports, paths, or callbacks are evaluated. Parent directories must be trusted.
 from __future__ import annotations
 
 import hashlib
+import json
 import math
+import platform
 import re
+import sys
+import unicodedata
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
+from types import MappingProxyType
 
 from lurebench.receipts import loads_strict_json
 
@@ -21,6 +27,8 @@ MAX_MODEL_BYTES = 8 * 1024 * 1024
 MAX_TEXT_CHARS = 100_000
 _TOKEN = re.compile(r"(?u)\b\w\w+\b")
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+# Trusted installed source, captured at import; not a live-process attestation.
+_IMPLEMENTATION_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def _number(value, *, minimum=-1_000_000, maximum=1_000_000):
@@ -36,6 +44,17 @@ class PortableTfidfDetector:
 
     name = "tfidf-logreg"
     task = "fraud"
+    __slots__ = (
+        "artifact_sha256", "source_sha256", "_intercept", "_features", "_positive", "_sealed",
+    )
+
+    def __setattr__(self, name, value):
+        if getattr(self, "_sealed", False):
+            raise AttributeError("portable detector configuration is immutable")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name):
+        raise AttributeError("portable detector configuration is immutable")
 
     def __init__(self, path: Path, *, expected_sha256: str):
         if not isinstance(expected_sha256, str) or not _DIGEST.fullmatch(expected_sha256):
@@ -77,6 +96,8 @@ class PortableTfidfDetector:
         self._positive = tuple(sorted(
             self._features, key=lambda term: -self._features[term][2],
         ))
+        self._features = MappingProxyType(self._features)
+        self._sealed = True
 
     def score(self, lure) -> float:
         text = lure.text
@@ -105,3 +126,28 @@ class PortableTfidfDetector:
         if type(top_k) is not int or top_k < 0:
             raise ValueError("top_k must be a nonnegative integer")
         return list(self._positive[:top_k])
+
+
+@lru_cache(maxsize=1)
+def _runtime_digest() -> str:
+    """Capture this process's declared runtime profile once, without request I/O."""
+    runtime = {
+        "python": sys.version, "implementation": platform.python_implementation(),
+        "system": platform.system(), "release": platform.release(), "machine": platform.machine(),
+        "libc": platform.libc_ver(), "unicode": unicodedata.unidata_version,
+        "float": repr(sys.float_info), "byteorder": sys.byteorder,
+    }
+    return hashlib.sha256(json.dumps(runtime, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=True).encode("utf-8")).hexdigest()
+
+
+def detector_binding(detector) -> dict:
+    """Describe this exact portable implementation; never translate joblib pins."""
+    if type(detector) is not PortableTfidfDetector:
+        raise ValueError("detector binding requires the exact portable TF-IDF implementation")
+    return {
+        "profile": "lurescope-portable-tfidf-exact-v1",
+        "artifact_sha256": detector.artifact_sha256,
+        "implementation_sha256": _IMPLEMENTATION_SHA256,
+        "runtime_sha256": _runtime_digest(),
+    }

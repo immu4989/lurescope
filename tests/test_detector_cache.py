@@ -18,14 +18,16 @@ def isolated_cache(monkeypatch):
     for name in ("LURESCOPE_PUBLIC_MODE", "LURESCOPE_API_KEY_SCRYPT",
                  "LURESCOPE_ALLOWED_DETECTORS", "LURESCOPE_ALLOWED_ATTACKS",
                  "LURESCOPE_PROVIDER_DAILY_LIMIT", "LURESCOPE_POLICY_PATH",
-                 "LURESCOPE_LLM_ENGINE"):
+                 "LURESCOPE_LLM_ENGINE", "LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD"):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("LURESCOPE_LLAMA_GUARD_REVISION", "a" * 40)
     yield
     service._detector.cache_clear()
 
 
 @pytest.mark.parametrize("name", ["tfidf-logreg", "heuristic-v0", "llama-guard-3"])
 def test_ignored_options_do_not_multiply_local_instances(monkeypatch, name):
+    monkeypatch.setenv("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD", "1")
     created = []
 
     def construct(*args, **kwargs):
@@ -193,6 +195,7 @@ def test_parallel_cold_local_requests_construct_once(monkeypatch, options):
 
 
 def test_optional_model_initialization_does_not_lock_default_model(monkeypatch):
+    monkeypatch.setenv("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD", "1")
     started = threading.Event()
     release = threading.Event()
     default = object()
@@ -216,6 +219,7 @@ def test_optional_model_initialization_does_not_lock_default_model(monkeypatch):
 
 
 def test_cache_cardinality_is_fixed_across_all_request_controls(monkeypatch):
+    monkeypatch.setenv("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD", "1")
     monkeypatch.setattr(service, "get_detector", lambda *a, **kw: object())
     monkeypatch.setattr(service, "PortableTfidfDetector", lambda *a, **kw: object())
     for index in range(100):
@@ -300,6 +304,7 @@ def test_clear_waits_for_construction_without_stale_publication(monkeypatch):
 
 
 def test_failed_construction_does_not_poison_retry(monkeypatch):
+    monkeypatch.setenv("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD", "1")
     calls = []
 
     def construct(*args, **kwargs):

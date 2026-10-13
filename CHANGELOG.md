@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Llama Guard requires an exact operator loading opt-in and immutable revision
+  before construction or cache reuse. Request fields cannot authorize loading;
+  revocation blocks warm-cache use, and changed revisions require worker reload.
+  The gate does not cancel active inference or certify checkpoint safety.
+
+- `lurescope calibrate` generates v3 policies with the actual bundled portable
+  detector. Policy-backed scoring rejects model/implementation/runtime mismatch
+  before inference and rechecks before publishing. Portable model configuration
+  is immutable through normal Python interfaces. `/policy` and
+  `policy --check-deployment` distinguish matches, mismatches, unbound legacy
+  artifacts, and unchecked offline evidence. Binding is not process attestation
+  or issuer authentication; provider-backed models remain unverified.
+  Policy inspection preserves the loader's symlink rejection instead of resolving
+  the supplied path first.
+
+- Policy status exposes name-only detector binding and explicitly reports that
+  deployed detector configuration is unverified for both supported schemas.
+  Python, CLI, and HTTP paths preserve the disclosure. New and historical
+  LureBench policy IDs remain loadable without rewriting or claiming model binding.
+
 - Moderation failure-route regressions verify redacted 502 responses without
   fraud decisions, evasion claims, or triage results after an upstream runtime
   failure. Proof creation rejects moderation before construction. Complete

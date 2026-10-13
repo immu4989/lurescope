@@ -1,11 +1,14 @@
 # Deploy a risk-controlled decision policy
 
-LureScope can serve two kinds of LureBench threshold artifact:
+LureScope can serve these LureBench threshold artifacts:
 
 - schema v1 records a threshold selected against an empirical validation
   objective; and
 - schema v2 carries finite-sample evidence that a requested population
-  false-positive rate is controlled at a declared confidence level.
+  false-positive rate is controlled at a declared confidence level; and
+- source-branch schema v3 adds a checked portable configuration binding to
+  either kind of evidence. Use the [bound calibration workflow](BOUND_POLICY.md)
+  for the actual bundled serving model instead of transferring a joblib policy.
 
 The distinction is visible to operators and API clients. LureScope never relabels
 a v1 point estimate as statistical assurance.
@@ -73,11 +76,17 @@ Revalidate a policy when changing the detector or model artifact, including a
 change of inference implementation. The portable-model parity tests are not a
 replacement for your organization's policy acceptance checks.
 
-When a `/score` request omits `threshold` and its detector matches the policy,
+When a `/score` request omits `threshold` and its detector name matches the policy,
 LureScope uses the policy threshold and returns its `policy_id`. An explicit
 request threshold always overrides the configured policy and therefore does not
 inherit its assurance. A request for another detector also falls back to that
 detector's default threshold.
+
+Legacy schemas v1/v2 bind names only. They do not verify deployed weights,
+prompts, preprocessing, or provider configuration against the calibration run.
+Even a trusted policy-file hash verifies only that file, not model equivalence.
+Operators must independently review and revalidate the deployed configuration;
+neither `validated_policy` nor a finite-sample assurance status proves that match.
 
 ## 4. Inspect production configuration
 
@@ -89,6 +98,10 @@ The response exposes no message content or credentials. It reports:
 
 - `assurance_status`: `finite_sample_fpr_control`,
   `empirical_validation_only`, or `none`;
+- on this source branch, `detector_binding`: `name_only` for configured v1/v2
+  policies or `none` when unconfigured, and `detector_configuration_verified`:
+  `false` for both legacy schemas; v3 reports `exact_portable_configuration`
+  and a `detector_binding_status` of `match` or `mismatch` after deployment checks;
 - policy and detector identity, threshold, target, and validation digests;
 - validation-negative and false-positive counts, exact p-value, confidence, and
   upper bound for schema v2;
@@ -99,6 +112,12 @@ The response exposes no message content or credentials. It reports:
 This endpoint is suitable for readiness checks and deployment inventories, but
 it is intentionally not folded into `/health`: liveness and statistical fitness
 are different operational questions.
+
+New source-branch LureBench policies carry full SHA-256 evidence IDs that change
+with observed labels or scores, even when the threshold does not change.
+LureScope preserves those IDs and historical IDs without rewriting them. The
+longer ID improves evidence change detection, not deployed model verification
+or issuer authentication.
 
 ## 5. Monitor and renew
 

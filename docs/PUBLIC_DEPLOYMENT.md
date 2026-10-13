@@ -38,6 +38,21 @@ proxy, not calibrated fraud probability.
 
 ### Source-branch detector lifecycle
 
+Llama Guard construction additionally requires the operator-controlled
+`LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD=1` and `LURESCOPE_LLAMA_GUARD_REVISION` set to a
+reviewed immutable lowercase 40-character Hub commit. Installing dependencies
+does not opt in. Use this only in a separately isolated worker after artifact
+and dependency review; it is not a checkpoint-safety certificate or an Accelerate
+patch. The companion adapter must support explicit upstream loading. Request
+engine/model fields cannot set either control or select another local model.
+
+The guard is checked before cache lookup. Removing the opt-in blocks later
+operations even with resident weights; changing the revision blocks reuse of
+old cached weights until worker restart or the private cache-clear operation.
+This does not cancel already-running operations or release their references.
+Use a controlled worker rollout rather than racing environment mutations.
+Binoculars remains unavailable on fraud routes regardless of this opt-in.
+
 Only `tfidf-logreg`, `heuristic-v0`, and `llama-guard-3` are cached across service
 operations. The cache holds at most one instance of each name per process.
 Engine/model fields do not change these local detectors and no longer create

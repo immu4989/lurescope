@@ -25,8 +25,8 @@ from lurebench.detectors import get_detector
 from lurebench.schema import Lure
 
 from .defense import apply_defense, available_defenses
-from .policy import configured_policy
-from .portable_tfidf import PortableTfidfDetector
+from .policy import configured_policy, policy_status
+from .portable_tfidf import PortableTfidfDetector, detector_binding
 
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 _DEFAULT_TFIDF = os.path.join(_MODEL_DIR, "tfidf-logreg-fraud.json")
@@ -57,6 +57,7 @@ _LOCAL_DETECTOR_LOCKS = {
     name: threading.Lock() for name in (*ALWAYS_ON, "llama-guard-3")
 }
 _LOCAL_DETECTORS = {}
+_LOCAL_MODEL_REVISIONS = {}  # Only the operator-configured Llama Guard revision.
 
 # name -> (one-line kind, requirement string or None for always-on).
 DETECTOR_INFO = {
@@ -73,7 +74,9 @@ DETECTOR_INFO = {
     ),
     "llama-guard-3": (
         "Meta Llama Guard 3 content-safety model",
-        "torch/transformers and gated access to meta-llama/Llama-Guard-3-8B",
+        "operator-reviewed isolated loading with LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD=1, "
+        "an immutable LURESCOPE_LLAMA_GUARD_REVISION, compatible LureBench, "
+        "torch/transformers and gated model access",
     ),
     "binoculars": (
         "provenance-only AI-generated-text ranking proxy, not a fraud detector",
@@ -112,6 +115,15 @@ def _as_lure(text: str) -> Lure:
 def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = None):
     if name not in DETECTOR_INFO:
         raise KeyError("detector is not served by LureScope")
+    # Check before cache lookup too: removing the operator opt-in blocks new
+    # operations, even when weights remain resident from an earlier opt-in.
+    revision = None
+    if name == "llama-guard-3":
+        revision = os.environ.get("LURESCOPE_LLAMA_GUARD_REVISION")
+        if (os.environ.get("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD") != "1"
+                or not isinstance(revision, str)
+                or re.fullmatch(r"[a-f0-9]{40}", revision) is None):
+            raise DetectorUnavailable(_needs(name))
     if name == "binoculars":
         # Do not load upstream models or relabel P(ai)-like scores as fraud risk.
         raise DetectorUnavailable(_needs(name))
@@ -119,6 +131,9 @@ def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = No
         # A thread-safe cache alone does not prevent duplicate construction on
         # concurrent misses. Hold this name's lock through successful publication.
         with _LOCAL_DETECTOR_LOCKS[name]:
+            if (name == "llama-guard-3" and name in _LOCAL_DETECTORS
+                    and _LOCAL_MODEL_REVISIONS.get(name) != revision):
+                raise DetectorUnavailable("Llama Guard revision changed; restart the worker")
             if name not in _LOCAL_DETECTORS:
                 if name == "tfidf-logreg":
                     detector = PortableTfidfDetector(
@@ -126,12 +141,14 @@ def _detector(name: str, engine: Optional[str] = None, model: Optional[str] = No
                     )
                 elif name == "llama-guard-3":
                     try:
-                        detector = get_detector(name)
+                        detector = get_detector(name, revision=revision, allow_unsafe_upstream=True)
                     except Exception as exc:  # noqa: BLE001
                         raise DetectorUnavailable(_needs(name)) from exc
                 else:
                     detector = get_detector(name)
                 _LOCAL_DETECTORS[name] = detector
+                if name == "llama-guard-3":
+                    _LOCAL_MODEL_REVISIONS[name] = revision
             return _LOCAL_DETECTORS[name]
     # Provider constructors capture credentials and configuration. Do not retain
     # them across service operations or put secrets/fingerprints into cache keys.
@@ -164,6 +181,7 @@ def _clear_detector_cache():
         for lock in _LOCAL_DETECTOR_LOCKS.values():
             stack.enter_context(lock)
         _LOCAL_DETECTORS.clear()
+        _LOCAL_MODEL_REVISIONS.clear()
 
 
 # Preserve the existing private test/operator reset hook, without an unbounded
@@ -285,7 +303,12 @@ def score(
         policy_id = None
         threshold_source = "default"
     det = _detector(detector_name, engine, model)
+    bound = policy if policy_id is not None and policy.detector_binding is not None else None
+    if bound is not None:
+        _check_policy_binding(bound, det)
     prob = _probability(det.score(_as_lure(text)))
+    if bound is not None:
+        _check_policy_binding(bound, det)
     return ScoreResult(
         text=text,
         detector=detector_name,
@@ -296,6 +319,19 @@ def score(
         policy_id=policy_id,
         threshold_source=threshold_source,
     )
+
+
+def _check_policy_binding(policy, detector):
+    from dataclasses import asdict
+
+    if detector_binding(detector) != asdict(policy.detector_binding):
+        raise RuntimeError("decision policy does not match the deployed detector configuration")
+
+
+def policy_status_for_deployment(policy):
+    if policy is None or policy.detector_binding is None:
+        return policy_status(policy)
+    return policy_status(policy, actual_binding=detector_binding(_detector(policy.detector)))
 
 
 def _decision_threshold(value) -> float:

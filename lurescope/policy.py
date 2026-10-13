@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -37,6 +38,38 @@ class RiskControl:
 
 
 @dataclass(frozen=True)
+class DetectorBinding:
+    profile: str
+    artifact_sha256: str
+    implementation_sha256: str
+    runtime_sha256: str
+
+
+def _bound_identity(policy) -> str:
+    risk = asdict(policy.risk_control) if policy.risk_control is not None else None
+    if risk is not None:
+        for key in ("confidence", "empirical_fpr", "upper_confidence_bound", "hypothesis_p_value"):
+            risk[key] = float(risk[key]).hex()
+    material = {
+        "contract": "decision-policy-bound-evidence-v1",
+        "detector": policy.detector, "task": policy.task, "objective": policy.objective,
+        "threshold_hex": float(policy.threshold).hex(),
+        "target_fpr_hex": None if policy.target_fpr is None else float(policy.target_fpr).hex(),
+        "validation_records": policy.validation_records,
+        "validation_sha256": policy.validation_sha256,
+        "evaluation_sha256": policy.evaluation_sha256,
+        "validation_true_positives": policy.validation_true_positives,
+        "validation_recall_hex": (None if policy.validation_recall is None
+                                  else float(policy.validation_recall).hex()),
+        "risk_control": risk,
+        "detector_binding": asdict(policy.detector_binding),
+    }
+    digest = hashlib.sha256(json.dumps(material, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=True).encode("utf-8")).hexdigest()
+    return f"{policy.detector[:191]}-{digest}"
+
+
+@dataclass(frozen=True)
 class DecisionPolicy:
     policy_id: str
     detector: str
@@ -52,6 +85,7 @@ class DecisionPolicy:
     validation_true_positives: Optional[int] = None
     validation_recall: Optional[float] = None
     risk_control: Optional[RiskControl] = None
+    detector_binding: Optional[DetectorBinding] = None
 
 
 def _validate_probability(value: float, name: str, *, open_interval: bool = False) -> None:
@@ -65,8 +99,28 @@ def _validate_probability(value: float, name: str, *, open_interval: bool = Fals
 
 
 def _validate_policy(policy: DecisionPolicy) -> None:
+    if type(policy.schema_version) is int and policy.schema_version == 3:
+        binding = policy.detector_binding
+        if (not isinstance(binding, DetectorBinding)
+                or binding.profile != "lurescope-portable-tfidf-exact-v1"
+                or policy.detector != "tfidf-logreg" or policy.task != "fraud"):
+            raise ValueError("unsupported policy detector binding")
+        for value in (binding.artifact_sha256, binding.implementation_sha256,
+                      binding.runtime_sha256, policy.evaluation_sha256):
+            if not isinstance(value, str) or not _SHA256.fullmatch(value):
+                raise ValueError("invalid bound policy digest")
+        if not policy.created_at:
+            raise ValueError("schema v3 requires created_at")
+        legacy_version = 2 if policy.risk_control is not None else 1
+        _validate_policy(replace(policy, schema_version=legacy_version, detector_binding=None,
+            evaluation_sha256=policy.evaluation_sha256 if legacy_version == 2 else None))
+        if policy.policy_id != _bound_identity(policy):
+            raise ValueError("bound policy identity does not match its evidence")
+        return
     if type(policy.schema_version) is not int or policy.schema_version not in (1, 2):
         raise ValueError(f"unsupported policy schema {policy.schema_version}")
+    if policy.detector_binding is not None:
+        raise ValueError("legacy policies cannot carry detector bindings")
     for value, name in (
         (policy.policy_id, "policy_id"),
         (policy.detector, "detector"),
@@ -198,6 +252,10 @@ def _parse_policy(raw: bytes) -> DecisionPolicy:
     if not isinstance(payload, dict):
         raise ValueError("policy JSON must be an object")
     try:
+        if payload.get("detector_binding") is not None:
+            if not isinstance(payload["detector_binding"], dict):
+                raise ValueError("policy detector_binding must be an object")
+            payload["detector_binding"] = DetectorBinding(**payload["detector_binding"])
         if payload.get("risk_control") is not None:
             if not isinstance(payload["risk_control"], dict):
                 raise ValueError("policy risk_control must be an object")
@@ -230,16 +288,22 @@ def configured_policy() -> Optional[DecisionPolicy]:
     return load_policy(os.path.abspath(path), expected_sha256=pin) if path else None
 
 
-def policy_status(policy: Optional[DecisionPolicy]) -> Dict[str, Any]:
+def policy_status(policy: Optional[DecisionPolicy], *, actual_binding=None) -> Dict[str, Any]:
     """Return public, non-secret deployment metadata for the policy endpoint."""
     if policy is None:
         return {
             "configured": False,
             "assurance_status": "none",
+            "detector_binding": "none",
+            "detector_configuration_verified": False,
+            "detector_binding_status": "unconfigured",
             "limitations": ["No validated decision policy is configured."],
         }
     payload: Dict[str, Any] = {
         "configured": True,
+        "detector_binding": "name_only",
+        "detector_configuration_verified": False,
+        "detector_binding_status": "legacy_unbound",
         "assurance_status": (
             "finite_sample_fpr_control" if policy.risk_control else "empirical_validation_only"
         ),
@@ -268,7 +332,25 @@ def policy_status(policy: Optional[DecisionPolicy]) -> Dict[str, Any]:
         ]
     else:
         payload["limitations"] = [
-            "This legacy policy records an empirical validation objective only; it has no "
+            "This policy records an empirical validation objective only; it has no "
             "finite-sample FPR guarantee."
         ]
+    if policy.detector_binding is None:
+        payload["limitations"].append(
+            "Schema v1/v2 policies match detector names only; deployed model weights, "
+            "prompts, preprocessing, and provider configuration are not verified."
+        )
+    else:
+        expected = asdict(policy.detector_binding)
+        matched = actual_binding == expected
+        payload.update(detector_binding="exact_portable_configuration",
+                       detector_configuration=expected,
+                       detector_configuration_verified=matched,
+                       detector_binding_status=("not_checked" if actual_binding is None
+                                                else "match" if matched else "mismatch"))
+        payload["limitations"].append(
+            "Binding compares portable artifact bytes, installed inference source, and the "
+            "declared runtime profile. It is not issuer authentication, process attestation, "
+            "or validation of email extraction, upstream preprocessing, or sampling assumptions."
+        )
     return payload

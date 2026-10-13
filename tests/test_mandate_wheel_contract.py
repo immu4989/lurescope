@@ -18,6 +18,7 @@ def source_and_members(tmp_path, request):
         f"{package}/mandate.py": b"# code\n",
         "spec/luremandate-plan-v1.schema.json": b'{"schema":true}\n',
         "conformance/luremandate-v1/verification.json": b'{"evidence":true}\n',
+        "spec/decision-policy-v3.schema.json": b'{"binding":true}\n',
     }
     members = {}
     for relative, payload in source.items():
@@ -48,7 +49,7 @@ def wheel_at(path, members):
 def test_exact_code_schema_and_corpus_are_required(tmp_path, source_and_members):
     package, root, members = source_and_members
     wheel = wheel_at(tmp_path / "package.whl", members)
-    assert contract.verify(wheel, root, package) == 3
+    assert contract.verify(wheel, root, package) == 4
 
 
 def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
@@ -63,13 +64,13 @@ def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
     with pytest.raises(ValueError, match="stale"):
         contract.verify(wheel_at(tmp_path / "stale.whl", members), root, package)
     members[relative] = source.read_bytes()
-    assert contract.verify(wheel_at(tmp_path / "complete.whl", members), root, package) == 4
+    assert contract.verify(wheel_at(tmp_path / "complete.whl", members), root, package) == 5
 
 
-@pytest.mark.parametrize("kind", ["code", "schema", "corpus"])
+@pytest.mark.parametrize("kind", ["code", "schema", "corpus", "binding"])
 def test_missing_artifact_is_rejected(tmp_path, source_and_members, kind):
     package, root, members = source_and_members
-    index = {"code": 0, "schema": 1, "corpus": 2}[kind]
+    index = {"code": 0, "schema": 1, "corpus": 2, "binding": 3}[kind]
     del members[list(members)[index]]
     with pytest.raises(ValueError, match="missing"):
         contract.verify(wheel_at(tmp_path / "package.whl", members), root, package)
@@ -106,11 +107,21 @@ def test_browser_asset_bytes_are_checked_when_present_in_source(tmp_path):
     static = root / "lurescope/static"
     static.mkdir(parents=True)
     (static / "model.json").write_bytes(b'{"synthetic":true}')
+    schema = root / "spec/decision-policy-v3.schema.json"
+    schema.parent.mkdir()
+    schema.write_bytes(b'{"binding":true}')
+    base_members = {
+        "lurescope-0.0.0.data/data/share/lurescope/spec/decision-policy-v3.schema.json":
+            schema.read_bytes(),
+    }
     with pytest.raises(ValueError, match="missing"):
         contract.verify(wheel_at(tmp_path / "missing.whl", {}), root, "lurescope")
     with pytest.raises(ValueError, match="stale"):
-        contract.verify(wheel_at(tmp_path / "stale.whl", {"lurescope/static/model.json": b"{}"}),
+        contract.verify(wheel_at(tmp_path / "stale.whl", {
+            **base_members, "lurescope/static/model.json": b"{}",
+        }),
                         root, "lurescope")
     assert contract.verify(wheel_at(tmp_path / "valid.whl", {
         "lurescope/static/model.json": b'{"synthetic":true}',
-    }), root, "lurescope") == 1
+        **base_members,
+    }), root, "lurescope") == 2

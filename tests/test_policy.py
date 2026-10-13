@@ -12,7 +12,7 @@ from lurebench.calibration import binomial_cdf, clopper_pearson_upper
 from lurescope import service
 from lurescope.app import app
 from lurescope.cli import main
-from lurescope.policy import load_policy
+from lurescope.policy import load_policy, policy_status
 
 
 def _write_policy(path, **overrides):
@@ -159,6 +159,47 @@ def test_policy_endpoint_exposes_configured_assurance(tmp_path, monkeypatch):
     assert payload["risk_control"]["upper_confidence_bound"] <= payload["target_fpr"]
 
 
+@pytest.mark.parametrize("writer", [_write_policy, _write_risk_controlled_policy])
+def test_policy_binding_limit_survives_python_cli_and_http(tmp_path, monkeypatch, capsys, writer):
+    path = tmp_path / "policy.json"
+    writer(path)
+    monkeypatch.setenv("LURESCOPE_POLICY_PATH", str(path))
+    monkeypatch.delenv("LURESCOPE_POLICY_SHA256", raising=False)
+    direct = policy_status(load_policy(str(path)))
+    assert main(["policy", str(path)]) == 0
+    command = json.loads(capsys.readouterr().out)
+    response = TestClient(app).get("/policy")
+    assert response.status_code == 200
+    for payload in (direct, command, response.json()):
+        assert payload["detector_binding"] == "name_only"
+        assert payload["detector_configuration_verified"] is False
+        assert any("prompts" in message and "not verified" in message
+                   for message in payload["limitations"])
+
+
+def test_unconfigured_policy_has_no_binding(monkeypatch):
+    monkeypatch.delenv("LURESCOPE_POLICY_PATH", raising=False)
+    monkeypatch.delenv("LURESCOPE_POLICY_SHA256", raising=False)
+    response = TestClient(app).get("/policy")
+    assert response.status_code == 200
+    assert response.json()["detector_binding"] == "none"
+    assert response.json()["detector_configuration_verified"] is False
+
+
+@pytest.mark.parametrize("objective", ["max_mcc", "target_fpr", "risk_controlled_fpr"])
+def test_generated_evidence_id_loads_without_rewriting(tmp_path, objective):
+    from lurebench.calibration import build_policy
+
+    policy, _ = build_policy("tfidf-logreg", "fraud", [str(i) for i in range(401)],
+                              [0] * 400 + [1], [.1] * 400 + [.9], objective, .01)
+    path = tmp_path / "generated-policy.json"
+    policy.save(str(path))
+    loaded = load_policy(str(path))
+    assert loaded.policy_id == policy.policy_id
+    assert loaded.threshold == policy.threshold
+    assert policy_status(loaded)["detector_binding"] == "name_only"
+
+
 def test_policy_path_cache_does_not_hide_replacement(tmp_path):
     path = tmp_path / "policy.json"
     _write_policy(path, threshold=.4)
@@ -187,6 +228,17 @@ def test_optional_pin_checked_against_current_bytes(tmp_path, monkeypatch):
     monkeypatch.delenv("LURESCOPE_POLICY_PATH")
     with pytest.raises(ValueError, match="requires"):
         configured_policy()
+
+
+def test_policy_cli_preserves_symlink_rejection(tmp_path, capsys):
+    path = tmp_path / "policy.json"
+    _write_policy(path)
+    link = tmp_path / "link.json"
+    link.symlink_to(path)
+    assert main(["policy", str(link), "--check-deployment"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "regular" in captured.err
 
 
 def test_duplicate_policy_fields_and_oversize_rejected(tmp_path):

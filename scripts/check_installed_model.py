@@ -12,6 +12,7 @@ import math
 import os
 import sys
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 
@@ -38,7 +39,43 @@ def main(argv=None):
     sys.path.insert(0, str(root))
     sys.meta_path.insert(0, ForbidModelFrameworks())
     service = importlib.import_module("lurescope.service")
+    policy_module = importlib.import_module("lurescope.policy")
+    calibration = importlib.import_module("lurebench.calibration")
     portable = importlib.import_module("lurescope.portable_tfidf")
+    with tempfile.TemporaryDirectory(prefix="lurescope-policy-check-") as directory:
+        for objective in ("max_mcc", "target_fpr", "risk_controlled_fpr"):
+            policy, _ = calibration.build_policy(
+                "tfidf-logreg", "fraud", [str(i) for i in range(401)],
+                [0] * 400 + [1], [.1] * 400 + [.9], objective, .01,
+            )
+            path = Path(directory) / f"{objective}.json"
+            policy.save(str(path))
+            loaded = policy_module.load_policy(str(path))
+            status = policy_module.policy_status(loaded)
+            if (loaded.policy_id != policy.policy_id or status["detector_binding"] != "name_only"
+                    or status["detector_configuration_verified"] is not False):
+                raise ValueError("installed policy lost evidence identity or binding limitation")
+            binding = calibration.DetectorBinding(**portable.detector_binding(
+                service._detector("tfidf-logreg"),
+            ))
+            bound, _ = calibration.build_policy(
+                "tfidf-logreg", "fraud", [str(i) for i in range(401)],
+                [0] * 400 + [1], [.1] * 400 + [.9], objective, .01, detector_binding=binding,
+            )
+            bound.save(str(path))
+            loaded = policy_module.load_policy(str(path))
+            if (loaded.schema_version != 3 or not service.policy_status_for_deployment(loaded)[
+                    "detector_configuration_verified"]):
+                raise ValueError("installed bound policy did not match actual detector")
+            changed = replace(loaded, detector_binding=replace(
+                loaded.detector_binding, runtime_sha256="f" * 64,
+            ))
+            try:
+                service._check_policy_binding(changed, service._detector("tfidf-logreg"))
+            except RuntimeError:
+                pass
+            else:
+                raise ValueError("installed runtime mismatch was accepted")
     try:
         service.score("Synthetic input", detector_name="binoculars")
     except service.DetectorUnavailable:
@@ -54,8 +91,27 @@ def main(argv=None):
     if len(service._LOCAL_DETECTORS) != 1:
         raise ValueError("installed detector cache retained unexpected entries")
     original_constructor = service.get_detector
+    guard_env = ("LURESCOPE_ALLOW_UNSAFE_LLAMA_GUARD", "LURESCOPE_LLAMA_GUARD_REVISION")
+    original_guard_env = {name: os.environ.get(name) for name in guard_env}
     try:
         service.get_detector = lambda *args, **kwargs: object()
+        os.environ.pop(guard_env[0], None)
+        try:
+            service._detector("llama-guard-3")
+        except service.DetectorUnavailable:
+            pass
+        else:
+            raise ValueError("installed HTTP service allowed implicit optional model loading")
+        os.environ[guard_env[0]] = "1"
+        os.environ[guard_env[1]] = "a" * 40
+        service._detector("llama-guard-3")  # Synthetic constructor only.
+        os.environ.pop(guard_env[0])
+        try:
+            service._detector("llama-guard-3")
+        except service.DetectorUnavailable:
+            pass
+        else:
+            raise ValueError("installed warm model cache bypassed operator revocation")
         for name in ("llm-judge", "openai-moderation"):
             first = service._detector(name, "synthetic")
             if service._detector(name, "synthetic") is first:
@@ -69,6 +125,12 @@ def main(argv=None):
                 raise ValueError("installed service constructed an unserved detector")
     finally:
         service.get_detector = original_constructor
+        for name, value in original_guard_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        service._detector.cache_clear()
     # Fixed historical-model anchor plus threshold and signal smoke checks.
     result = service.score("Please verify your bank account", threshold=.5)
     if (

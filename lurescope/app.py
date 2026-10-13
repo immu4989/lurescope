@@ -33,7 +33,7 @@ from .models import (
     ScoreResponse,
     SecurityStatusResponse,
 )
-from .policy import configured_policy, policy_status
+from .policy import configured_policy
 from .proof import create_email_proof, verify_proof
 from .security import enforce_request_policy, require_api_access, security_status
 from .triage import EmailTooLarge, triage_email
@@ -81,7 +81,10 @@ def capabilities() -> CapabilitiesResponse:
 @app.get("/policy", response_model=PolicyStatusResponse)
 def decision_policy() -> PolicyStatusResponse:
     """Expose non-secret policy provenance, assurance evidence, and limitations."""
-    return PolicyStatusResponse(**policy_status(configured_policy()))
+    try:
+        return PolicyStatusResponse(**service.policy_status_for_deployment(configured_policy()))
+    except Exception as exc:  # noqa: BLE001 - private filesystem/model diagnostics
+        raise HTTPException(503, "decision policy configuration is unavailable") from exc
 
 
 @app.get("/security", response_model=SecurityStatusResponse)

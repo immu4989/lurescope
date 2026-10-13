@@ -118,6 +118,10 @@ class RiskControlInfo(BaseModel):
 class PolicyStatusResponse(BaseModel):
     configured: bool
     assurance_status: str
+    detector_binding: str
+    detector_configuration_verified: bool
+    detector_binding_status: str
+    detector_configuration: Optional[dict[str, str]] = None
     schema_version: Optional[int] = None
     policy_id: Optional[str] = None
     detector: Optional[str] = None
