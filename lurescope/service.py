@@ -25,7 +25,14 @@ from lurebench.detectors import get_detector
 from lurebench.schema import Lure
 
 from .defense import apply_defense, available_defenses
-from .policy import configured_policy, policy_status
+from .policy import (
+    PolicyRequestError,
+    PolicyRequirementError,
+    configured_decision_policy,
+    policy_enforcement,
+    policy_status,
+    require_research_mode,
+)
 from .portable_tfidf import PortableTfidfDetector, detector_binding
 
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
@@ -280,6 +287,15 @@ def _top_signals(detector, text: str, top_k: int = 6) -> List[str]:
     return out
 
 
+def decision_policy_for_request(detector_name, threshold=None, engine=None, model=None):
+    """Admit controls before constructing a detector or reserving provider quota."""
+    mode, policy = configured_decision_policy()
+    if mode != "off" and (threshold is not None or detector_name != policy.detector
+                          or engine is not None or model is not None):
+        raise PolicyRequestError("request overrides are disabled by policy enforcement")
+    return policy
+
+
 def score(
     text: str,
     detector_name: str = DEFAULT_DETECTOR,
@@ -289,7 +305,7 @@ def score(
 ) -> ScoreResult:
     if threshold is not None:
         threshold = _decision_threshold(threshold)
-    policy = configured_policy()
+    policy = decision_policy_for_request(detector_name, threshold, engine, model)
     if threshold is not None:
         resolved_threshold = threshold
         policy_id = None
@@ -334,6 +350,38 @@ def policy_status_for_deployment(policy):
     return policy_status(policy, actual_binding=detector_binding(_detector(policy.detector)))
 
 
+def policy_readiness():
+    """Read-only admission/configuration probe; never run prediction or providers."""
+    mode = "invalid"
+    result = {"ready": False, "scope": "enforced_policy_scoring", "enforcement": mode,
+              "reason": "configuration_unavailable", "policy_id": None}
+    try:
+        mode = policy_enforcement()
+        result["enforcement"] = mode
+        if mode == "off":
+            result["reason"] = "enforcement_disabled"
+            return result
+        from .security import security_status
+
+        security = security_status()
+        if security["mode"] == "misconfigured":
+            result["reason"] = "security_misconfigured"
+            return result
+        _, policy = configured_decision_policy()
+        if security["allowed_detectors"] and policy.detector not in security["allowed_detectors"]:
+            result["reason"] = "detector_not_allowed"
+            return result
+        if not policy_status_for_deployment(policy)["detector_configuration_verified"]:
+            result["reason"] = "detector_mismatch"
+            return result
+        result.update(ready=True, reason="ready", policy_id=policy.policy_id)
+    except PolicyRequirementError as exc:
+        result["reason"] = exc.reason
+    except Exception:  # noqa: BLE001 - public probe must not expose private diagnostics
+        pass
+    return result
+
+
 def _decision_threshold(value) -> float:
     try:
         return _probability(value)
@@ -366,6 +414,7 @@ def attack(
 ) -> AttackResult:
     """Score ``text``, apply ``attack_name``, re-score, and optionally re-score once
     more after a ``defense`` normalizes the attacked text."""
+    require_research_mode()
     threshold = _decision_threshold(threshold)
     det = _detector(detector_name, engine, model)
 

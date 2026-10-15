@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Risk-policy loading separates numerical consistency tolerance from statistical
+  acceptance: both reported and recomputed evidence must satisfy the exact
+  floating-point confidence/FPR limits without an added tolerance budget.
+  Previously accepted borderline evidence can now fail validation.
+
+- Opt-in `bound` and `risk_controlled_bound` policy enforcement requires a
+  trusted file pin and bound v3 evidence, rejects client overrides before
+  inference/provider quota reservation, and disables exploratory attacks and
+  new proof generation. HTTP/CLI readiness checks compare actual deployment
+  binding and security configuration without prediction. Default research
+  behavior and historical proof verification are unchanged.
+
 - Llama Guard requires an exact operator loading opt-in and immutable revision
   before construction or cache reuse. Request fields cannot authorize loading;
   revocation blocks warm-cache use, and changed revisions require worker reload.

@@ -1043,7 +1043,17 @@ def _policy(argv: Sequence[str]) -> int:
     )
     parser.add_argument("--check-deployment", action="store_true",
                         help="compare a bound policy to this installation's portable detector")
+    parser.add_argument("--check-readiness", action="store_true",
+                        help="check operator-enforced scoring using deployment environment")
     args = parser.parse_args(argv)
+    if args.check_readiness:
+        if args.path or args.check_deployment:
+            parser.error("--check-readiness uses deployment configuration, not a file argument")
+        from .service import policy_readiness
+
+        status = policy_readiness()
+        print(json.dumps(status, indent=2, sort_keys=True))
+        return 0 if status["ready"] else 1
     try:
         from .policy import configured_policy, load_policy, policy_status
 

@@ -240,9 +240,10 @@ def _validate_policy(policy: DecisionPolicy) -> None:
         control.upper_confidence_bound, expected_upper, rel_tol=0.0, abs_tol=1e-12
     ):
         raise ValueError("policy FPR upper bound is inconsistent with its counts")
-    if control.hypothesis_p_value > 1 - control.confidence + 1e-12:
+    # The consistency tolerance cannot relax the actual assurance limits.
+    if max(control.hypothesis_p_value, expected_p) > 1 - control.confidence:
         raise ValueError("policy did not reject FPR above the target")
-    if control.upper_confidence_bound > policy.target_fpr + 1e-12:
+    if max(control.upper_confidence_bound, expected_upper) > policy.target_fpr:
         raise ValueError("policy FPR upper bound exceeds its target")
 
 
@@ -286,6 +287,55 @@ def configured_policy() -> Optional[DecisionPolicy]:
     if pin is not None and not path:
         raise ValueError("a policy pin requires LURESCOPE_POLICY_PATH")
     return load_policy(os.path.abspath(path), expected_sha256=pin) if path else None
+
+
+class PolicyRequirementError(RuntimeError):
+    """A deployment requirement is unsatisfied; reason is a fixed public code."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__("required decision policy is unavailable")
+
+
+class PolicyRequestError(RuntimeError):
+    """Research overrides are not admitted by this deployment."""
+
+
+def policy_enforcement() -> str:
+    mode = os.environ.get("LURESCOPE_POLICY_ENFORCEMENT", "off")
+    if mode not in {"off", "bound", "risk_controlled_bound"}:
+        raise PolicyRequirementError("invalid_enforcement")
+    return mode
+
+
+def configured_decision_policy() -> tuple[str, Optional[DecisionPolicy]]:
+    """Read current policy bytes and apply operator requirements before inference.
+
+    Configuration and its approved pin are trusted administrative inputs. Deploy
+    them together before worker startup; this is not a multi-setting transaction.
+    """
+    mode = policy_enforcement()
+    if mode == "off":
+        return mode, configured_policy()
+    if not os.environ.get("LURESCOPE_POLICY_PATH"):
+        raise PolicyRequirementError("policy_required")
+    if not os.environ.get("LURESCOPE_POLICY_SHA256"):
+        raise PolicyRequirementError("trusted_pin_required")
+    try:
+        policy = configured_policy()
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise PolicyRequirementError("policy_unavailable") from exc
+    if policy is None or policy.schema_version != 3 or policy.detector_binding is None:
+        raise PolicyRequirementError("bound_policy_required")
+    if mode == "risk_controlled_bound" and policy.risk_control is None:
+        raise PolicyRequirementError("risk_control_required")
+    return mode, policy
+
+
+def require_research_mode() -> None:
+    """Exploratory attacks and proofs are separate from enforced scoring."""
+    if policy_enforcement() != "off":
+        raise PolicyRequestError("exploratory operations are disabled by policy enforcement")
 
 
 def policy_status(policy: Optional[DecisionPolicy], *, actual_binding=None) -> Dict[str, Any]:

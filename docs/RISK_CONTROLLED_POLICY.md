@@ -40,7 +40,13 @@ lurescope policy policies/tfidf-1pct-fpr-95.json
 ```
 
 LureScope rejects unknown fields, unsupported schema or methods, malformed
-provenance, impossible counts, and risk statistics that do not recompute exactly.
+provenance, impossible counts, and risk statistics that do not match recomputation
+within the loader's numerical consistency tolerance.
+That tolerance never increases the confidence or FPR acceptance limit: both
+reported and recomputed p-values/bounds must satisfy the unrelaxed criteria.
+Borderline artifacts admitted by older tolerance checks may be rejected. Preserve
+the original evidence and review or recalibrate; do not edit counts or assurances
+to make an artifact pass. Validation does not rewrite the file.
 In particular, it independently recalculates the binomial p-value and one-sided
 confidence bound from the exported false-positive count.
 The canonical schema is vendored at
@@ -72,15 +78,28 @@ This serving profile supports up to 10 million validation records and verifies
 that a risk-controlled threshold belongs to its declared grid. These are local
 resource/consistency checks, not authentication or re-evaluation of unseen data.
 
+Compatible source-branch LureBench builds stream binomial weights without retaining
+a distribution-sized list and avoid subnormal recurrence plateaus. Zero-error
+upper bounds use a stable closed form rather than repeated CDF inversion. The
+consumer tests include counts-only synthetic artifacts up to the 10-million-record
+limit; these are arithmetic tests, not real evaluations of that many messages.
+Upgrade the companion package to receive the numerical implementation change;
+upgrading only LureScope does not change an older installed LureBench function.
+
 Revalidate a policy when changing the detector or model artifact, including a
 change of inference implementation. The portable-model parity tests are not a
 replacement for your organization's policy acceptance checks.
 
 When a `/score` request omits `threshold` and its detector name matches the policy,
 LureScope uses the policy threshold and returns its `policy_id`. An explicit
-request threshold always overrides the configured policy and therefore does not
+request threshold overrides the configured policy in the default research mode and does not
 inherit its assurance. A request for another detector also falls back to that
 detector's default threshold.
+
+For mandatory reviewed decisions, use the source-branch
+[operator enforcement mode](BOUND_POLICY.md#require-reviewed-policy-decisions).
+It rejects those overrides and requires a pinned bound policy; artifact inspection
+alone does not establish that requests are forced to use the artifact.
 
 Legacy schemas v1/v2 bind names only. They do not verify deployed weights,
 prompts, preprocessing, or provider configuration against the calibration run.

@@ -131,10 +131,19 @@ Public mode also:
 - sets the provider-call budget to zero until the operator opts in; and
 - exposes the non-secret posture at `GET /security`.
 
-`GET /health`, `/capabilities`, `/policy`, `/security`, the OpenAPI documentation,
+`GET /health`, `/capabilities`, `/policy`, `/policy/readiness`, `/security`, the OpenAPI documentation,
 and the static lab remain readable without a key.
 `GET /health` returns `503` if public-mode security is misconfigured, preventing
 a load balancer from routing traffic to an accidentally unprotected replica.
+
+Authentication alone does not require validated model decisions. For that,
+enable `LURESCOPE_POLICY_ENFORCEMENT=bound` or `risk_controlled_bound` with a
+reviewed v3 policy and its approved SHA-256 pin. This rejects threshold/model
+overrides and disables exploratory attacks and proof generation on that worker.
+Use `/policy/readiness` or `lurescope policy --check-readiness` to check admission,
+model binding, and security configuration without inference. See
+[operator policy enforcement](BOUND_POLICY.md#require-reviewed-policy-decisions)
+for setup, status codes, research-worker separation, and readiness limits.
 
 ## Create a client key
 

@@ -7,6 +7,7 @@ No providers, downloads, model deserialization, or production traffic are used.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib
 import math
 import os
@@ -14,6 +15,7 @@ import sys
 import tempfile
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 
 class ForbidModelFrameworks:
@@ -76,6 +78,39 @@ def main(argv=None):
                 pass
             else:
                 raise ValueError("installed runtime mismatch was accepted")
+        # The final loop artifact is an actual v3 risk-controlled policy.
+        with patch.dict(os.environ, {
+            "LURESCOPE_POLICY_PATH": str(path),
+            "LURESCOPE_POLICY_SHA256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "LURESCOPE_POLICY_ENFORCEMENT": "risk_controlled_bound",
+        }, clear=True):
+            if not service.policy_readiness()["ready"]:
+                raise ValueError("installed enforced policy was not ready")
+            if service.score("Synthetic notes").policy_id != bound.policy_id:
+                raise ValueError("installed scoring bypassed approved policy")
+            for options in ({"threshold": .5}, {"detector_name": "heuristic-v0"},
+                            {"engine": "ignored"}):
+                try:
+                    service.score("Synthetic notes", **options)
+                except policy_module.PolicyRequestError:
+                    pass
+                else:
+                    raise ValueError("installed enforcement accepted a client override")
+            try:
+                service.attack("Synthetic notes", "homoglyph")
+            except policy_module.PolicyRequestError:
+                pass
+            else:
+                raise ValueError("installed enforcement accepted exploration")
+            os.environ.pop("LURESCOPE_POLICY_SHA256")
+            if service.policy_readiness()["ready"]:
+                raise ValueError("installed readiness ignored missing trust pin")
+            try:
+                service.score("Synthetic notes")
+            except policy_module.PolicyRequirementError:
+                pass
+            else:
+                raise ValueError("installed worker reused an unpinned policy")
     try:
         service.score("Synthetic input", detector_name="binoculars")
     except service.DetectorUnavailable:

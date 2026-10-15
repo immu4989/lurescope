@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -118,6 +119,27 @@ def test_risk_controlled_policy_v2_is_accepted(tmp_path):
     Draft202012Validator(schema).validate(json.loads(path.read_text(encoding="utf-8")))
 
 
+@pytest.mark.parametrize("negatives,target", [(400, .01), (100000, .001), (9999999, .000001)])
+def test_large_count_zero_event_policy_uses_stable_binomial_evidence(tmp_path, negatives, target):
+    # Counts-only synthetic metadata exercises arithmetic, not validation data
+    # provenance or an actual evaluation of millions of messages.
+    path = tmp_path / "counts-only-policy.json"
+    bound = math.nextafter(-math.expm1(math.log(.05) / negatives), math.inf)
+    p_value = math.exp(negatives * math.log1p(-target))
+    _write_risk_controlled_policy(path, target_fpr=target,
+        validation_records=negatives + 1, validation_true_positives=1,
+        validation_recall=1., risk_control={
+            "method": "learn_then_test_fixed_sequence_exact_binomial_v1",
+            "risk": "false_positive_rate", "confidence": .95,
+            "validation_negatives": negatives, "false_positives": 0,
+            "empirical_fpr": 0., "upper_confidence_bound": bound,
+            "hypothesis_p_value": p_value, "threshold_grid_size": 101,
+        })
+    policy = load_policy(str(path))
+    assert policy.risk_control.upper_confidence_bound == bound
+    assert policy_status(policy)["assurance_status"] == "finite_sample_fpr_control"
+
+
 def test_risk_controlled_policy_rejects_forged_bound(tmp_path):
     path = tmp_path / "policy-v2.json"
     _write_risk_controlled_policy(
@@ -135,6 +157,27 @@ def test_risk_controlled_policy_rejects_forged_bound(tmp_path):
         },
     )
     with pytest.raises(ValueError, match="upper bound is inconsistent"):
+        load_policy(str(path))
+
+
+@pytest.mark.parametrize("case", ["recomputed", "understated", "reported_p", "reported_upper"])
+def test_acceptance_limit_is_not_relaxed_by_consistency_tolerance(tmp_path, case):
+    path = tmp_path / "risk-boundary.json"
+    _write_risk_controlled_policy(path)
+    payload = json.loads(path.read_text())
+    control = payload["risk_control"]
+    bound = clopper_pearson_upper(0, 400, .95)
+    target = bound - 1e-14 if case in {"recomputed", "understated"} else bound + 1e-14
+    payload["target_fpr"] = target
+    control["hypothesis_p_value"] = binomial_cdf(0, 400, target)
+    if case == "understated":
+        control.update(upper_confidence_bound=target, hypothesis_p_value=1-.95)
+    elif case == "reported_p":
+        control["hypothesis_p_value"] = 1-.95+1e-14
+    elif case == "reported_upper":
+        control["upper_confidence_bound"] = target+1e-14
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
         load_policy(str(path))
 
 

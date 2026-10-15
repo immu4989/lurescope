@@ -58,9 +58,68 @@ For a matching detector request with no explicit threshold, a v3 policy is check
 before scoring and again before publishing the score. A binding mismatch fails
 closed; it does not fall back to 0.5 or a legacy policy. `/score` and email triage
 return redacted 502 failures, and proof creation cannot produce evidence under
-the mismatched policy. An explicit threshold still opts out of the policy and
+the mismatched policy. In the default research mode, an explicit threshold opts out and
 returns no policy ID, but the configured policy file must still be structurally
 valid. Another detector uses its existing default behavior.
+
+## Require reviewed policy decisions
+
+Organizations that cannot admit research overrides can enable source-branch
+operator enforcement after calibrating and approving the policy:
+
+```bash
+export LURESCOPE_POLICY_ENFORCEMENT=risk_controlled_bound
+# LURESCOPE_POLICY_PATH and its independently approved SHA-256 must also be set.
+lurescope policy --check-readiness
+curl --fail http://127.0.0.1:8000/policy/readiness
+```
+
+Only three exact mode values are accepted. Unset or `off` retains research
+behavior. `bound` requires a pinned v3 policy matching the portable detector;
+`risk_controlled_bound` additionally requires its validated finite-sample FPR
+evidence. Empty, misspelled, padded, or differently capitalized values fail closed.
+Review the policy's target, confidence, validation population, and limitations;
+the mode does not choose those requirements for your organization.
+
+In either enforced mode, score and email-triage requests must leave `threshold`,
+`engine`, and `model` unset or null and use the policy's detector. Even an explicitly supplied
+threshold equal to the policy threshold is rejected. Rejections happen before
+model construction or provider quota reservation. A missing pin, invalid policy,
+or legacy downgrade cannot fall back to defaults, including on a warm worker.
+The direct Python service applies the same decision admission rules.
+
+Exploratory attacks and new LureProofs are disabled in enforced mode, including
+proof-producing batch workflows. They perform extra evaluations beyond the
+bound scoring contract. Keep a separate research worker for those operations;
+verification of already-issued proofs remains available without inference.
+HTTP request-policy violations return redacted `403` responses. Unavailable
+required policy configuration returns `503`; a detector binding mismatch during
+scoring retains the redacted `502` failure, with no decision.
+
+`GET /policy/readiness` returns `200` only when enforcement is enabled, trusted
+policy bytes satisfy the selected requirement, the actual detector binding
+matches, and API security configuration/allowlists permit that detector. Otherwise
+it returns `503` with a fixed reason code and `ready: false`. HTTP responses use
+`Cache-Control: no-store` so compliant intermediaries do not reuse old readiness.
+The CLI probe uses
+the same checks and exits 0 or 1. It accepts neither a file argument nor
+`--check-deployment`: it checks actual deployment configuration, not an arbitrary
+artifact. The probe can load the data-only model but never predicts, constructs
+provider clients, or reserves quota. It exposes no private paths or credentials.
+
+Use this policy-specific probe for enforced scoring workers; a research worker
+with enforcement off intentionally reports not ready here while `/health` can
+remain healthy. A ready result is a point-in-time configuration check, not proof
+of prediction success, capacity, authentication of a particular client, TLS,
+email extraction validity, regulatory compliance, or future accuracy. Independent
+sampling and deployment-monitoring obligations still apply.
+
+Treat policy file, approved pin, enforcement mode, and installed code as trusted
+administrative configuration. Deploy them together before starting workers and
+use controlled rolling replacements. Each operation rechecks current admission;
+this does not atomically update environment variables, cancel in-flight work,
+or coordinate replicas. Browser-only JavaScript scoring is a research demo and
+does not inherit server environment enforcement.
 
 ## Check configuration separately from statistical evidence
 

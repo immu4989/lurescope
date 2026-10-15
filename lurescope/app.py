@@ -93,6 +93,28 @@ def deployment_security() -> SecurityStatusResponse:
     return SecurityStatusResponse(**security_status())
 
 
+@app.get("/policy/readiness")
+def decision_policy_readiness():
+    """Readiness for operator-enforced scoring, not general service liveness."""
+    result = service.policy_readiness()
+    return JSONResponse(result, status_code=200 if result["ready"] else 503,
+                        headers={"Cache-Control": "no-store"})
+
+
+def _admit_policy_request(req, *, research=False):
+    # This first gate precedes provider quota reservation. The Python service
+    # independently gates again so direct callers cannot bypass admission.
+    try:
+        if research:
+            service.require_research_mode()
+        elif service.policy_enforcement() != "off":
+            service.decision_policy_for_request(req.detector, req.threshold, req.engine, req.model)
+    except service.PolicyRequestError as exc:
+        raise HTTPException(403, "request is disabled by decision policy enforcement") from exc
+    except service.PolicyRequirementError as exc:
+        raise HTTPException(503, "required decision policy is unavailable") from exc
+
+
 @app.post(
     "/score",
     response_model=ScoreResponse,
@@ -101,6 +123,7 @@ def deployment_security() -> SecurityStatusResponse:
 def score(req: ScoreRequest) -> ScoreResponse:
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    _admit_policy_request(req)
     enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         r = service.score(
@@ -110,6 +133,10 @@ def score(req: ScoreRequest) -> ScoreResponse:
             engine=req.engine,
             model=req.model,
         )
+    except service.PolicyRequestError as exc:
+        raise HTTPException(403, "request is disabled by decision policy enforcement") from exc
+    except service.PolicyRequirementError as exc:
+        raise HTTPException(503, "required decision policy is unavailable") from exc
     except service.DetectorUnavailable as exc:  # detector needs a key/dep not configured
         raise HTTPException(400, service._needs(req.detector)) from exc
     except Exception as exc:  # noqa: BLE001 - provider/model failure at score time
@@ -129,6 +156,7 @@ def attack(req: AttackRequest) -> AttackResponse:
         raise HTTPException(400, f"unknown attack {req.attack!r}")
     if req.defense not in service.available_defenses_():
         raise HTTPException(400, f"unknown defense {req.defense!r}")
+    _admit_policy_request(req, research=True)
     enforce_request_policy(
         detector=req.detector,
         attack=req.attack,
@@ -146,6 +174,10 @@ def attack(req: AttackRequest) -> AttackResponse:
             model=req.model,
             defense=req.defense,
         )
+    except service.PolicyRequestError as exc:
+        raise HTTPException(403, "request is disabled by decision policy enforcement") from exc
+    except service.PolicyRequirementError as exc:
+        raise HTTPException(503, "required decision policy is unavailable") from exc
     except ValueError as exc:  # llm attack/detector without a configured provider
         raise HTTPException(
             400, "attack unavailable; check detector/provider configuration and input"
@@ -166,6 +198,7 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
     """Triage raw email locally without fetching links or opening attachments."""
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    _admit_policy_request(req)
     enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         result = triage_email(
@@ -175,6 +208,10 @@ def triage_email_message(req: EmailTriageRequest) -> EmailTriageResponse:
             engine=req.engine,
             model=req.model,
         )
+    except service.PolicyRequestError as exc:
+        raise HTTPException(403, "request is disabled by decision policy enforcement") from exc
+    except service.PolicyRequirementError as exc:
+        raise HTTPException(503, "required decision policy is unavailable") from exc
     except service.DetectorUnavailable as exc:
         raise HTTPException(400, service._needs(req.detector)) from exc
     except (EmailTooLarge, ValueError) as exc:
@@ -189,6 +226,7 @@ def prove_email_message(req: LureProofRequest) -> dict:
     """Create minimized unsigned evidence; issuer signing is an offline operation."""
     if req.detector not in service.all_detectors():
         raise HTTPException(400, f"unknown detector {req.detector!r}")
+    _admit_policy_request(req, research=True)
     enforce_request_policy(detector=req.detector, engine=req.engine, model=req.model)
     try:
         return create_email_proof(
@@ -200,6 +238,10 @@ def prove_email_message(req: LureProofRequest) -> dict:
             privacy_profile=req.privacy_profile,
             nonce=req.nonce,
         )
+    except service.PolicyRequestError as exc:
+        raise HTTPException(403, "request is disabled by decision policy enforcement") from exc
+    except service.PolicyRequirementError as exc:
+        raise HTTPException(503, "required decision policy is unavailable") from exc
     except service.DetectorUnavailable as exc:
         raise HTTPException(400, service._needs(req.detector)) from exc
     except (EmailTooLarge, ValueError) as exc:

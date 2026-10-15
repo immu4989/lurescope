@@ -312,6 +312,7 @@ def validate_creation_options(
     Does not load a detector, read a deployment policy, or validate individual mail.
     Historical proof verification retains its existing compatibility rules.
     """
+    service.require_research_mode()
     if not isinstance(detector_name, str) or detector_name not in service.ALWAYS_ON:
         raise ValueError(
             "the reference LureProof producer accepts deterministic local detectors only"
@@ -351,6 +352,7 @@ def create_email_proof(
     subject_salt: Optional[bytes] = None,
 ) -> Dict[str, Any]:
     """Create a strict statement; optionally return it in a signed DSSE envelope."""
+    service.require_research_mode()
     if created_at is None:
         created_at = _timestamp()
     elif not isinstance(created_at, str):

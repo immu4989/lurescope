@@ -822,6 +822,13 @@ to check its model, implementation, and runtime profile. A v3 mismatch stops
 policy-backed scoring and proof creation. This is not in PyPI 0.11.0; deploy
 compatible companion builds together. See the [bound workflow and limits](docs/BOUND_POLICY.md).
 
+For an enforced scoring worker, set `LURESCOPE_POLICY_ENFORCEMENT=bound` (or
+`risk_controlled_bound`) with a reviewed v3 policy and trusted SHA-256 pin. Client
+threshold/model overrides and exploratory evaluations are then disabled.
+`lurescope policy --check-readiness` and `GET /policy/readiness` check the actual
+deployment without prediction. This is configuration assurance, not compliance
+or a guarantee of future performance.
+
 LureBench can now require finite-sample evidence—not merely an observed
 validation FPR—before exporting a threshold:
 
