@@ -132,6 +132,13 @@ return retryable `503`, not an authentication result. This guard does not provid
 an unauthenticated rate limit or guarantee availability under attack; apply
 gateway admission controls before routing traffic to the application.
 
+HTTP middleware additionally bounds admitted requests (16 per instance by
+default) and total body-read time (30 seconds), before route authentication or
+provider work. Saturation and upload timeout are fixed `503`/`408` errors, not
+risk decisions. Capacity is held through the downstream ASGI response and
+released on cancellation/failure. These limits do not bound server connections,
+all process memory, or work surviving cancellation; see [HTTP admission](docs/PUBLIC_DEPLOYMENT.md#http-admission-and-upload-deadline).
+
 These controls do not replace an HTTPS gateway, a shared limiter for multiple
 workers, an identity provider, a pre-parse request-byte limit, or provider-side
 billing caps. Treat every scored message as sensitive: `/score` and `/attack`

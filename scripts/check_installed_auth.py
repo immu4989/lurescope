@@ -45,6 +45,49 @@ def main(argv=None):
     if sent[0]["status"] != 422:
         raise ValueError("installed HTTP boundary changed complexity rejection")
 
+    async def check_admission():
+        entered, release = asyncio.Event(), asyncio.Event()
+        output = []
+
+        async def body():
+            return {'type': 'http.request', 'body': b'{}', 'more_body': False}
+
+        async def held_app(scope, receive, send):
+            if (await receive())['body'] != b'{}':
+                raise ValueError('installed middleware changed request bytes')
+            entered.set()
+            await release.wait()
+
+        async def collect(message):
+            output.append(message)
+
+        async def forbidden_receive():
+            raise ValueError('installed saturated admission read another upload')
+
+        scope = {'type': 'http', 'http_version': '1.1', 'headers': []}
+        boundary = RequestBodyLimit(held_app, max_in_flight=1, body_timeout_seconds=1)
+        first = asyncio.create_task(boundary(scope, body, collect))
+        try:
+            await asyncio.wait_for(entered.wait(), 2)
+            await boundary(scope, forbidden_receive, collect)
+            if output[0]['status'] != 503:
+                raise ValueError('installed middleware lost concurrent admission bound')
+        finally:
+            release.set()
+            await first
+        output.clear()
+
+        async def stalled_receive():
+            await asyncio.Event().wait()
+
+        deadline = RequestBodyLimit(forbidden_app, max_in_flight=1, body_timeout_seconds=.02)
+        await asyncio.wait_for(deadline(scope, stalled_receive, collect), 2)
+        if output[0]['status'] != 408 or not deadline._slots.acquire(blocking=False):
+            raise ValueError('installed upload deadline failed to reject or release capacity')
+        deadline._slots.release()
+
+    asyncio.run(check_admission())
+
     variables = ("LURESCOPE_PUBLIC_MODE", "LURESCOPE_API_KEY_SCRYPT",
                  "LURESCOPE_RATE_LIMIT_PER_MINUTE", "LURESCOPE_PROVIDER_DAILY_LIMIT")
     saved = {name: os.environ.get(name) for name in variables}
@@ -92,7 +135,7 @@ def main(argv=None):
             location = getattr(module, "__file__", None)
             if location is None or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("authentication imports escaped installed wheel")
-    print("PASS installed JSON admission, key verification, header limits, and rotation")
+    print("PASS installed upload capacity/deadlines, JSON admission, key checks, and rotation")
     return 0
 
 

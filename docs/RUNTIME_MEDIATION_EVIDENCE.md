@@ -46,6 +46,14 @@ state takes precedence over exhaustion. Do not synthesize missing receipts or
 reset replay history to regain capacity; reconcile the session before an
 operator establishes a new context. See [session lifetime](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/RUNTIME_AGENT_AUTHORIZATION.md#session-lifetime-and-replay-state-bounds).
 
+The local producer additionally bounds the complete HTTP request head to 16 KiB
+and five seconds before parsing or application work. Incomplete, oversized, and
+expired heads yield fixed transport errors (400/414/431/408), not authorization
+receipts. A failed head does not consume replay state or disable the decision
+engine. Error delivery can still fail after a disconnect; an absent response
+must not become an allowed observation. These producer controls require the
+paired LureBench update and do not change historical receipt identities.
+
 ## End-to-end workflow
 
 Create a healthy synthetic trace and evaluation with LureBench:

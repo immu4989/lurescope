@@ -667,6 +667,7 @@ name = "lurescope"
 version = "0.11.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "lurebench", extra = ["receipts", "train"] },
@@ -689,6 +690,7 @@ viz = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4,<5" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2" },
     { name = "cryptography", specifier = ">=42" },
     { name = "fastapi", specifier = ">=0.110" },

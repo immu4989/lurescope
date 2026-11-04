@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__, service
-from .http_boundary import RequestBodyLimit
+from .http_boundary import RequestBodyLimit, configured_admission_limits
 from .models import (
     AttackRequest,
     AttackResponse,
@@ -48,7 +48,7 @@ app = FastAPI(
         "against attacks a real fraudster would run. Deployable companion to LureBench."
     ),
 )
-app.add_middleware(RequestBodyLimit)
+app.add_middleware(RequestBodyLimit, **configured_admission_limits())
 
 
 @app.exception_handler(RequestValidationError)

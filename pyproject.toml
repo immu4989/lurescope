@@ -36,6 +36,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
+  "anyio>=4,<5",
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
   "pydantic>=2",

@@ -159,3 +159,89 @@ core checks on Python 3.11/3.12/3.13 with optional imports forbidden.
 Artifacts and logs: `/private/tmp/lure-push-20261104.BAkBgj`. This is verification
 for the requested branch push, not a release, deployment, default-branch merge,
 or assertion that all remote dependency alerts are resolved.
+
+## Bounded HTTP admission and upload lifetime — 4 November 2026
+
+Three initial regressions exposed a seventeenth simultaneous request entering
+the application with sixteen held routes, absent body-deadline configuration,
+and duplicate content-type headers consuming an upload before rejection.
+Inspection confirmed that the existing 8 MiB byte cap alone did not bound
+simultaneously retained requests or waiting for an incomplete upload.
+
+The middleware now admits 16 HTTP calls by default, with nonblocking saturation
+rejection before reading an additional body or entering authentication/routing.
+Slots remain held through the downstream ASGI response and release in `finally`.
+Body collection has one 30-second deadline rather than an idle timeout reset
+by chunks; cooperative cancellation and explicit elapsed checks handle stalled,
+trickled, empty/immediate, and late-final events. Existing external cancellation
+and upstream timeout exceptions are not mislabeled as local upload deadlines.
+An observed disconnect produces no synthetic response, including a late one.
+
+Configuration is snapshotted at application construction, validated, and bounded
+to 1..256 admitted requests and a finite positive deadline of at most 300 seconds.
+Fixed 503/408 responses do not represent model decisions. Input rejections close
+HTTP/1.x connections without emitting the hop-by-hop header on HTTP/2/3 scopes.
+AnyIO, already installed transitively, is now declared explicitly (`>=4,<5`);
+the offline lock change only adds the direct requirement, not package upgrades.
+
+The 54 new tests cover saturation, slot ownership through upload/route/response,
+exception and cancellation cleanup, disconnects, rejected JSON/bytes/headers,
+total deadlines, blocking final events, unchanged body replay, configuration,
+and non-HTTP scope passthrough. Two actual Uvicorn/h11 loopback tests exercise
+asyncio and uvloop: the occupied upload prevents a second request from routing,
+both 503 and 408 close their HTTP/1.1 connections, and subsequent health succeeds.
+No external host is contacted by those tests; explicit sandbox permission was
+required for their ephemeral `127.0.0.1` listeners.
+
+Full paired LureScope suites: **1,501 passed** on both Python 3.11 and 3.12
+(1/16 dependency warnings respectively). Unchanged companion LureBench at
+`5826995247e0bed7a16fe5650126e9f1e52eab49` passes **2,277 with 40 skips** on
+Python 3.13; browser **107 passed**. Distinct combined total: **3,885 passed**.
+Ruff, whitespace, offline lock consistency, 26 producer pins, 10 independent
+authority artifacts, and static stamps pass. Offline builds and archive checks
+pass (167 exact authority sources; 19 browser source inputs). Installed upload
+capacity/deadline, JSON/authentication checks pass on Python 3.11 and 3.12;
+installed model/proof and browser checks pass outside the checkout.
+
+Verification logs and packages: `/private/tmp/lure-admission-20261104.4Law1C`.
+The change does not cap transport connections/buffers, all ASGI tasks, total
+process memory, or execution surviving cancellation. It cannot preempt a blocked
+event loop and does not reserve health capacity or cancel inference/response
+writing. Multiple middleware instances have independent limits. See [operational
+boundaries and primary references](PUBLIC_DEPLOYMENT.md#http-admission-and-upload-deadline).
+At completion of this milestone, the changes were local only: no commit, push,
+release, or deployment had occurred.
+
+## Companion request-head boundary — 4 November 2026
+
+The paired LureBench decision service now collects the complete HTTP head under
+a 16 KiB wire-byte bound and five-second total deadline before parsing/routing.
+Five additional consumer cases reject head-timeout/overflow/incomplete/read-error
+response objects substituted for authorization receipts, even after repairing
+receipt and trace hashes. Integration notes distinguish failed transport
+admission from a policy decision, and do not claim guaranteed error delivery.
+
+Full paired suite: **1,506 passed** (16 dependency warnings); browser **107 passed**.
+LureBench passes **2,317 with 40 skips** on Python 3.11 and 3.13. The distinct
+combined total is **3,930 passed**. Producer checks include real IPv4/IPv6/Unix
+slow-head expiry and worker recovery, exact body-prefix preservation, and
+independent head/body deadlines. Ruff, whitespace, 26 producer pins, 10 independent
+authority artifacts, static stamps, offline archives, 167 authority source files,
+19 browser source inputs, and installed model/proof, authentication/upload, and
+browser checks pass. Installed producer core checks pass Python 3.11/3.12/3.13
+with optional imports forbidden.
+
+Artifacts: `/private/tmp/lure-head-20261104.Dx6rnl`. At completion of this
+verification, the preceding upload-admission milestone was included and
+uncommitted. No push, release, or deployment had occurred; evidence schemas and
+historical identities are unchanged.
+
+### Requested branch-push verification
+
+Before the subsequent user-requested push, the full suites were rerun:
+paired LureScope Python 3.12 **1,506 passed**, LureBench Python 3.13
+**2,317 passed, 40 skipped**, and browser **107 passed**. Existing dependency
+warnings remain. Ruff, whitespace, 26 producer pins, 10 independent authority
+artifacts, and static stamps pass. Both feature branches match their fetched
+remote tips before committing. Logs: `/private/tmp/lure-push-verify-20261104.dN5UAF`.
+This prepares branch publication, not a merge, package release, or deployment.

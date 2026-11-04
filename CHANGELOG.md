@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- HTTP admission caps active admitted requests (16 per instance by default)
+  before uploads, authentication, and routing. Saturation returns a fixed 503
+  without reading another body. Uploads have a total 30-second deadline (408),
+  independent of chunk progress. Operator configuration is bounded and read at
+  startup; cancellation/failure releases slots without becoming a risk decision.
+  Duplicate content headers are rejected before upload; HTTP/1.x input errors
+  close the connection. AnyIO is now an explicit runtime dependency.
+
 - Runtime evidence regressions reject transport busy/unavailable/exhausted responses used
   as authorization receipts and missing receipts with a retained passing verdict.
   The integration guide documents the producer's bounded worker/admission

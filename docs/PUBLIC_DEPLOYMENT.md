@@ -119,7 +119,8 @@ checked. This bounded buffering is intentional for the current non-streaming API
 The implementation follows the [ASGI HTTP receive-event contract](https://asgi.readthedocs.io/en/latest/specs/www.html#request-receive-event).
 The server has already allocated incoming chunks and processed transfer framing
 before middleware receives them. The application does not bound headers,
-transport buffers, concurrent request counts, or slow-client connection lifetime.
+transport buffers, or connection lifetime before the ASGI call. Bounded admitted
+requests and body-read deadlines are described below.
 The node cap bounds individual JSON structure, not total process memory: decoding,
 framework validation, and concurrent requests still allocate memory. Enforce
 process and concurrency limits at the server/gateway. Authentication remains
@@ -139,6 +140,63 @@ The limits address the input-size/resource checks described by
 [RFC 8259 section 9](https://www.rfc-editor.org/rfc/rfc8259.html#section-9) permits
 implementation limits; these specific budgets are LureScope choices, not OWASP
 or IETF certification requirements.
+
+### HTTP admission and upload deadline
+
+The source branch admits at most **16 HTTP requests per middleware instance**
+by default, before reading bodies, decoding JSON, authenticating, or routing.
+A slot stays held through the full downstream ASGI call, including its response;
+it is not released just because an upload completes. At capacity, a request
+receives a fixed `503` with `{"detail":"request admission is busy"}`,
+`Retry-After: 1`, and `Cache-Control: no-store`. It never reads that upload,
+enters a route, reserves provider quota, or issues a score/proof. There is no
+admission queue, per-user fairness, or reserved health/static capacity. A `503`
+is not a benign classification or authorization decision.
+
+Each admitted body has a **30-second total read deadline**, starting after
+header checks. Partial progress does not restart it. Expiration returns a fixed
+`408` with `{"detail":"request body deadline exceeded"}` before downstream
+work. Immediate/empty ASGI chunks explicitly yield to cancellation; a receive
+that returns after its deadline is rejected even if it returns the final chunk.
+This deadline covers body collection, not authentication, JSON validation,
+inference, response writing, or work already executing in another thread.
+It cannot preempt code that blocks the event loop or ignores cancellation.
+
+HTTP/1.x admission/input rejections request `Connection: close` so incomplete
+uploads are not reused. This header is not emitted on HTTP/2 or HTTP/3 streams.
+Duplicate content-type or content-encoding headers are rejected before any body
+read, including identical duplicates. Disconnects do not enter a route or
+produce a synthetic response. Slots are released on success, input rejection,
+disconnect, exception, and cancellation; external cancellation is propagated,
+not relabeled as an upload timeout. A stalled downstream response can still
+hold its slot: retain server/gateway write deadlines and process supervision.
+
+Operators can set these values **before importing/starting the application**:
+
+| Environment variable | Default | Accepted range |
+|---|---|---|
+| `LURESCOPE_HTTP_MAX_IN_FLIGHT` | `16` | Integer 1–256 |
+| `LURESCOPE_HTTP_BODY_TIMEOUT_SECONDS` | `30` | Finite seconds greater than 0 and at most 300 |
+
+Invalid configuration fails application construction with a redacted error.
+Settings are snapshotted; changing the environment does not resize running
+instances. Use a controlled worker restart. Python integrations can pass
+`max_in_flight` and `body_timeout_seconds` to `RequestBodyLimit` directly.
+Tune for the permitted upload size, client bandwidth, worker memory, and workload.
+These defaults are engineering choices, not standards-mandated thresholds.
+
+These are limits on admitted ASGI calls, not on TCP connections, total tasks,
+memory, background work, or concurrent inference surviving task cancellation.
+Busy-response tasks and server buffers exist outside the admitted body budget.
+Multiple workers/replicas have independent slots. All 16 slots can be occupied
+by unauthenticated clients; gateway authentication, connection/request limits,
+fairness, and distributed rate limiting remain necessary. Lifespan and WebSocket
+scopes are not covered by this HTTP middleware. No request contents are logged.
+
+The implementation follows the [ASGI request/response lifecycle](https://asgi.readthedocs.io/en/stable/specs/www.html#http)
+and [AnyIO timeout/cancellation model](https://anyio.readthedocs.io/en/stable/cancellation.html).
+This addresses bounded resource admission, not comprehensive denial-of-service
+prevention or proof of availability under attack.
 
 ## What public mode changes
 

@@ -325,7 +325,10 @@ def _write(path: Path, value: dict) -> None:
     path.chmod(0o600)
 
 
-@pytest.mark.parametrize('error', ['runtime_busy', 'runtime_unavailable', 'runtime_exhausted'])
+@pytest.mark.parametrize('error', ['runtime_busy', 'runtime_unavailable', 'runtime_exhausted',
+                                 'request_head_timeout', 'request_head_too_large',
+                                 'incomplete_request_head', 'request_line_too_large',
+                                 'request_head_unavailable'])
 def test_transport_errors_cannot_substitute_for_authorization_receipts(error):
     value = _evaluation(passing=True, generated_at='2026-08-30T10:00:04Z',
                         policy_version='1.0.0')

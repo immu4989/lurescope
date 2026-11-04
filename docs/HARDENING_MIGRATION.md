@@ -69,6 +69,15 @@ routing; see [deployment boundaries](PUBLIC_DEPLOYMENT.md). LureProof verificati
 uses strict bounded payload decoding even for cryptographically signed bytes;
 CLI proof/key intake now uses bounded non-symlink regular-file reads.
 
+HTTP admission now defaults to 16 active admitted requests per middleware
+instance and a 30-second total upload deadline. Saturation returns `503` with
+`Retry-After: 1`; incomplete/slow uploads return `408` before routing. Neither
+is a model decision or proof. Clients must handle these outcomes explicitly.
+Review `LURESCOPE_HTTP_MAX_IN_FLIGHT` and `LURESCOPE_HTTP_BODY_TIMEOUT_SECONDS`
+before starting workers; invalid values fail startup. Body progress does not
+extend the deadline, and health has no reserved slot. See [admission limits](PUBLIC_DEPLOYMENT.md#http-admission-and-upload-deadline)
+for ranges, cancellation behavior, and gateway requirements.
+
 CLI signing-key inputs across legacy commands now require regular, non-symlink
 files of at most 64 KiB and owner-only permissions on POSIX. Review ownership
 and use `chmod 600` on the intended private file if appropriate; do not change
