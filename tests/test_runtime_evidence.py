@@ -325,6 +325,32 @@ def _write(path: Path, value: dict) -> None:
     path.chmod(0o600)
 
 
+@pytest.mark.parametrize('error', ['runtime_busy', 'runtime_unavailable', 'runtime_exhausted'])
+def test_transport_errors_cannot_substitute_for_authorization_receipts(error):
+    value = _evaluation(passing=True, generated_at='2026-08-30T10:00:04Z',
+                        policy_version='1.0.0')
+    value['trace']['receipts'] = [{'error': error}]
+    digest = hashlib.sha256(_canonical(value['trace']['receipts'][0])).hexdigest()
+    value['trace']['sensor_observations'][0]['receipt_sha256'] = digest
+    value['results'][0]['receipt_sha256'] = digest
+    value['trace_sha256'] = hashlib.sha256(_canonical(value['trace'])).hexdigest()
+    # Repairing byte hashes cannot turn a transport response into a decision.
+    with pytest.raises(ValueError):
+        validate_runtime_evaluation(value)
+
+
+@pytest.mark.parametrize('keep_observation', [True, False])
+def test_missing_admission_receipt_cannot_retain_a_passing_evaluation(keep_observation):
+    value = _evaluation(passing=True, generated_at='2026-08-30T10:00:04Z',
+                        policy_version='1.0.0')
+    value['trace']['receipts'] = []
+    if not keep_observation:
+        value['trace']['sensor_observations'] = []
+    value['trace_sha256'] = hashlib.sha256(_canonical(value['trace'])).hexdigest()
+    with pytest.raises(ValueError):
+        validate_runtime_evaluation(value)
+
+
 def _schema(filename: str, value: dict) -> None:
     schema = json.loads((ROOT / "spec" / filename).read_text(encoding="utf-8"))
     jsonschema.Draft202012Validator.check_schema(schema)

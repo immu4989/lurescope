@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=84.1.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "lurescope"
 version = "0.11.0"
 description = "Deployable fraud-lure scoring API with a live adversarial-evasion demo — the serving companion to LureBench."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Imran Ahamed" }]
@@ -28,7 +28,6 @@ classifiers = [
   "Intended Audience :: Information Technology",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -57,6 +56,11 @@ dependencies = [
 dev = ["build>=1.2", "pytest", "httpx", "jsonschema>=4.23", "ruff>=0.15,<0.17"]
 # Only needed to render the scorecard heatmap PNG; the markdown/JSON need nothing extra.
 viz = ["matplotlib>=3.6"]
+
+[tool.uv]
+# Remove the compromised emSign trust anchor when optional HTTP clients pull
+# certifi into this project. Does not add a runtime dependency or constrain pip.
+constraint-dependencies = ["certifi>=2026.10.19"]
 
 [project.urls]
 Homepage = "https://github.com/immu4989/lurescope"
@@ -118,7 +122,7 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 # Keep typing.Optional/List for conservative pydantic runtime evaluation; UP

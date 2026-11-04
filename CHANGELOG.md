@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Runtime evidence regressions reject transport busy/unavailable/exhausted responses used
+  as authorization receipts and missing receipts with a retained passing verdict.
+  The integration guide documents the producer's bounded worker/admission
+  behavior without changing receipt semantics or claiming transport success
+  proves mediation.
+
+- **Compatibility:** the source baseline now requires Python 3.11 or newer,
+  matching the companion project's supported security baseline. CI, metadata,
+  and the README agree. The uv lock refreshes certifi with a >=2026.10.19 floor;
+  isolated builds require setuptools >=84.1.0. These changes do not update
+  already-installed environments, deployed images, or published releases.
+
 - HTTP JSON admission limits structure to 100,000 nodes before decoding or
   routing. Independent evidence readers also bound breadth and numeric tokens;
   older Boundary, Watch, and Witness readers now reject deep nesting and

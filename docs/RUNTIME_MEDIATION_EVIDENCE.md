@@ -26,6 +26,26 @@ rollback or replay-state restoration. LureScope's receipt-chain verification doe
 not repair or reconstruct missing receipts, and a healthy producer latch does not
 prove logging is enabled or storage is currently healthy.
 
+The producer's local service also caps admitted connection workers and bounds
+waiting for its decision lock. Excess connections can close without HTTP output;
+a definite 503 `runtime_busy` means that request never entered the decision
+engine and has no receipt to import. It is not an `allow`, `block`, or `stop`
+decision, and must not be synthesized into a successful mediation observation.
+Running decisions are not cancelled by another request's admission timeout.
+Health checks have no reserved worker capacity and do not prove storage progress.
+See the producer's [admission limits](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/RUNTIME_AGENT_AUTHORIZATION.md#bounded-connection-and-decision-admission)
+for busy-versus-uncertain outcomes and recovery requirements. These transport
+controls do not change evidence schemas or historical receipt identities.
+
+The producer also enforces its existing v1 ceiling of 512 receipts before
+evaluation, with a configurable smaller session budget. A fixed 503
+`runtime_exhausted` is not a receipt or authorization. Health reports
+`decision_limit_reached` with `decision_budget` counts; these count committed
+engine decisions, not persisted/delivered receipts or allowed actions. Failure
+state takes precedence over exhaustion. Do not synthesize missing receipts or
+reset replay history to regain capacity; reconcile the session before an
+operator establishes a new context. See [session lifetime](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/RUNTIME_AGENT_AUTHORIZATION.md#session-lifetime-and-replay-state-bounds).
+
 ## End-to-end workflow
 
 Create a healthy synthetic trace and evaluation with LureBench:

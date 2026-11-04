@@ -14,7 +14,7 @@ Paste a message. Measure the score. Apply an evasion. Verify whether the defense
 [![GHCR](https://img.shields.io/badge/GHCR-pull_0.11.0-2a78d6)](https://github.com/immu4989/lurescope/pkgs/container/lurescope)
 ![Version](https://img.shields.io/badge/version-0.11.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
-![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
+![Python](https://img.shields.io/badge/python-3.11%2B-1baf7a)
 ![API](https://img.shields.io/badge/API-FastAPI-009485)
 ![LureInvariant](https://img.shields.io/badge/LureInvariant-signed_before_·_after_evidence-7b61ff)
 ![LureRange](https://img.shields.io/badge/LureRange-independent_signed_conformance-7b61ff)

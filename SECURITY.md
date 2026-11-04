@@ -104,6 +104,21 @@ otherwise.
 
 ## Deployment notes
 
+The unreleased source branch requires Python 3.11+; Python 3.10 reached upstream
+[end of life](https://devguide.python.org/versions/) in October 2026. CI tests
+3.11, 3.12, and 3.13. The project uv lock uses certifi 2026.10.23 with a
+>=2026.10.19 floor following the
+[maintainer trust-store advisory](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2).
+Isolated builds require setuptools >=84.1.0 following its
+[legacy installer advisory](https://github.com/advisories/GHSA-xmj3-9gf7-h52w).
+These changes do not patch an existing virtual environment, container, static
+Space build, or published wheel. Recreate the environment with a supported
+interpreter and `uv sync --locked --extra dev`, and rebuild deployed images.
+uv-only constraints do not constrain independently resolved pip installations.
+The companion project's [dependency review](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/DEPENDENCY_SECURITY.md)
+documents separate optional-model risks, including unresolved Accelerate loading.
+This is not a claim that all GitHub alerts or deployment dependencies are resolved.
+
 The service is local-first. `LURESCOPE_PUBLIC_MODE=true` adds fail-closed bearer
 authentication, per-credential process-local rate limiting, detector/attack and
 provider/model allowlists, and a provider-call circuit breaker. It refuses to
