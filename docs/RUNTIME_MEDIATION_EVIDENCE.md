@@ -54,6 +54,16 @@ engine. Error delivery can still fail after a disconnect; an absent response
 must not become an allowed observation. These producer controls require the
 paired LureBench update and do not change historical receipt identities.
 
+For Unix transport, the paired producer now requires a dedicated mode-0700
+directory owned by its effective UID and a previously absent socket entry.
+Socket cleanup is anchored to that directory and preserves observed replacements;
+an activation or cleanup failure is a local transport/lifecycle outcome, never
+an authorization receipt. Directory access is not authenticated workload identity.
+Do not automatically unlink a stale-looking path or synthesize a missing receipt
+to regain service. See [Unix ownership and recovery boundaries](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/RUNTIME_AGENT_AUTHORIZATION.md#unix-socket-ownership-and-cleanup).
+These controls require the source-branch producer, not just the pinned released
+LureBench package; they do not change LureScope's historical evidence format.
+
 ## End-to-end workflow
 
 Create a healthy synthetic trace and evaluation with LureBench:

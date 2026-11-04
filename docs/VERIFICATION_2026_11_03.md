@@ -245,3 +245,75 @@ warnings remain. Ruff, whitespace, 26 producer pins, 10 independent authority
 artifacts, and static stamps pass. Both feature branches match their fetched
 remote tips before committing. Logs: `/private/tmp/lure-push-verify-20261104.dN5UAF`.
 This prepares branch publication, not a merge, package release, or deployment.
+
+## Companion Unix-socket lifecycle — 4 November 2026
+
+The source-branch producer now requires an owned mode-0700 parent and tracks a
+bound socket's identity/metadata through a retained directory descriptor.
+Lifecycle cleanup preserves observed replacements, covers startup failures and
+interruption, and reports cleanup errors without treating them as successful
+CLI shutdown. Integration and migration notes explain the new directory
+requirement, same-UID/privileged-race limits, and operator inspection of leftovers.
+No lifecycle failure becomes an authorization receipt or changed evidence format.
+These controls require the paired source branch, not merely the released pin.
+
+Final paired suite: **1,506 passed** (16 existing dependency warnings); browser:
+**107 passed**. LureBench passes **2,371 with 40 skips** on both Python 3.11 and
+3.13, including 54 new lifecycle tests. Distinct combined passed count: **3,984**.
+Ruff, whitespace, 26 producer pins, 10 independent authority artifacts, static
+stamps, offline archives, 167 exact wheel sources, 19 browser source inputs,
+installed model/proof, authentication/upload, and browser checks pass. Installed
+producer core checks pass on Python 3.11/3.12/3.13 with optional imports forbidden.
+
+The initial parallel build/test attempt exposed pytest collecting the backend's
+temporary source tree, causing import mismatches and an archive/bytecode race.
+The generated tree was preserved outside the checkout; sequential full tests and
+fresh offline packaging pass. This milestone does not fix that workflow collision.
+Docker's daemon was unavailable; these results are local macOS evidence, with
+Linux runtime verification pending. Artifacts: `/private/tmp/lure-unix-20261104.LuV629`.
+This milestone remains local and uncommitted, with no push, release, deployment,
+or changes to historical receipt identities.
+
+## Complete source-test reproduction — 4 November 2026
+
+The old source distribution failed collection because scorecard helper modules
+were absent; inspection also found the omitted portable `conftest.py`, workflow
+inputs and export/verification scripts. An intermediate corrected archive then
+exposed four scorecard failures from the missing public sample JSONL and a broken
+README link to the omitted blog post. The source inventory and manifest now
+include these reviewed inputs plus linked public documentation/assets. The
+scorecard JSONL also ships in the wheel; two initially failing wheel regressions
+now enforce exact scorecard/pilot fixture bytes.
+
+Default discovery is restricted to `tests/`, with explicit test selection still
+supported. Documentation scans use first-party roots, including the blog, rather
+than backend-generated source trees. A synthetic reproduction failed before the
+change; the actual overlapping build/full-test run now passes. This does not make
+arbitrary concurrent source edits or multiple builds in one checkout safe.
+
+The new standard-library archive gate checks 506 exact consumer reproduction
+inputs (553 producer inputs), package/version naming, regular canonical members,
+duplicates, configured transient/credential filenames and resource budgets.
+It does not extract or execute content and does not authenticate a publisher or
+sandbox arbitrary untrusted compressed archives. CI runs this gate and the full
+suite from the built source archive. The read-only release build verifies source
+and wheel contents before upload without acquiring publishing authority.
+
+Full checkout and extracted-source consumer suites both pass **1,548 tests**
+(16 existing dependency warnings); browser **107 passed**. Producer checkout:
+**2,411 passed, 40 skipped** on Python 3.11 and 3.13. Distinct checkout total:
+**4,066 passed**. Producer archive: **2,405 passed, 46 skipped**; six extra skips
+are tests for deliberately unbundled datasets. Imports were confirmed inside the
+extracted producer and consumer roots. This milestone adds 82 tests across the
+repositories, including 42 here; no failing source test was hidden or excluded.
+
+Ruff, whitespace, unchanged offline locks, 26 producer pins, 10 independent
+authority artifacts, static stamps, 174 exact consumer wheel inputs, 19 browser
+archive inputs, installed model/proof, authentication/upload and browser checks
+pass. Producer installed core checks pass Python 3.11/3.12/3.13 with optional
+imports forbidden. The installed scorecard JSONL matches the source bytes.
+
+Artifacts: `/private/tmp/lure-source-20261104.qo1H9R`. These are local macOS
+results; remote CI has not run and Linux runtime verification remains pending.
+All new changes remain local and uncommitted, including the preceding Unix
+lifecycle integration notes. No push, merge, release or deployment occurred.

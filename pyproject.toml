@@ -97,6 +97,7 @@ lurescope = [
   "models/*.joblib",
   "models/*.json",
   "data/pilot/*.eml",
+  "data/*.jsonl",
 ]
 
 [tool.setuptools.data-files]
@@ -118,6 +119,8 @@ lurescope = [
 "share/lurescope/conformance/luremandate-transitions-v1" = ["conformance/luremandate-transitions-v1/*.json"]
 
 [tool.pytest.ini_options]
+# Do not collect the backend's generated source-distribution tree.
+testpaths = ["tests"]
 # Make the repo root importable so tests can reach the scripts/ helpers.
 pythonpath = ["."]
 

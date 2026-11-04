@@ -24,3 +24,18 @@ recursive-include docs *.md
 recursive-include examples *.md *.eml *.json
 recursive-include spec *.json
 recursive-include tests/vendor *.json *.md
+recursive-include tests *.py
+recursive-include scripts *.py *.cjs
+recursive-include .github *.yml *.yaml *.md
+recursive-include docs *.png *.svg *.gif *.json
+recursive-include space *.py *.txt *.md
+include space/Dockerfile
+include space/.dockerignore
+include SCORECARD.md
+include LLM_SCORECARD.md
+include Dockerfile
+include Dockerfile.space-ci
+include compose.yaml
+include .dockerignore
+include .github/CODEOWNERS
+recursive-include blog *.md *.png *.svg *.gif

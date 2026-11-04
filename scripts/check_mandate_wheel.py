@@ -12,6 +12,10 @@ def verify(wheel: Path, root: Path, package: str) -> int:
     sources.append(root / "spec/decision-policy-v3.schema.json")
     if package == "lurescope":
         sources.extend(
+            path for path in (root / package / "data").rglob("*")
+            if path.is_file() and path.suffix in {".eml", ".jsonl"}
+        )
+        sources.extend(
             path for path in (root / package / "static").glob("*")
             if path.is_file() and path.suffix in {".html", ".js", ".json"}
         )

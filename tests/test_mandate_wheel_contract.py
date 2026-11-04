@@ -125,3 +125,24 @@ def test_browser_asset_bytes_are_checked_when_present_in_source(tmp_path):
         "lurescope/static/model.json": b'{"synthetic":true}',
         **base_members,
     }), root, "lurescope") == 2
+
+
+@pytest.mark.parametrize('relative', ['data/sample_lures.jsonl', 'data/pilot/sample.eml'])
+def test_reproduction_and_pilot_data_must_ship_exactly(tmp_path, relative):
+    root = tmp_path / 'source'
+    source = root / 'lurescope' / relative
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b'synthetic public fixture\n')
+    schema = root / 'spec/decision-policy-v3.schema.json'
+    schema.parent.mkdir()
+    schema.write_bytes(b'{}')
+    members = {
+        'lurescope-0.0.0.data/data/share/lurescope/spec/decision-policy-v3.schema.json': b'{}',
+    }
+    with pytest.raises(ValueError, match='missing'):
+        contract.verify(wheel_at(tmp_path / 'missing.whl', members), root, 'lurescope')
+    members['lurescope/' + relative] = b'changed'
+    with pytest.raises(ValueError, match='stale'):
+        contract.verify(wheel_at(tmp_path / 'stale.whl', members), root, 'lurescope')
+    members['lurescope/' + relative] = source.read_bytes()
+    assert contract.verify(wheel_at(tmp_path / 'valid.whl', members), root, 'lurescope') == 2

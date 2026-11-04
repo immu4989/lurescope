@@ -78,6 +78,14 @@ before starting workers; invalid values fail startup. Body progress does not
 extend the deadline, and health has no reserved slot. See [admission limits](PUBLIC_DEPLOYMENT.md#http-admission-and-upload-deadline)
 for ranges, cancellation behavior, and gateway requirements.
 
+Operators using the source-branch LureBench Unix decision service must provision
+a dedicated mode-0700 socket directory owned by its effective UID. Shared parent
+directories and pre-existing entries now fail startup. Cleanup preserves observed
+replacements and cannot establish that daemon workers or a previous process have
+stopped. Inspect a leftover path before any manual recovery; do not auto-unlink
+it. These are companion transport requirements, not changes to historical
+receipts or to the pinned released dependency. See [runtime integration](RUNTIME_MEDIATION_EVIDENCE.md).
+
 CLI signing-key inputs across legacy commands now require regular, non-symlink
 files of at most 64 KiB and owner-only permissions on POSIX. Review ownership
 and use `chmod 600` on the intended private file if appropriate; do not change

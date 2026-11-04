@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Default test discovery is limited to `tests/`; documentation checks use
+  first-party roots, avoiding generated source-tree collisions. CI now checks
+  source-archive reproduction inputs and runs the suite from the built archive.
+  The read-only release build validates source and wheel contents before upload.
+
+- Source archives now include portable test fixtures, helper scripts, workflow
+  inputs, linked documentation/assets, and the public scorecard sample. The
+  sample JSONL also ships in wheels; wheel checks cover scorecard and pilot data.
+
 - HTTP admission caps active admitted requests (16 per instance by default)
   before uploads, authentication, and routing. Saturation returns a fixed 503
   without reading another body. Uploads have a total 30-second deadline (408),
