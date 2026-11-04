@@ -12,6 +12,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from .permit import _strict
 
 MAX_REQUEST_BODY_BYTES = 8 * 1024 * 1024
+MAX_REQUEST_JSON_NODES = 100_000
 
 
 class RequestBodyLimit:
@@ -87,7 +88,7 @@ class RequestBodyLimit:
                        and content_types[0].endswith(b"+json")))
         if complete and is_json:
             try:
-                _strict(complete, "request")
+                _strict(complete, "request", max_nodes=MAX_REQUEST_JSON_NODES)
             except ValueError:
                 await reject(422, "request validation failed")
                 return

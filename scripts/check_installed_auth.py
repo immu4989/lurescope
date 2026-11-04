@@ -7,6 +7,7 @@ No server, provider requests, credential files, or external accounts are used.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import os
 import sys
 from contextlib import ExitStack
@@ -27,6 +28,22 @@ def main(argv=None):
     from fastapi import HTTPException, Request, Response
 
     from lurescope import security
+    from lurescope.http_boundary import MAX_REQUEST_JSON_NODES, RequestBodyLimit
+
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": b'[' + b'0,' * MAX_REQUEST_JSON_NODES + b'0]'}
+
+    async def send(message):
+        sent.append(message)
+
+    async def forbidden_app(*args):
+        raise ValueError("installed HTTP boundary admitted excessive JSON nodes")
+
+    asyncio.run(RequestBodyLimit(forbidden_app)({"type": "http", "headers": []}, receive, send))
+    if sent[0]["status"] != 422:
+        raise ValueError("installed HTTP boundary changed complexity rejection")
 
     variables = ("LURESCOPE_PUBLIC_MODE", "LURESCOPE_API_KEY_SCRYPT",
                  "LURESCOPE_RATE_LIMIT_PER_MINUTE", "LURESCOPE_PROVIDER_DAILY_LIMIT")
@@ -75,7 +92,7 @@ def main(argv=None):
             location = getattr(module, "__file__", None)
             if location is None or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("authentication imports escaped installed wheel")
-    print("PASS installed key verification, ambiguous headers, admission limits, and rotation")
+    print("PASS installed JSON admission, key verification, header limits, and rotation")
     return 0
 
 

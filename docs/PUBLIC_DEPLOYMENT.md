@@ -93,7 +93,15 @@ content. This changes the diagnostic response shape from framework defaults.
 
 Declared JSON (`application/json`, `application/*+json`, or the API's absent-header
 default) is checked for duplicate keys, nonfinite numbers, overflowing literals,
-and excessive nesting before framework decoding. Those failures return `422`.
+and excessive nesting before framework decoding. JSON structure is additionally
+limited to **100,000 nodes** (each container, scalar value, and object key counts
+once), **128 container levels**, and **4,096 characters per unquoted token**.
+These limits are checked before the standard decoder allocates the object graph;
+duplicate keys count even though strict decoding subsequently rejects them.
+String contents do not add nodes: an email containing brackets, escaped quotes,
+or numbers remains one string value. The existing body and field limits bound
+its size. These failures return a redacted `422`, before authentication, detector
+construction, or provider quota reservation.
 Request models reject unknown fields and coercion of controls: thresholds must
 be JSON numbers (not strings or booleans), and `require_signature` must be a JSON
 boolean. This deliberately exposes misspelled options rather than ignoring them.
@@ -111,10 +119,26 @@ checked. This bounded buffering is intentional for the current non-streaming API
 The implementation follows the [ASGI HTTP receive-event contract](https://asgi.readthedocs.io/en/latest/specs/www.html#request-receive-event).
 The server has already allocated incoming chunks and processed transfer framing
 before middleware receives them. The application does not bound headers,
-transport buffers, concurrent request counts, JSON object expansion, or slow-client
-connection lifetime. Enforce those at the server/gateway. Authentication remains
+transport buffers, concurrent request counts, or slow-client connection lifetime.
+The node cap bounds individual JSON structure, not total process memory: decoding,
+framework validation, and concurrent requests still allocate memory. Enforce
+process and concurrency limits at the server/gateway. Authentication remains
 a route dependency; the size bound applies before it, not an authentication-before-
 upload guarantee. No request content is logged by this middleware.
+
+Independent Permit, Boundary, Watch, and Witness evidence readers use a separate
+1,000,000-node limit with the same depth and token limits. Their existing file
+byte bounds still apply. High-complexity artifacts accepted by older builds can
+now fail validation; signatures, canonicalization, and historical artifact bytes
+are unchanged. This parser hardening is local to LureScope and does not require
+a newer LureBench for these independent readers or HTTP admission. Producer-backed
+model/policy readers require the paired LureBench update for its parsing limits.
+
+The limits address the input-size/resource checks described by
+[OWASP API4](https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption/).
+[RFC 8259 section 9](https://www.rfc-editor.org/rfc/rfc8259.html#section-9) permits
+implementation limits; these specific budgets are LureScope choices, not OWASP
+or IETF certification requirements.
 
 ## What public mode changes
 

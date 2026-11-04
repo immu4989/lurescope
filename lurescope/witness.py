@@ -26,6 +26,7 @@ from .boundary import (
     public_key_id,
     verify_boundary_bundle,
 )
+from .json_limits import check_json_structure, finite_json_float
 from .revocation import verify_revocation_bundle
 from .watch import verify_monitor_bundle
 
@@ -83,12 +84,15 @@ def _strict(payload: bytes, label: str) -> Any:
         raise ValueError(f"{label} contains non-standard JSON constant {value}")
 
     try:
+        text = payload.decode("utf-8")
+        check_json_structure(text)
         return json.loads(
-            payload.decode("utf-8"),
+            text,
             object_pairs_hook=no_duplicates,
             parse_constant=no_constants,
+            parse_float=finite_json_float,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError(f"{label} is not strict UTF-8 JSON") from exc
 
 

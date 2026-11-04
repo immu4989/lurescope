@@ -10,6 +10,22 @@ The implementation intentionally does not import `lurebench.runtime`. This
 separates evidence verification from the producer implementation. It does reuse
 LureScope's independent LurePermit v1 request validator.
 
+For live pilot integration, the companion LureBench source branch now rejects
+ambiguous HTTP framing and incomplete bodies before decision evaluation, applies
+a five-second body deadline, and redacts errors. See its
+[HTTP admission and failure handling](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/RUNTIME_AGENT_AUTHORIZATION.md#http-admission-and-failure-handling)
+for the required fixed-length JSON profile and operating limits; the branch link
+will include these local changes only after they are pushed. This protection is
+in LureBench's local decision service, not installed by updating LureScope alone.
+Transport success does not establish mediation, and an absent/error response is
+never an allowed decision. Storage failure or response loss can leave decision
+state uncertain. The paired producer now latches such audit failures unavailable,
+preserves uncertain log bytes, and rejects further decisions until operator
+recovery; `/health` returns 503 after a latched failure. This is not automatic
+rollback or replay-state restoration. LureScope's receipt-chain verification does
+not repair or reconstruct missing receipts, and a healthy producer latch does not
+prove logging is enabled or storage is currently healthy.
+
 ## End-to-end workflow
 
 Create a healthy synthetic trace and evaluation with LureBench:

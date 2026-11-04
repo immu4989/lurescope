@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- HTTP JSON admission limits structure to 100,000 nodes before decoding or
+  routing. Independent evidence readers also bound breadth and numeric tokens;
+  older Boundary, Watch, and Witness readers now reject deep nesting and
+  overflowing numeric literals. This limits individual-document expansion,
+  not concurrent connections or total process memory. Existing high-complexity
+  inputs can be rejected without modifying their bytes or identities.
+
 - Risk-policy loading separates numerical consistency tolerance from statistical
   acceptance: both reported and recomputed evidence must satisfy the exact
   floating-point confidence/FPR limits without an added tolerance budget.
