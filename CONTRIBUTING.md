@@ -72,6 +72,25 @@ CI uses `uv 0.12.3` and `uv sync --locked`. If a dependency changes, run
 `uv lock`, review the package and hash changes in `uv.lock`, and commit the
 updated lockfile with the manifest change.
 
+### Optional chart compatibility
+
+The `viz` extra is separate from the default API. Its Pillow 13.0.0+ floor is a
+package requirement, so it also applies to pip installations of a build from
+this branch. Do not install Matplotlib alone as a workaround for the reviewed
+extra. For checkout testing:
+
+```bash
+uv sync --locked --extra dev --extra viz
+LURESCOPE_TEST_VIZ=1 uv run --frozen --extra dev --extra viz pytest -q tests/test_dependency_security.py tests/test_scorecard_viz.py
+```
+
+CI runs this opt-in check on Python 3.11–3.13. Missing visualization dependencies
+fail when enabled; without the flag these three integration cases skip. Tests
+render and decode PNGs from synthetic data with networking and evaluation
+factories blocked, verify source data/figure cleanup, and distinguish missing
+rates from zero. They do not call providers, validate upstream security patches,
+or re-run the published benchmark. See [the dependency review](docs/DEPENDENCY_SECURITY.md).
+
 ### Source-distribution reproduction
 
 Default `pytest` discovery is restricted to `tests/`, so a backend's temporary
@@ -121,9 +140,15 @@ uv tool install pre-commit
 pre-commit install
 ```
 
-The scorecard scripts need no keys for the character attacks. The cross-model
-scorecard needs `OPENROUTER_API_KEY`; it caches every score to disk, so a rerun
-costs nothing.
+Both scorecard scripts support `--validate-corpus` to check the whole input and
+print its selection manifest without keys, evaluation, cache access or output
+file changes. See [corpus admission and reproduction](docs/SCORECARD_CORPUS.md).
+The character evaluation needs no keys. A fresh cross-model evaluation needs
+`OPENROUTER_API_KEY` and may incur charges; cache reuse requires independently
+reviewed experiment identities, not merely matching text or detector names.
+The cross-model script's [versioned cache and cache-only workflow](docs/SCORECARD_CACHE.md)
+rejects legacy/mismatched caches before paid work; never overwrite old files to
+make a test or reproduction command pass.
 
 ## Pull requests
 

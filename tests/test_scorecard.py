@@ -39,7 +39,7 @@ def test_normalization_never_increases_evasion_and_zeroes_homoglyph():
     card = compute(["tfidf-logreg", "heuristic-v0"], ["homoglyph", "leet", "zero-width"], lures)
     for row in card["detectors"].values():
         for cell in row["attacks"].values():
-            # A defense must never make things worse.
+            # Observed property of this bundled sample, not a general defense guarantee.
             assert cell["evasion_normalized"] <= cell["evasion_raw"] + 1e-9
         # Homoglyph and zero-width are reversed losslessly -> zero residual evasion.
         assert row["attacks"]["homoglyph"]["evasion_normalized"] == 0.0

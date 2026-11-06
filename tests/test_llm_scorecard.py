@@ -17,7 +17,7 @@ def _dets(*names):
     return collections.OrderedDict((n, None) for n in names)
 
 
-def test_evasion_is_conditioned_on_a_clean_catch_and_abstentions_excluded():
+def test_evasion_is_conditioned_on_a_clean_catch_with_missingness_reported():
     lures = _lures(4)
     dets = _dets("d")
     # l0 caught then evaded by homoglyph; l1 caught and held; l2 not caught clean
@@ -35,9 +35,11 @@ def test_evasion_is_conditioned_on_a_clean_catch_and_abstentions_excluded():
     card = scorecard(results, dets, lures)
     row = card["detectors"]["d"]
     assert row["n_caught"] == 3               # lures 0, 1, 3
-    # homoglyph: of caught {0,1,3}, lure 3 abstains (excluded) -> scored over {0,1},
-    # one evades -> 50%.
-    assert row["attacks"]["homoglyph"]["evasion"] == 0.5
+    # 50% is only the observed-subset rate. The full clean-catch rate is unknown.
+    assert row["attacks"]["homoglyph"]["evasion"] is None
+    assert row["attacks"]["homoglyph"]["evasion_observed"] == 0.5
+    assert row["attacks"]["homoglyph"]["evasion_lower"] == 1 / 3
+    assert row["attacks"]["homoglyph"]["evasion_upper"] == 2 / 3
     assert row["attacks"]["homoglyph"]["n_scored"] == 2
 
 

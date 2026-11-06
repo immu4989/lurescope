@@ -786,9 +786,20 @@ A detector's clean-data accuracy is not its deployment accuracy, and the gap has
 
 **3. The defense.** Turn on `normalize` and the attacked text is folded back to ASCII before scoring; the keyword detector jumps back to 69% and the catch is recovered. But run the same defense against an `llm-paraphrase` and nothing changes — that attack rewrote the *meaning*, not the spelling, and normalization can't reach it.
 
-That last contrast is the point. Character obfuscation is a solved problem for any detector that normalizes its input; the residual robustness gap is semantic. LureScope lets a security team see exactly which of their detectors have which kind of hole, on their own message, in ten seconds.
+That contrast motivates the demo: normalization recovers some failures in the measured character attacks, but is not a universal solution to character obfuscation or semantic rewriting. Use the demo to explore a failure mode, not to establish deployment robustness from one message.
 
 ## Robustness scorecard
+
+The figures below are historical results. Unreleased generators now preserve
+abstentions, distinguish unresolved rates from zero, and report explicit
+denominators and logical bounds. See [the measurement contract and migration
+limits](docs/SCORECARD_MEASUREMENT.md); no published figure was recomputed here.
+
+Before evaluating a new dataset, run `python scripts/robustness_scorecard.py
+--data /path/to/corpus.jsonl --validate-corpus` (as one line). Both scorecard CLIs
+support this key-free, no-scoring preflight. They validate the whole file before
+sampling and report exact source/cohort commitments; see [input limits, selection
+rules and privacy caveats](docs/SCORECARD_CORPUS.md).
 
 A single message is an anecdote; a rate over a corpus is a claim. Running both always-on detectors against every character attack on the 819 fraud lures in LureBench's `core/test` set gives the evasion rate — of the lures a detector caught clean, the fraction that slip below threshold after the attack — before and after the `normalize` defense:
 
@@ -799,8 +810,12 @@ A single message is an anecdote; a rate over a corpus is a claim. Running both a
 Read the pattern, not the cells. Normalization drives the `homoglyph` and `zero-width` columns to **0%** for both detectors because it reverses them losslessly; `leet` leaves a small residue (the `1`=`i`/`l` ambiguity); `whitespace` is untouched because re-joining split words would corrupt real text. The typographic gap closes, the semantic one does not. Full table in [SCORECARD.md](SCORECARD.md), background in the [writeup](blog/2026-07-23-robustness-gap-fraud-detection.md); regenerate on any corpus with:
 
 ```bash
-python scripts/robustness_scorecard.py --data <corpus.jsonl> --out-md SCORECARD.md --out-png docs/assets/scorecard.png
+uv sync --locked --extra viz  # optional PNG dependencies; not needed for Markdown/JSON
+uv run --frozen --extra viz python scripts/robustness_scorecard.py --data <corpus.jsonl> --out-md SCORECARD.md --out-png docs/assets/scorecard.png
 ```
+
+The unreleased `viz` extra requires Pillow 13.0.0+; the default API installation
+does not need Pillow. See the [dependency review and upgrade limits](docs/DEPENDENCY_SECURITY.md).
 
 ## Cross-model: do LLM detectors survive?
 

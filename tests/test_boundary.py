@@ -116,7 +116,8 @@ def _write_report(path: Path, *, passed: bool = True) -> None:
     path.write_text(json.dumps(_report(passed=passed), sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _create_bundle(path: Path, *, signer_public: bytes | None = None):
+def _create_bundle(path: Path, *, signer_public: bytes | None = None,
+                   monitor_digest: str | None = None):
     return create_boundary_bundle(
         path,
         plan_id="agent-assurance-plan",
@@ -127,6 +128,7 @@ def _create_bundle(path: Path, *, signer_public: bytes | None = None):
         suite_version="1.0.0",
         suite_sha256=SUITE_SHA,
         monitor_id="reference-monitor",
+        monitor_artifact_sha256=monitor_digest,
         minimum_trajectory_recall=1.0,
         maximum_benign_false_positive_rate=0.0,
         maximum_detection_delay_events=0,
@@ -151,6 +153,26 @@ def _keypair() -> tuple[bytes, bytes]:
         serialization.PublicFormat.SubjectPublicKeyInfo,
     )
     return private, public
+
+
+@pytest.mark.parametrize('changed_identity', ['b' * 64, None])
+def test_image_identity_cannot_change_under_same_monitor_name(tmp_path, changed_identity):
+    bundle, source = tmp_path / 'boundary', tmp_path / 'evaluation.json'
+    _create_bundle(bundle, monitor_digest='a' * 64)
+    report = _report()
+    report['monitor']['artifact_sha256'] = 'a' * 64
+    source.write_text(json.dumps(report))
+    append_boundary_evaluation(bundle, source, evaluation_id='original',
+                               generated_at='2026-08-28T12:00:00Z')
+    before = {p.relative_to(bundle): p.read_bytes() for p in bundle.rglob('*') if p.is_file()}
+    report['monitor']['artifact_sha256'] = changed_identity
+    source.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match='monitor does not match the preregistered control'):
+        append_boundary_evaluation(bundle, source, evaluation_id='replacement',
+                                   generated_at='2026-08-28T13:00:00Z')
+    after = {p.relative_to(bundle): p.read_bytes() for p in bundle.rglob('*') if p.is_file()}
+    assert after == before
+    assert verify_boundary_bundle(bundle)['entry_count'] == 1
 
 
 def _official_oscal_validator():

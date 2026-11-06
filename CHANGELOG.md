@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- Bind cross-model score/paraphrase caches to the declared experiment and reject
+  legacy/mismatched files before paid work. Add key-free cache-only replay,
+  coalesced duplicate work, bounded task admission and checked atomic cache writes.
+  Restore the portable JSON baseline loader and reject failed paraphrase generation.
+
+- Admit the complete bounded scorecard corpus before sampling; reject ambiguous
+  JSON, coerced labels and malformed excluded records. Both research CLIs expose
+  a key-free `--validate-corpus` preflight and include exact source/ordered-cohort
+  commitments in new JSON/Markdown. Historical files, valid cohort ordering and
+  duplicate positional observations are preserved; hashes are not authentication.
+
+- Version research scorecard outcome accounting: explicit abstentions remain
+  unknown, empty eligible cohorts have no evasion rate, and partial outcomes
+  expose logical bounds/counts rather than a misleading point estimate. Invalid
+  scores/cache entries fail before measurement; generated Markdown/PNG show
+  coverage and no longer assert dataset-specific findings from labels alone.
+
+- Require Pillow 13.0.0+ in the optional `viz` extra and lock the patched release,
+  covering the retrieved Pillow advisory ranges without adding imaging to the
+  default API. Real synthetic PNG checks now exercise both renderers, missing
+  rates and image decoding on Python 3.11–3.13 in a dedicated CI job.
+
+- Document producer-owned OCI teardown, recovery diagnostics and report
+  suppression after uncertain cleanup. Runtime cleanup errors are not assurance
+  results; evidence verification remains independent of daemon attestation.
+
+- Document the paired producer's inspected-image execution binding and Podman
+  normalization, including historical mutable-tag evidence limits. Regression
+  tests preserve artifact-bound plans when a same-name monitor's image digest
+  changes or disappears; report schemas and historical identities are unchanged.
+
 - Default test discovery is limited to `tests/`; documentation checks use
   first-party roots, avoiding generated source-tree collisions. CI now checks
   source-archive reproduction inputs and runs the suite from the built archive.

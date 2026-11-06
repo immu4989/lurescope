@@ -55,8 +55,9 @@ dependencies = [
 # ruff is pinned: an unpinned linter installs a newer default rule set in CI than
 # the one used locally, which is how LureBench's CI went red on a green commit.
 dev = ["build>=1.2", "pytest", "httpx", "jsonschema>=4.23", "ruff>=0.15,<0.17"]
-# Only needed to render the scorecard heatmap PNG; the markdown/JSON need nothing extra.
-viz = ["matplotlib>=3.6"]
+# Only needed to render scorecard PNGs; markdown/JSON need nothing extra.
+# Keep the patched imaging floor in wheel metadata, not only uv constraints.
+viz = ["matplotlib>=3.6", "pillow>=13.0.0"]
 
 [tool.uv]
 # Remove the compromised emSign trust anchor when optional HTTP clients pull

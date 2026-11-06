@@ -23,6 +23,31 @@ lurebench boundary-eval --out boundary-evaluation.json
 Review the report and its suite digest. The event vocabulary cannot contain
 prompts, commands, payloads, credentials, hosts, URLs, paths, or reasoning.
 
+For a container-backed monitor, the fixed LureBench source branch resolves a
+local image ID once and uses it for execution, including restarts. The original
+image reference is a label, not a second lookup at launch. Its canonical
+`image_id` is `sha256:<64 lowercase hex>`; the nested boundary report binds the
+same hex characters in `monitor.artifact_sha256`, including for Podman.
+LureScope preregisters that exact artifact: an unchanged monitor name does not
+permit a changed or omitted digest. It does not contact the daemon or independently
+prove which executable ran. See the producer's
+[image-identity contract](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/CONTAINER_DETECTORS.md#inspected-identity-is-the-execution-target).
+
+If a mutable tag moved during an older producer run, its recorded ID may not
+identify the executed image. Integrity verification cannot repair that historical
+claim. Re-run affected evaluations with the fixed producer and register a new
+plan where the declared monitor artifact changes; do not rewrite prior evidence.
+These source-branch controls are not a claim about released PyPI 0.11.0.
+
+The paired producer also verifies ownership before starting an OCI container and
+before force-removing its exact ID. It requires confirmed absence before report
+publication. Uncertain creation, daemon cleanup failure, or CLI/pipe cleanup
+failure is an execution error, not an evaluation, abstention, or assurance pass.
+Retain the producer's recovery-name diagnostics and coordinate runtime inspection;
+do not replace a missing report with an older successful result. LureScope's
+validation does not independently attest daemon cleanup. See the producer's
+[lifecycle and recovery contract](https://github.com/immu4989/lurebench/blob/feat/lurepermit-lurerange/docs/CONTAINER_DETECTORS.md#runtime-isolation).
+
 ### 2. Optionally create an external signing identity
 
 ```bash

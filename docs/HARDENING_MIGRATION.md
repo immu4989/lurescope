@@ -3,6 +3,59 @@
 These changes are **unreleased**, not part of published PyPI 0.11.0. No production
 deployment or paid-provider experiment is implied by the offline verification.
 
+## Cross-model cache migration
+
+The research script rejects legacy flat caches rather than silently reusing them
+under changed models, prompts or parsers. Preserve old files and select fresh paths
+for an intentionally budgeted new run. Matching new envelopes support `--cache-only`
+without keys, model construction or cache writes. See [cache identity and replay
+limits](SCORECARD_CACHE.md); no historical observations are automatically upgraded.
+
+## Research scorecard corpus admission
+
+Both research CLIs now admit the entire bounded regular-file corpus before
+selection. Ambiguous JSON, coerced labels, malformed excluded records and negative
+limits/caps fail instead of silently changing the cohort. Symlink inputs require
+an explicit trusted regular-file copy. Use `--validate-corpus` without keys/calls
+to preview selection and source commitments. New JSON/Markdown include
+`scorecard-cohort-v1`; this does not authenticate source labels or old caches.
+See [limits, compatibility and exact digest framing](SCORECARD_CORPUS.md).
+
+## Research scorecard outcome semantics
+
+Generated scorecards now identify `scorecard-outcomes-v2`. Primary evasion rates
+can be null when attacked outcomes abstain or there are no clean catches. Consume
+counts, coverage, status and logical lower/upper bounds; do not coerce null to zero
+or substitute `evasion_observed`, which describes only the scored subset.
+Historical aggregates/caches are preserved and are not upgraded by changing a
+version label. See [the formulas, compatibility limits and reproduction guidance](SCORECARD_MEASUREMENT.md).
+
+## Container-backed evaluation identity
+
+Use the paired fixed producer branch when evaluating OCI detectors or boundary
+monitors. It now launches the full inspected local image ID instead of looking
+up the original reference again; mutable development tags cannot silently
+change an admitted execution. Podman inspection IDs normalize to the unchanged
+evidence format. Python callers must use a boolean for the development override
+and bounded non-boolean numbers for CPU/timeout options.
+
+LureScope still verifies declared evidence, not the daemon's execution. Historical
+mutable-tag reports with uncertain execution identity require re-evaluation, not
+receipt rewriting. A changed monitor artifact requires a new plan; same-name
+replacement and missing artifact identity fail against an artifact-bound plan.
+See [container identity and assurance](AGENT_BOUNDARY_ASSURANCE.md#1-produce-a-safe-evaluation).
+
+OCI startup now uses separate create/verify/attach operations. Closing an adapter
+force-removes its ownership-checked container ID and confirms absence before a
+report is emitted, rather than merely stopping the local CLI. Anonymous volumes
+associated with that container are removed; images/named volumes are not targets.
+Allow a separate ten-second daemon-control budget plus local CLI/pipe cleanup
+waits. Keep the runtime connection stable. Failed/uncertain cleanup requires
+operator inspection of the reported unique container name and may be retried
+with `close()`; it cannot be retried as a scoring operation or treated as a result.
+Crash/host failure still needs external supervision. No historical receipt is
+rewritten and no remote cleanup attestation is added.
+
 ## Default scoring model
 
 The default detector name remains `tfidf-logreg`, but serving now uses pinned,
